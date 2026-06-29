@@ -349,17 +349,25 @@ class GHLService {
   }
 
   // ── Users (agents) ────────────────────────────────────────────────────────────
-  /** Search users for a location/company — used to populate the agent roster for assignment. */
+  /**
+   * Search users for a location/company — populates the agent roster for assignment.
+   * GET /users/search requires a companyId; the response shape is { users: [...] }.
+   */
   async searchUsers(locationId, { companyId } = {}) {
+    const params = { locationId, query: '' };
+    if (companyId) params.companyId = companyId;
     try {
-      const response = await this.apiRequest('GET', '/users/search', locationId, null, {
-        companyId,
-        locationId,
-        query: ''
-      });
-      return response.users || [];
+      const response = await this.apiRequest('GET', '/users/search', locationId, null, params);
+      const users = response.users || response.data?.users || [];
+      logger.info('searchUsers ok', { locationId, companyId: !!companyId, count: users.length });
+      return users;
     } catch (error) {
-      logger.warn('searchUsers failed (non-blocking):', { locationId, error: error.message });
+      logger.warn('searchUsers failed:', {
+        locationId,
+        hasCompanyId: !!companyId,
+        status: error.response?.status,
+        error: error.response?.data?.message || error.message
+      });
       return [];
     }
   }

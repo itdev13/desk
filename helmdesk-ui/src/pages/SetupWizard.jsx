@@ -34,11 +34,14 @@ export default function SetupWizard({ workspace, onDone, notify }) {
     portalEnabled: false
   });
 
+  const [agentsLoaded, setAgentsLoaded] = useState(false);
   useEffect(() => {
-    // Pull the agent roster so "assign to a specific agent" can show real names.
-    api.syncAgents().then((r) => setAgents(r.agents || [])).catch(() => {
-      api.agents().then((r) => setAgents(r.agents || [])).catch(() => {});
-    });
+    // Pull the agent roster from the users API so "assign to a specific agent" shows real names.
+    // Fall back to any already-synced agents; surface a hint if none come back.
+    api.syncAgents()
+      .then((r) => setAgents(r.agents || []))
+      .catch(() => api.agents().then((r) => setAgents(r.agents || [])).catch(() => {}))
+      .finally(() => setAgentsLoaded(true));
   }, []);
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
@@ -148,6 +151,15 @@ export default function SetupWizard({ workspace, onDone, notify }) {
                       <option value="">Select an agent…</option>
                       {agents.map((a) => <option key={a.ghlUserId} value={a.ghlUserId}>{a.name}</option>)}
                     </select>
+                    {agentsLoaded && agents.length === 0 && (
+                      <span className="hint" style={{ color: 'var(--warn)' }}>
+                        No team members found yet.{' '}
+                        <button type="button" className="btn btn-sm btn-ghost" style={{ padding: '2px 8px' }}
+                          onClick={() => api.syncAgents().then((r) => setAgents(r.agents || [])).catch(() => notify('Could not load your team — try again in a moment.', true))}>
+                          Retry sync
+                        </button>
+                      </span>
+                    )}
                   </div>
                 )}
               </>
