@@ -1,10 +1,10 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// Dev server proxies /api, /oauth and /portal to the local HelmDesk API (:3020) so the UI can
-// run on :5174 without CORS friction. Built assets are served by the API at /app in production.
+// Split deploy: the UI is hosted standalone (Vercel) at the ROOT of helmdeskapp.vaultsuite.store,
+// and talks to the API at VITE_API_URL (helmdeskapi.vaultsuite.store). Base stays default '/'.
+// Dev server proxies /api, /oauth, /portal to the local API (:3020) to avoid CORS friction locally.
 export default defineConfig({
-  base: '/app/',
   plugins: [react()],
   server: {
     port: 5174,
