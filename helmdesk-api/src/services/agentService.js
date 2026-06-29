@@ -10,11 +10,27 @@ const ghlService = require('./ghlService');
  * up from the stored token, then the company↔location map.
  */
 async function resolveCompanyId(locationId, companyId) {
-  if (companyId) return companyId;
+  if (companyId) {
+    logger.info('[agentSync] companyId from auth session', { locationId, companyId });
+    return companyId;
+  }
   const token = await OAuthToken.findOne({ locationId, isActive: true });
-  if (token?.companyId) return token.companyId;
+  if (token?.companyId) {
+    logger.info('[agentSync] companyId from OAuthToken', { locationId, companyId: token.companyId, tokenType: token.tokenType });
+    return token.companyId;
+  }
   const map = await CompanyLocation.findCompanyByLocation(locationId);
-  return map?.companyId || null;
+  if (map?.companyId) {
+    logger.info('[agentSync] companyId from CompanyLocation map', { locationId, companyId: map.companyId });
+    return map.companyId;
+  }
+  logger.warn('[agentSync] companyId NOT resolvable', {
+    locationId,
+    tokenFound: !!token,
+    tokenHasCompanyId: !!token?.companyId,
+    mapFound: !!map
+  });
+  return null;
 }
 
 /**
@@ -23,11 +39,11 @@ async function resolveCompanyId(locationId, companyId) {
  * existing ones get name/email refreshed without clobbering their active flag or load count.
  */
 async function syncAgents(locationId, companyId) {
+  logger.info('[agentSync] START', { locationId, companyIdFromAuth: companyId || null });
   const resolvedCompanyId = await resolveCompanyId(locationId, companyId);
-  if (!resolvedCompanyId) {
-    logger.warn('syncAgents: no companyId resolvable — /users/search needs one', { locationId });
-  }
+
   const users = await ghlService.searchUsers(locationId, { companyId: resolvedCompanyId });
+  logger.info('[agentSync] searchUsers returned', { locationId, userCount: users.length });
 
   const synced = [];
   for (const u of users) {

@@ -356,17 +356,28 @@ class GHLService {
   async searchUsers(locationId, { companyId } = {}) {
     const params = { locationId, query: '' };
     if (companyId) params.companyId = companyId;
+    logger.info('[searchUsers] GET /users/search', { locationId, params });
     try {
       const response = await this.apiRequest('GET', '/users/search', locationId, null, params);
       const users = response.users || response.data?.users || [];
-      logger.info('searchUsers ok', { locationId, companyId: !!companyId, count: users.length });
+      // Log the response SHAPE so we catch a different key / wrapped payload (top-level keys + count).
+      logger.info('[searchUsers] response', {
+        locationId,
+        topLevelKeys: Object.keys(response || {}),
+        count: users.length,
+        firstUser: users[0] ? { id: users[0].id, name: users[0].name, email: users[0].email } : null
+      });
+      if (users.length === 0) {
+        // Dump the raw body (trimmed) when empty — this is the case we're debugging.
+        logger.warn('[searchUsers] EMPTY result — raw body', { locationId, body: JSON.stringify(response).slice(0, 800) });
+      }
       return users;
     } catch (error) {
-      logger.warn('searchUsers failed:', {
+      logger.error('[searchUsers] FAILED', {
         locationId,
         hasCompanyId: !!companyId,
         status: error.response?.status,
-        error: error.response?.data?.message || error.message
+        ghlError: error.response?.data ? JSON.stringify(error.response.data).slice(0, 500) : error.message
       });
       return [];
     }

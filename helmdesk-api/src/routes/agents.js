@@ -26,6 +26,7 @@ router.get('/', async (req, res) => {
 /** POST /api/agents/sync — pull the latest user list from GHL. */
 router.post('/sync', async (req, res) => {
   try {
+    logger.info('[agents/sync] request', { locationId: req.auth.locationId, companyId: req.auth.companyId || null, userId: req.auth.userId || null });
     const { agents, diagnostics } = await agentService.syncAgents(req.auth.locationId, req.auth.companyId);
     // diagnostics explains an empty result: companyIdResolved / usersFromGhl / saved.
     res.json({ success: true, count: agents.length, agents, diagnostics });
