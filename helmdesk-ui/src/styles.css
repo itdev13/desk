@@ -202,6 +202,17 @@ button { font-family: inherit; cursor: pointer; }
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
 .field label { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
 .field .hint { font-size: 12px; color: var(--slate); font-weight: 400; }
+
+/* Hide the native number-input spinner (up/down stepper) — we don't need it for SLA/day fields. */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
 input[type="text"], input[type="email"], input[type="tel"], input[type="number"], select, textarea {
   border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; font-size: 14px; font-family: inherit;
   background: var(--panel); color: var(--ink); width: 100%;
