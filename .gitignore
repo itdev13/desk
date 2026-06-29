@@ -1,0 +1,15 @@
+# Top-level safety net for the helmdesk monorepo. Per-package .gitignore files
+# (helmdesk-api/, helmdesk-ui/) cover the specifics; this catches anything at the root.
+node_modules/
+**/node_modules/
+.env
+.env.local
+**/.env
+!**/.env.example
+*.log
+logs/
+.DS_Store
+**/dist/
+coverage/
+
+# assets/ IS committed — logo (icon.svg, icon-512.png) and preview images are deliverables.

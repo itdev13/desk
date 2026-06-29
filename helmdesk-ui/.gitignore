@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.DS_Store
+.vite/
+
+# Note: public/ is committed — it holds icon.svg / icon-512.png (real source assets,
+# not build output). Only the generated dist/ is ignored.

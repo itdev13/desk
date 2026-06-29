@@ -1,0 +1,66 @@
+import React from 'react';
+import { PRIORITY_LABEL, STATUS_LABEL, avatarColor, initials } from '../lib/format.js';
+
+/** Minimal inline icon set (stroke-based, currentColor). */
+export function Icon({ name, size = 17 }) {
+  const p = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' };
+  const paths = {
+    inbox: <><path d="M22 12h-6l-2 3h-4l-2-3H2" /><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /></>,
+    users: <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></>,
+    board: <><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 3v18M15 3v18" /></>,
+    chart: <><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></>,
+    gear: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></>,
+    alert: <><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></>,
+    search: <><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></>,
+    plus: <><path d="M12 5v14M5 12h14" /></>,
+    check: <><path d="M20 6 9 17l-5-5" /></>,
+    back: <><path d="M19 12H5M12 19l-7-7 7-7" /></>,
+    send: <><path d="m22 2-7 20-4-9-9-4z" /><path d="M22 2 11 13" /></>
+  };
+  return <svg {...p} className="ico">{paths[name] || null}</svg>;
+}
+
+export function PriorityPill({ priority }) {
+  return <span className={`pill ${priority}`}>{PRIORITY_LABEL[priority] || priority}</span>;
+}
+
+export function StatusPill({ status }) {
+  const tone = status === 'resolved' || status === 'closed' ? 'good' : status === 'pending' || status === 'on_hold' ? 'warn' : 'info';
+  return <span className={`pill ${tone}`}>{STATUS_LABEL[status] || status}</span>;
+}
+
+export function Avatar({ name, size = 30 }) {
+  if (!name) return <div className="avatar" style={{ width: size, height: size, background: '#5a687f' }}>—</div>;
+  return (
+    <div className="avatar" style={{ width: size, height: size, background: avatarColor(name) }} title={name}>
+      {initials(name)}
+    </div>
+  );
+}
+
+export function Spinner() {
+  return (
+    <div className="center-screen">
+      <div className="spinner" />
+    </div>
+  );
+}
+
+export function Toast({ message, error, onDone }) {
+  React.useEffect(() => {
+    if (!message) return;
+    const t = setTimeout(onDone, 2600);
+    return () => clearTimeout(t);
+  }, [message, onDone]);
+  if (!message) return null;
+  return <div className={`toast ${error ? 'err' : ''}`}>{message}</div>;
+}
+
+export function Switch({ checked, onChange }) {
+  return (
+    <label className="switch">
+      <input type="checkbox" checked={!!checked} onChange={(e) => onChange(e.target.checked)} />
+      <span className="slider" />
+    </label>
+  );
+}

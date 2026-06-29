@@ -1,0 +1,52 @@
+<svg width="960" height="540" viewBox="0 0 960 540" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0F1729"/><stop offset="1" stop-color="#1B2538"/></linearGradient>
+    <linearGradient id="amber" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ECB45F"/><stop offset="1" stop-color="#D4912F"/></linearGradient>
+  </defs>
+  <rect width="960" height="540" fill="url(#bg)"/>
+
+  <!-- Header -->
+  <g transform="translate(48,40)" font-family="Helvetica,Arial,sans-serif">
+    <rect x="0" y="0" width="44" height="44" rx="11" fill="url(#amber)"/>
+    <g fill="#0F1729"><rect x="12" y="11" width="5.5" height="22" rx="2"/><rect x="26.5" y="11" width="5.5" height="22" rx="2"/><rect x="15" y="19.5" width="14" height="5" rx="2"/></g>
+    <circle cx="22" cy="21.7" r="2.4" fill="#0F1729"/>
+    <text x="56" y="22" font-size="24" font-weight="800" fill="#fff">Helm<tspan fill="#E0A24A">Desk</tspan></text>
+    <text x="57" y="40" font-size="12.5" fill="#9AA6BA">Board · drag tickets across stages</text>
+  </g>
+
+  <!-- Columns -->
+  <g font-family="Helvetica,Arial,sans-serif">
+    <!-- column helper rendered inline per column -->
+    <!-- NEW -->
+    <g transform="translate(48,108)">
+      <rect width="210" height="396" rx="12" fill="#131C2E" stroke="#232E45"/>
+      <text x="16" y="30" font-size="13" font-weight="700" fill="#fff">New</text>
+      <rect x="170" y="17" width="26" height="18" rx="9" fill="#232E45"/><text x="183" y="30" font-size="11" fill="#B8C2D4" text-anchor="middle">2</text>
+      <g transform="translate(12,46)"><rect width="186" height="78" rx="9" fill="#fff"/><text x="12" y="22" font-size="10" fill="#5A687F">#HD-2044</text><text x="12" y="42" font-size="12.5" font-weight="700" fill="#111827">Refund not received</text><rect x="12" y="52" width="58" height="15" rx="7" fill="#FBEEDC"/><text x="20" y="63" font-size="9" font-weight="700" fill="#D9822B">HIGH</text><circle cx="170" cy="60" r="11" fill="#3B6FB0"/><text x="170" y="64" font-size="9" fill="#fff" text-anchor="middle">MR</text></g>
+      <g transform="translate(12,132)"><rect width="186" height="78" rx="9" fill="#fff"/><text x="12" y="22" font-size="10" fill="#5A687F">#HD-2043</text><text x="12" y="42" font-size="12.5" font-weight="700" fill="#111827">How do I add a user?</text><rect x="12" y="52" width="62" height="15" rx="7" fill="#E5EEF8"/><text x="20" y="63" font-size="9" font-weight="700" fill="#3B6FB0">NORMAL</text><circle cx="170" cy="60" r="11" fill="#5A687F"/><text x="170" y="64" font-size="9" fill="#fff" text-anchor="middle">LR</text></g>
+    </g>
+    <!-- OPEN -->
+    <g transform="translate(274,108)">
+      <rect width="210" height="396" rx="12" fill="#131C2E" stroke="#232E45"/>
+      <text x="16" y="30" font-size="13" font-weight="700" fill="#fff">Open</text>
+      <rect x="170" y="17" width="26" height="18" rx="9" fill="#232E45"/><text x="183" y="30" font-size="11" fill="#B8C2D4" text-anchor="middle">3</text>
+      <g transform="translate(12,46)"><rect width="186" height="86" rx="9" fill="#fff"/><text x="12" y="22" font-size="10" fill="#5A687F">#HD-2041</text><text x="12" y="42" font-size="12.5" font-weight="700" fill="#111827">Booking page 500 error</text><rect x="12" y="54" width="58" height="15" rx="7" fill="#FBE6E6"/><text x="20" y="65" font-size="9" font-weight="700" fill="#D64545">URGENT</text><circle cx="170" cy="62" r="11" fill="#B97E2C"/><text x="170" y="66" font-size="9" fill="#fff" text-anchor="middle">DK</text></g>
+      <g transform="translate(12,140)"><rect width="186" height="78" rx="9" fill="#fff"/><text x="12" y="22" font-size="10" fill="#5A687F">#HD-2038</text><text x="12" y="42" font-size="12.5" font-weight="700" fill="#111827">Calendar sync broken</text><rect x="12" y="52" width="42" height="15" rx="7" fill="#FBEEDC"/><text x="20" y="63" font-size="9" font-weight="700" fill="#D9822B">HIGH</text><circle cx="170" cy="60" r="11" fill="#3B6FB0"/><text x="170" y="64" font-size="9" fill="#fff" text-anchor="middle">DK</text></g>
+    </g>
+    <!-- PENDING -->
+    <g transform="translate(500,108)">
+      <rect width="210" height="396" rx="12" fill="#131C2E" stroke="#232E45"/>
+      <text x="16" y="30" font-size="13" font-weight="700" fill="#fff">Pending</text>
+      <rect x="170" y="17" width="26" height="18" rx="9" fill="#232E45"/><text x="183" y="30" font-size="11" fill="#B8C2D4" text-anchor="middle">1</text>
+      <g transform="translate(12,46)"><rect width="186" height="78" rx="9" fill="#fff"/><text x="12" y="22" font-size="10" fill="#5A687F">#HD-2035</text><text x="12" y="42" font-size="12.5" font-weight="700" fill="#111827">Invoice question</text><rect x="12" y="52" width="62" height="15" rx="7" fill="#E5EEF8"/><text x="20" y="63" font-size="9" font-weight="700" fill="#3B6FB0">NORMAL</text><circle cx="170" cy="60" r="11" fill="#2F9E6B"/><text x="170" y="64" font-size="9" fill="#fff" text-anchor="middle">LR</text></g>
+    </g>
+    <!-- RESOLVED -->
+    <g transform="translate(726,108)">
+      <rect width="186" height="396" rx="12" fill="#131C2E" stroke="#232E45"/>
+      <text x="16" y="30" font-size="13" font-weight="700" fill="#fff">Resolved</text>
+      <rect x="146" y="17" width="26" height="18" rx="9" fill="#232E45"/><text x="159" y="30" font-size="11" fill="#B8C2D4" text-anchor="middle">8</text>
+      <g transform="translate(12,46)"><rect width="162" height="70" rx="9" fill="#fff" opacity="0.92"/><text x="12" y="22" font-size="10" fill="#5A687F">#HD-2031</text><text x="12" y="40" font-size="12" font-weight="700" fill="#111827">Password reset</text><rect x="12" y="48" width="54" height="14" rx="7" fill="#E4F4EC"/><text x="19" y="58" font-size="8.5" font-weight="700" fill="#2F9E6B">DONE</text></g>
+      <g transform="translate(12,124)"><rect width="162" height="70" rx="9" fill="#fff" opacity="0.92"/><text x="12" y="22" font-size="10" fill="#5A687F">#HD-2029</text><text x="12" y="40" font-size="12" font-weight="700" fill="#111827">Update billing email</text><rect x="12" y="48" width="54" height="14" rx="7" fill="#E4F4EC"/><text x="19" y="58" font-size="8.5" font-weight="700" fill="#2F9E6B">DONE</text></g>
+    </g>
+  </g>
+</svg>

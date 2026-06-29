@@ -1,0 +1,19 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="HelmDesk">
+  <defs>
+    <linearGradient id="hd-amber" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ECB45F"/>
+      <stop offset="1" stop-color="#D4912F"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="116" fill="url(#hd-amber)"/>
+  <rect x="16.75" y="16.75" width="478.5" height="478.5" rx="115.25" fill="none" stroke="#ffffff" stroke-opacity="0.25" stroke-width="1.5"/>
+  <!-- H with a spoke-cut crossbar -->
+  <g fill="#0F1729">
+    <rect x="150" y="142" width="56" height="228" rx="14"/>
+    <rect x="306" y="142" width="56" height="228" rx="14"/>
+    <rect x="178" y="228" width="156" height="52" rx="14"/>
+  </g>
+  <!-- helm hub -->
+  <circle cx="256" cy="254" r="25" fill="#0F1729"/>
+  <circle cx="256" cy="254" r="10.5" fill="#D4912F"/>
+</svg>

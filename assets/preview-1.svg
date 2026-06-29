@@ -1,0 +1,68 @@
+<svg width="960" height="540" viewBox="0 0 960 540" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0F1729"/><stop offset="1" stop-color="#1B2538"/>
+    </linearGradient>
+    <linearGradient id="amber" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ECB45F"/><stop offset="1" stop-color="#D4912F"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="960" height="540" fill="url(#bg)"/>
+
+  <!-- Header: logo + wordmark + tagline -->
+  <g transform="translate(56,46)">
+    <rect x="0" y="0" width="56" height="56" rx="14" fill="url(#amber)"/>
+    <g fill="#0F1729">
+      <rect x="15" y="14" width="7" height="28" rx="2"/>
+      <rect x="34" y="14" width="7" height="28" rx="2"/>
+      <rect x="19" y="25" width="18" height="6.5" rx="2"/>
+    </g>
+    <circle cx="28" cy="27.7" r="3" fill="#0F1729"/>
+    <text x="72" y="28" font-family="Helvetica,Arial,sans-serif" font-size="30" font-weight="800" fill="#fff">Helm<tspan fill="#E0A24A">Desk</tspan></text>
+    <text x="73" y="50" font-family="Helvetica,Arial,sans-serif" font-size="14" fill="#9AA6BA">Every request owned, tracked, resolved.</text>
+  </g>
+
+  <!-- KPI strip -->
+  <g transform="translate(56,130)" font-family="Helvetica,Arial,sans-serif">
+    <g transform="translate(0,0)"><rect width="200" height="70" rx="12" fill="#131C2E" stroke="#232E45"/><text x="18" y="40" font-size="30" font-weight="800" fill="#fff">41</text><text x="18" y="58" font-size="12" fill="#7C8AA3">OPEN</text></g>
+    <g transform="translate(216,0)"><rect width="200" height="70" rx="12" fill="#131C2E" stroke="#232E45"/><text x="18" y="40" font-size="30" font-weight="800" fill="#D64545">3</text><text x="18" y="58" font-size="12" fill="#7C8AA3">OVERDUE</text></g>
+    <g transform="translate(432,0)"><rect width="200" height="70" rx="12" fill="#131C2E" stroke="#232E45"/><text x="18" y="40" font-size="30" font-weight="800" fill="#fff">1.4h</text><text x="18" y="58" font-size="12" fill="#7C8AA3">AVG FIRST REPLY</text></g>
+    <g transform="translate(648,0)"><rect width="200" height="70" rx="12" fill="#131C2E" stroke="#232E45"/><text x="18" y="40" font-size="30" font-weight="800" fill="#2F9E6B">94%</text><text x="18" y="58" font-size="12" fill="#7C8AA3">IN SLA · 30d</text></g>
+  </g>
+
+  <!-- Ticket rows -->
+  <g transform="translate(56,224)" font-family="Helvetica,Arial,sans-serif">
+    <!-- row template -->
+    <g transform="translate(0,0)">
+      <rect width="848" height="66" rx="12" fill="#fff"/>
+      <rect x="0" y="8" width="5" height="50" rx="3" fill="#D64545"/>
+      <text x="22" y="27" font-size="12" fill="#5A687F">#HD-2041</text>
+      <rect x="92" y="17" width="58" height="16" rx="8" fill="#FBE6E6"/><text x="101" y="29" font-size="10" font-weight="700" fill="#D64545">URGENT</text>
+      <text x="22" y="48" font-size="15" font-weight="700" fill="#111827">Booking page throwing 500 error on submit</text>
+      <text x="700" y="32" font-size="14" font-weight="700" fill="#D64545">-0:42</text>
+      <text x="700" y="48" font-size="10" fill="#9AA6BA">SLA BREACH</text>
+      <circle cx="822" cy="33" r="15" fill="#B97E2C"/><text x="822" y="38" font-size="11" font-weight="700" fill="#fff" text-anchor="middle">DK</text>
+    </g>
+    <g transform="translate(0,78)">
+      <rect width="848" height="66" rx="12" fill="#fff"/>
+      <rect x="0" y="8" width="5" height="50" rx="3" fill="#D9822B"/>
+      <text x="22" y="27" font-size="12" fill="#5A687F">#HD-2038</text>
+      <rect x="92" y="17" width="42" height="16" rx="8" fill="#FBEEDC"/><text x="101" y="29" font-size="10" font-weight="700" fill="#D9822B">HIGH</text>
+      <text x="22" y="48" font-size="15" font-weight="700" fill="#111827">Calendar sync stopped pulling new appointments</text>
+      <text x="700" y="32" font-size="14" font-weight="700" fill="#D9822B">1:10</text>
+      <text x="700" y="48" font-size="10" fill="#9AA6BA">TO FIRST REPLY</text>
+      <circle cx="822" cy="33" r="15" fill="#3B6FB0"/><text x="822" y="38" font-size="11" font-weight="700" fill="#fff" text-anchor="middle">MR</text>
+    </g>
+    <g transform="translate(0,156)">
+      <rect width="848" height="66" rx="12" fill="#fff"/>
+      <rect x="0" y="8" width="5" height="50" rx="3" fill="#3B6FB0"/>
+      <text x="22" y="27" font-size="12" fill="#5A687F">#HD-2035</text>
+      <rect x="92" y="17" width="58" height="16" rx="8" fill="#E5EEF8"/><text x="101" y="29" font-size="10" font-weight="700" fill="#3B6FB0">NORMAL</text>
+      <text x="22" y="48" font-size="15" font-weight="700" fill="#111827">Can you add a second user to my workspace?</text>
+      <text x="700" y="32" font-size="14" font-weight="700" fill="#2F9E6B">3:48</text>
+      <text x="700" y="48" font-size="10" fill="#9AA6BA">HEALTHY</text>
+      <circle cx="822" cy="33" r="15" fill="#2F9E6B"/><text x="822" y="38" font-size="11" font-weight="700" fill="#fff" text-anchor="middle">LR</text>
+    </g>
+  </g>
+</svg>
