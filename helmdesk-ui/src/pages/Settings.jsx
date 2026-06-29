@@ -3,6 +3,11 @@ import { api } from '../lib/api.js';
 import { CHANNELS } from '../lib/format.js';
 import { Icon, Switch } from '../components/ui.jsx';
 
+/** Parse a comma-separated keyword string into a trimmed, de-duped, lowercase array. */
+function splitKeywords(str) {
+  return [...new Set((str || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean))];
+}
+
 /** Post-setup configuration. Same fields the wizard collected, plus white-label brand + portal. */
 export default function Settings({ onSaved, notify }) {
   const [ws, setWs] = useState(null);
@@ -12,7 +17,7 @@ export default function Settings({ onSaved, notify }) {
 
   useEffect(() => {
     api.getSettings().then((r) => setWs(r.workspace)).catch((e) => notify(e.message, true));
-    api.agents().then((r) => setAgents(r.agents || [])).catch(() => {});
+    api.assignableAgents().then((r) => setAgents(r.agents || [])).catch(() => {});
   }, [notify]);
 
   if (!ws) return (<><div className="topbar"><h1>Settings</h1></div><div className="empty"><div className="spinner" style={{ margin: '0 auto' }} /></div></>);
@@ -28,6 +33,8 @@ export default function Settings({ onSaved, notify }) {
         supportChannels: ws.supportChannels,
         ignoreAutomatedReplies: ws.ignoreAutomatedReplies,
         ignoreShortMessages: ws.ignoreShortMessages,
+        skipKeywords: ws.skipKeywords || [],
+        createKeywords: ws.createKeywords || [],
         assignmentMode: ws.assignmentMode,
         defaultAssigneeId: ws.defaultAssigneeId,
         slaTargets: ws.slaTargets,
@@ -93,6 +100,29 @@ export default function Settings({ onSaved, notify }) {
               <div className="toggle-row">
                 <div><div className="t-label">Auto-reply on new tickets</div><div className="t-desc">Acknowledge the customer automatically.</div></div>
                 <Switch checked={ws.autoReplyEnabled} onChange={(v) => set({ autoReplyEnabled: v })} />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 18 }}>
+              <div className="field" style={{ margin: 0 }}>
+                <label>Always create a ticket if message contains</label>
+                <input
+                  type="text"
+                  value={(ws.createKeywords || []).join(', ')}
+                  onChange={(e) => set({ createKeywords: splitKeywords(e.target.value) })}
+                  placeholder="help, broken, urgent, refund"
+                />
+                <span className="hint">Comma-separated. Forces a ticket even if the filters above would skip it.</span>
+              </div>
+              <div className="field" style={{ margin: 0 }}>
+                <label>Never create a ticket if message contains</label>
+                <input
+                  type="text"
+                  value={(ws.skipKeywords || []).join(', ')}
+                  onChange={(e) => set({ skipKeywords: splitKeywords(e.target.value) })}
+                  placeholder="unsubscribe, stop, opt out"
+                />
+                <span className="hint">Comma-separated. These win over everything — no ticket is created.</span>
               </div>
             </div>
             {ws.autoReplyEnabled && (

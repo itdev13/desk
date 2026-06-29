@@ -98,11 +98,16 @@ router.get('/board', async (req, res) => {
 router.get('/:id', async (req, res) => {
   const ticket = await loadTicket(req, res);
   if (!ticket) return;
-  const [comments, events] = await Promise.all([
+  const [comments, events, assignee] = await Promise.all([
     Comment.find({ ticketId: ticket._id }).sort({ createdAt: 1 }).lean(),
-    TicketEvent.find({ ticketId: ticket._id }).sort({ createdAt: 1 }).lean()
+    TicketEvent.find({ ticketId: ticket._id }).sort({ createdAt: 1 }).lean(),
+    ticket.assigneeId
+      ? Agent.findOne({ locationId: req.auth.locationId, ghlUserId: ticket.assigneeId }).lean()
+      : null
   ]);
-  res.json({ success: true, ticket, comments, events });
+  // Flag when the assigned agent was deleted in the CRM so the UI can prompt a reassignment.
+  const assigneeDeleted = !!(ticket.assigneeId && assignee?.deleted);
+  res.json({ success: true, ticket, comments, events, assigneeDeleted });
 });
 
 /** POST /api/tickets — manual ticket creation by an agent. */

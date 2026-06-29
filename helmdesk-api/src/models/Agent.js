@@ -12,7 +12,13 @@ const agentSchema = new mongoose.Schema(
     email: { type: String, default: null },
     role: { type: String, enum: ['admin', 'agent'], default: 'agent' },
     active: { type: Boolean, default: true }, // include in round-robin / assignable
-    openTicketCount: { type: Number, default: 0 } // denormalized for load display
+    openTicketCount: { type: Number, default: 0 }, // denormalized for load display
+
+    // Soft-delete: when the GHL user is deleted (UserDelete webhook) we keep the row so existing
+    // ticket assignments still resolve to a name, but flag it so the UI can warn "deleted in CRM"
+    // and we never assign new tickets to them.
+    deleted: { type: Boolean, default: false },
+    deletedAt: { type: Date, default: null }
   },
   { timestamps: true }
 );

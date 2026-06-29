@@ -56,11 +56,14 @@ async function pickAssignee(workspace) {
 
   if (workspace.assignmentMode === 'specific' && workspace.defaultAssigneeId) {
     const agent = await Agent.findOne({ locationId: workspace.locationId, ghlUserId: workspace.defaultAssigneeId });
-    return { assigneeId: workspace.defaultAssigneeId, assigneeName: agent?.name || null };
+    // If the configured default agent was deleted in the CRM, fall through to leaving it unassigned
+    // rather than assigning to a non-existent user.
+    if (agent && !agent.deleted) return { assigneeId: agent.ghlUserId, assigneeName: agent.name };
+    return { assigneeId: null, assigneeName: null };
   }
 
-  // round_robin — rotate across active agents using the workspace cursor.
-  const agents = await Agent.find({ locationId: workspace.locationId, active: true }).sort({ ghlUserId: 1 });
+  // round_robin — rotate across active, non-deleted agents using the workspace cursor.
+  const agents = await Agent.find({ locationId: workspace.locationId, active: true, deleted: { $ne: true } }).sort({ ghlUserId: 1 });
   if (!agents.length) return { assigneeId: null, assigneeName: null };
   const idx = workspace.roundRobinCursor % agents.length;
   const chosen = agents[idx];
@@ -95,20 +98,31 @@ function applyRules(workspace, { channel, body }) {
 function shouldAccept(workspace, { channel, body, isAutomated }) {
   if (!workspace.setupComplete) return { accept: false, reason: 'setup_incomplete' };
 
-  // Channel must be one the agency designated as a support channel.
-  if (channel && workspace.supportChannels.length && !workspace.supportChannels.includes(channel)) {
-    return { accept: false, reason: 'channel_not_support' };
-  }
+  // 1. Channel gate — always applies. The message must be on a designated support channel.
   if (!workspace.supportChannels.length) {
     return { accept: false, reason: 'no_support_channels_configured' };
   }
+  if (channel && !workspace.supportChannels.includes(channel)) {
+    return { accept: false, reason: 'channel_not_support' };
+  }
 
-  // Skip replies to marketing/automation sends (best-effort — GHL has no explicit flag).
+  const text = (body || '').toLowerCase();
+
+  // 2. Skip keywords WIN over everything. A message containing one never becomes a ticket
+  //    (e.g. "unsubscribe", "stop") — even if it would otherwise match a create keyword.
+  if (matchesKeyword(text, workspace.skipKeywords)) {
+    return { accept: false, reason: 'skip_keyword' };
+  }
+
+  // 3. Create keywords FORCE a ticket, overriding the soft filters below
+  //    (automation / short-message). Channel gate above still had to pass.
+  const forced = matchesKeyword(text, workspace.createKeywords);
+  if (forced) return { accept: true, forced: true };
+
+  // 4. Soft filters (skippable by a create keyword).
   if (workspace.ignoreAutomatedReplies && isAutomated) {
     return { accept: false, reason: 'automated_reply' };
   }
-
-  // Skip trivial one-word acknowledgements when configured.
   if (workspace.ignoreShortMessages && body) {
     const words = body.trim().split(/\s+/).filter(Boolean);
     if (words.length <= SHORT_MESSAGE_WORDS && body.trim().length < 16) {
@@ -117,6 +131,15 @@ function shouldAccept(workspace, { channel, body, isAutomated }) {
   }
 
   return { accept: true };
+}
+
+/** Case-insensitive substring match: does `text` contain any of the keywords? */
+function matchesKeyword(text, keywords) {
+  if (!keywords || !keywords.length || !text) return false;
+  return keywords.some((kw) => {
+    const k = String(kw).trim().toLowerCase();
+    return k && text.includes(k);
+  });
 }
 
 // A customer reply within this window after resolve/close reopens the SAME ticket instead of
@@ -155,6 +178,7 @@ async function handleInbound(workspace, payload) {
     contactId,
     conversationId,
     channel,
+    conversationProviderId = null,
     body = '',
     subject = null,
     isAutomated = false,
@@ -186,6 +210,7 @@ async function handleInbound(workspace, payload) {
     contactName,
     contactEmail,
     channel,
+    conversationProviderId,
     source: 'inbound',
     firstMessage: body,
     ghlMessageId,
@@ -213,6 +238,7 @@ async function createTicket(workspace, opts) {
     contactName = null,
     contactEmail = null,
     channel = null,
+    conversationProviderId = null,
     source = 'manual',
     firstMessage = null,
     ghlMessageId = null,
@@ -249,6 +275,7 @@ async function createTicket(workspace, opts) {
     contactName,
     contactEmail,
     channel,
+    conversationProviderId,
     source,
     assigneeId: assignee.assigneeId,
     assigneeName: assignee.assigneeName,

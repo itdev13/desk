@@ -28,6 +28,7 @@ async function syncAgents(locationId, companyId) {
     logger.warn('syncAgents: no companyId resolvable — /users/search needs one', { locationId });
   }
   const users = await ghlService.searchUsers(locationId, { companyId: resolvedCompanyId });
+
   const synced = [];
   for (const u of users) {
     const name = u.name || [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email || 'Agent';
@@ -41,8 +42,84 @@ async function syncAgents(locationId, companyId) {
     );
     synced.push(doc);
   }
-  logger.info('👥 Agents synced', { locationId, count: synced.length });
-  return synced;
+  logger.info('👥 Agents synced', { locationId, count: synced.length, companyIdResolved: !!resolvedCompanyId });
+
+  // Return diagnostics alongside the agents so the API can explain an empty result.
+  return {
+    agents: synced,
+    diagnostics: { companyIdResolved: !!resolvedCompanyId, usersFromGhl: users.length, saved: synced.length }
+  };
 }
 
-module.exports = { syncAgents };
+/**
+ * Upsert a single agent from a User webhook (UserCreate / UserUpdate). Idempotent; preserves the
+ * HelmDesk-only `active` flag and load count on update, sets them only on insert.
+ */
+async function upsertAgentForLocation(locationId, user) {
+  const name = user.name || [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || 'Agent';
+  return Agent.findOneAndUpdate(
+    { locationId, ghlUserId: user.id },
+    {
+      // un-delete if the user is re-created in the CRM
+      $set: { name, email: user.email || null, role: user.role === 'admin' ? 'admin' : 'agent', deleted: false, deletedAt: null },
+      $setOnInsert: { active: true, openTicketCount: 0 }
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+}
+
+/**
+ * Soft-delete an agent (UserDelete). We KEEP the row so existing ticket assignments still resolve
+ * to a name and the UI can warn "deleted in CRM" — we just flag it and stop assigning new work.
+ */
+async function removeAgentForLocation(locationId, ghlUserId) {
+  await Agent.updateOne(
+    { locationId, ghlUserId },
+    { $set: { deleted: true, deletedAt: new Date(), active: false } }
+  );
+}
+
+/**
+ * Resolve which of OUR workspaces a user webhook applies to.
+ * - Sub-account user: payload has `locationId` → just that one (if we have a workspace for it).
+ * - Agency user: payload has `companyId` + `locations[]` → every location in that list we manage.
+ * Filters to locations that actually have a HelmDesk Workspace so we don't create stray Agent rows.
+ */
+async function locationsForUserWebhook(data) {
+  const Workspace = require('../models/Workspace');
+  let candidateIds = [];
+  if (data.locationId) candidateIds = [data.locationId];
+  else if (Array.isArray(data.locations) && data.locations.length) candidateIds = data.locations;
+  else if (data.companyId) {
+    const map = await CompanyLocation.findOne({ companyId: data.companyId });
+    candidateIds = map?.locationIds || [];
+  }
+  if (!candidateIds.length) return [];
+  const existing = await Workspace.find({ locationId: { $in: candidateIds } }).select('locationId').lean();
+  return existing.map((w) => w.locationId);
+}
+
+/** Handle UserCreate / UserUpdate — upsert the agent into every relevant workspace. */
+async function handleUserUpsert(data) {
+  if (!data?.id) return 0;
+  const locationIds = await locationsForUserWebhook(data);
+  for (const locationId of locationIds) await upsertAgentForLocation(locationId, data);
+  logger.info('👤 User upserted from webhook', { ghlUserId: data.id, locations: locationIds.length });
+  return locationIds.length;
+}
+
+/** Handle UserDelete — remove the agent from every relevant workspace. */
+async function handleUserDelete(data) {
+  if (!data?.id) return 0;
+  const locationIds = await locationsForUserWebhook(data);
+  for (const locationId of locationIds) await removeAgentForLocation(locationId, data.id);
+  logger.info('👤 User removed from webhook', { ghlUserId: data.id, locations: locationIds.length });
+  return locationIds.length;
+}
+
+module.exports = {
+  syncAgents,
+  resolveCompanyId,
+  handleUserUpsert,
+  handleUserDelete
+};

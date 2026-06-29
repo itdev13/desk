@@ -37,18 +37,28 @@ export default function Team({ notify }) {
             {agents.length === 0 ? (
               <div className="empty"><strong>No agents yet</strong><p>Sync your team to start assigning tickets.</p></div>
             ) : agents.map((a) => (
-              <div key={a.ghlUserId} className="toggle-row" style={{ padding: '14px 20px' }}>
+              <div key={a.ghlUserId} className="toggle-row" style={{ padding: '14px 20px', opacity: a.deleted ? 0.6 : 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <Avatar name={a.name} />
                   <div>
-                    <div className="t-label">{a.name} {a.role === 'admin' && <span className="pill neutral plain" style={{ marginLeft: 6 }}>Admin</span>}</div>
-                    <div className="t-desc">{a.email || '—'} · {a.openTicketCount || 0} open</div>
+                    <div className="t-label">
+                      {a.name}
+                      {a.role === 'admin' && !a.deleted && <span className="pill neutral plain" style={{ marginLeft: 6 }}>Admin</span>}
+                      {a.deleted && <span className="pill crit plain" style={{ marginLeft: 6 }}>Deleted in CRM</span>}
+                    </div>
+                    <div className="t-desc">
+                      {a.deleted
+                        ? `Removed from your CRM — reassign any of their ${a.openTicketCount || 0} open tickets`
+                        : `${a.email || '—'} · ${a.openTicketCount || 0} open`}
+                    </div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span className="muted" style={{ fontSize: 12 }}>{a.active ? 'Assignable' : 'Excluded'}</span>
-                  <Switch checked={a.active} onChange={(v) => toggle(a, v)} />
-                </div>
+                {!a.deleted && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span className="muted" style={{ fontSize: 12 }}>{a.active ? 'Assignable' : 'Excluded'}</span>
+                    <Switch checked={a.active} onChange={(v) => toggle(a, v)} />
+                  </div>
+                )}
               </div>
             ))}
           </div>

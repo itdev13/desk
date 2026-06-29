@@ -10,6 +10,7 @@ export default function Dashboard() {
   const [kpis, setKpis] = useState({});
   const [statusCounts, setStatusCounts] = useState({});
   const [byAgent, setByAgent] = useState([]);
+  const [byChannel, setByChannel] = useState([]);
   const [trend, setTrend] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -19,6 +20,7 @@ export default function Dashboard() {
         setKpis(d.kpis || {});
         setStatusCounts(d.statusCounts || {});
         setByAgent(d.byAgent || []);
+        setByChannel(d.byChannel || []);
         setTrend(t.trend || []);
       })
       .finally(() => setLoading(false));
@@ -74,9 +76,31 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
+
+        <div className="card">
+          <div className="section-title" style={{ marginBottom: 14 }}><h2>Tickets by channel</h2></div>
+          {byChannel.length === 0 ? <div className="muted">No tickets yet.</div> : (() => {
+            const maxCh = Math.max(1, ...byChannel.map((c) => c.count));
+            return byChannel.map((c) => (
+              <div key={c.channel} className="bar-row">
+                <span className="name">{channelLabel(c.channel)}</span>
+                <div className="bar-track"><div className="bar-fill" style={{ width: `${(c.count / maxCh) * 100}%`, background: 'var(--info)' }} /></div>
+                <span className="val">{c.count}</span>
+              </div>
+            ));
+          })()}
+        </div>
       </div>
     </>
   );
+}
+
+function channelLabel(c) {
+  return {
+    SMS: 'SMS', Email: 'Email', WhatsApp: 'WhatsApp', FB: 'Facebook', IG: 'Instagram',
+    Live_Chat: 'Live Chat', WebChat: 'Web Chat', GMB: 'Google', Call: 'Call',
+    RCS: 'RCS', Custom: 'Provider', portal: 'Portal', unknown: 'Other'
+  }[c] || c;
 }
 
 function Kpi({ n, l, tone }) {

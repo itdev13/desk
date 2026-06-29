@@ -11,6 +11,8 @@ const ALLOWED = [
   'supportChannels',
   'ignoreAutomatedReplies',
   'ignoreShortMessages',
+  'skipKeywords',
+  'createKeywords',
   'assignmentMode',
   'defaultAssigneeId',
   'slaTargets',

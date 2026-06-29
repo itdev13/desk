@@ -28,12 +28,12 @@ export default function TicketDetail({ id, onBack, user, notify }) {
   }, [id, notify]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { api.agents().then((r) => setAgents(r.agents || [])).catch(() => {}); }, []);
+  useEffect(() => { api.assignableAgents().then((r) => setAgents(r.agents || [])).catch(() => {}); }, []);
 
   if (loading) return <div className="empty" style={{ paddingTop: 120 }}><div className="spinner" style={{ margin: '0 auto' }} /></div>;
   if (!data) return null;
 
-  const { ticket, comments } = data;
+  const { ticket, comments, assigneeDeleted } = data;
   const sla = slaDisplay(ticket);
 
   const send = async () => {
@@ -126,8 +126,18 @@ export default function TicketDetail({ id, onBack, user, notify }) {
               <h4>Assignee</h4>
               <select value={ticket.assigneeId || ''} onChange={(e) => patch(() => api.setAssignee(id, e.target.value || null), 'Reassigned')}>
                 <option value="">Unassigned</option>
+                {/* If the current assignee was deleted in the CRM they're not in the assignable list —
+                    inject them so the select still shows who it's assigned to. */}
+                {assigneeDeleted && ticket.assigneeId && !agents.some((a) => a.ghlUserId === ticket.assigneeId) && (
+                  <option value={ticket.assigneeId}>{ticket.assigneeName || 'Deleted user'} (deleted)</option>
+                )}
                 {agents.map((a) => <option key={a.ghlUserId} value={a.ghlUserId}>{a.name}</option>)}
               </select>
+              {assigneeDeleted && (
+                <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 8, background: 'var(--crit-bg)', color: 'var(--crit)', fontSize: 12, lineHeight: 1.4 }}>
+                  ⚠️ <strong>{ticket.assigneeName || 'This agent'}</strong> was deleted in your CRM. Please reassign this ticket.
+                </div>
+              )}
             </div>
 
             <div className="side-card">

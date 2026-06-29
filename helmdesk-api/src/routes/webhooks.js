@@ -39,11 +39,31 @@ router.post('/helmdesk', async (req, res) => {
 
   logger.info('📥 Lifecycle webhook', { type, appId, companyId, locationId });
 
-  if (!type || !appId) {
-    return res.status(400).json({ success: false, error: 'Missing required fields: type, appId' });
+  if (!type) {
+    return res.status(400).json({ success: false, error: 'Missing required field: type' });
   }
   if (!database.isConnected()) {
     return res.status(200).json({ success: true, persisted: false });
+  }
+
+  // User roster events (UserCreate / UserUpdate / UserDelete) keep the synced Agent collection
+  // live without polling. They carry `type` + `id` but NO `appId`, so handle them before the
+  // appId guard below. (Initial roster comes from syncAgents at install; these keep it fresh.)
+  if (type === 'UserCreate' || type === 'UserUpdate' || type === 'UserDelete') {
+    try {
+      const n = type === 'UserDelete'
+        ? await agentService.handleUserDelete(data)
+        : await agentService.handleUserUpsert(data);
+      return res.status(200).json({ success: true, type, affectedWorkspaces: n });
+    } catch (err) {
+      logger.error('User webhook error', { message: err.message, type });
+      return res.status(200).json({ success: false, error: err.message });
+    }
+  }
+
+  // App lifecycle events below require appId.
+  if (!appId) {
+    return res.status(400).json({ success: false, error: 'Missing required field: appId' });
   }
 
   try {
@@ -218,6 +238,7 @@ router.post('/inbound', async (req, res) => {
       contactId: data.contactId,
       conversationId: data.conversationId,
       channel,
+      conversationProviderId: data.conversationProviderId || null,
       body: data.body || '',
       // Email carries a real subject line — prefer it over deriving one from the body.
       subject: data.subject || null,

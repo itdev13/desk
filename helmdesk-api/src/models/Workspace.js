@@ -49,6 +49,13 @@ const workspaceSchema = new mongoose.Schema(
     ignoreAutomatedReplies: { type: Boolean, default: true }, // skip replies to workflow/campaign sends
     ignoreShortMessages: { type: Boolean, default: false }, // skip one-word acks ("ok", "thanks")
 
+    // Keyword overrides (case-insensitive substring match on the message body).
+    // skipKeywords WIN over everything (a message containing one never becomes a ticket).
+    // createKeywords FORCE a ticket even if ignoreShortMessages/ignoreAutomatedReplies would skip it
+    // (channel restriction still applies — the message must be on a support channel).
+    skipKeywords: { type: [String], default: [] },
+    createKeywords: { type: [String], default: [] },
+
     // Step 3 — assignment.
     assignmentMode: { type: String, enum: ['round_robin', 'specific', 'unassigned'], default: 'round_robin' },
     defaultAssigneeId: { type: String, default: null }, // used when assignmentMode = 'specific'

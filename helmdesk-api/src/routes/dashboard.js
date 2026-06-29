@@ -19,7 +19,7 @@ router.get('/', async (req, res) => {
     const since30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const OPEN = Ticket.OPEN_STATUSES;
 
-    const [byStatus, openTotal, overdue, unassigned, mine, byAgent, slaAgg, resolveAgg] = await Promise.all([
+    const [byStatus, openTotal, overdue, unassigned, mine, byAgent, slaAgg, resolveAgg, byChannel] = await Promise.all([
       // Counts by status.
       Ticket.aggregate([{ $match: { locationId } }, { $group: { _id: '$status', n: { $sum: 1 } } }]),
       Ticket.countDocuments({ locationId, status: { $in: OPEN } }),
@@ -48,6 +48,19 @@ router.get('/', async (req, res) => {
         { $match: { locationId, firstResponseAt: { $ne: null }, createdAt: { $gte: since30 } } },
         { $project: { mins: { $divide: [{ $subtract: ['$firstResponseAt', '$createdAt'] }, 60000] } } },
         { $group: { _id: null, avgMins: { $avg: '$mins' }, n: { $sum: 1 } } }
+      ]),
+      // Tickets by channel (provider counts as its own channel facet).
+      Ticket.aggregate([
+        { $match: { locationId } },
+        {
+          $group: {
+            _id: { $ifNull: ['$channel', 'unknown'] },
+            n: { $sum: 1 },
+            // distinct providers seen on this channel (mostly relevant for provider-backed channels)
+            providers: { $addToSet: '$conversationProviderId' }
+          }
+        },
+        { $sort: { n: -1 } }
       ])
     ]);
 
@@ -68,7 +81,12 @@ router.get('/', async (req, res) => {
         resolved30d: sla.total
       },
       statusCounts,
-      byAgent: byAgent.map((a) => ({ agentId: a._id.id, name: a._id.name || 'Unassigned', open: a.n }))
+      byAgent: byAgent.map((a) => ({ agentId: a._id.id, name: a._id.name || 'Unassigned', open: a.n })),
+      byChannel: byChannel.map((c) => ({
+        channel: c._id,
+        count: c.n,
+        providerCount: (c.providers || []).filter(Boolean).length
+      }))
     });
   } catch (error) {
     logger.error('dashboard failed', { message: error.message });
