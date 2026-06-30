@@ -20,6 +20,8 @@ export default function SetupWizard({ workspace, onDone, notify }) {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [agents, setAgents] = useState([]);
+  // Providers per channel (read-only), so the agency sees which integration delivers each channel.
+  const [providersByChannel, setProvidersByChannel] = useState({}); // { SMS: ['Twilio'], Email: ['Mailgun'] }
 
   const [form, setForm] = useState({
     supportChannels: ['Email', 'Live_Chat'],
@@ -42,6 +44,18 @@ export default function SetupWizard({ workspace, onDone, notify }) {
       .then((r) => setAgents(r.agents || []))
       .catch(() => api.agents().then((r) => setAgents(r.agents || [])).catch(() => {}))
       .finally(() => setAgentsLoaded(true));
+
+    // Sync + group providers by channel so Step 1 can show "SMS · Twilio" under each channel.
+    api.syncProviders()
+      .then((r) => {
+        const byCh = {};
+        for (const p of r.providers || []) {
+          if (p.deleted || !p.name) continue;
+          (byCh[p.channel] ||= []).push(p.name);
+        }
+        setProvidersByChannel(byCh);
+      })
+      .catch(() => {});
 
     // Pre-fill from saved settings so a re-run of the wizard (e.g. after reinstall) shows the
     // agency's previous choices to confirm/tweak, rather than resetting to defaults.
@@ -108,10 +122,16 @@ export default function SetupWizard({ workspace, onDone, notify }) {
                 <div className="opt-grid" style={{ marginTop: 20 }}>
                   {CHANNELS.map((c) => {
                     const on = form.supportChannels.includes(c.key);
+                    const provs = providersByChannel[c.key]; // only SMS/Email have provider data
                     return (
-                      <button key={c.key} className={`opt ${on ? 'on' : ''}`} onClick={() => toggleChannel(c.key)}>
+                      <button key={c.key} className={`opt ${on ? 'on' : ''}`} onClick={() => toggleChannel(c.key)} style={{ alignItems: 'flex-start' }}>
                         <span className="check">{on && <Icon name="check" size={13} />}</span>
-                        {c.label}
+                        <span style={{ display: 'flex', flexDirection: 'column', gap: 2, textAlign: 'left' }}>
+                          {c.label}
+                          {provs?.length > 0 && (
+                            <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--slate)' }}>via {provs.join(', ')}</span>
+                          )}
+                        </span>
                       </button>
                     );
                   })}
