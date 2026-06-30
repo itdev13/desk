@@ -83,10 +83,12 @@ router.post('/helmdesk', async (req, res) => {
         });
 
         // Ensure a Workspace shell exists so the setup wizard has somewhere to write.
+        // Capture the installer as owner/admin here too — the INSTALL webhook and the OAuth
+        // callback race to create the workspace; whichever wins must record installerUserId.
         if (locationId) {
           await Workspace.findOneAndUpdate(
             { locationId },
-            { $setOnInsert: { locationId }, $set: { companyId } },
+            { $setOnInsert: { locationId, installerUserId: data.userId || null }, $set: { companyId } },
             { upsert: true, setDefaultsOnInsert: true }
           );
 
