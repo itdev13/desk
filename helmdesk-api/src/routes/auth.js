@@ -69,7 +69,27 @@ router.post('/verify', async (req, res) => {
       companyId = companyId || token.companyId;
     }
 
-    const workspace = await Workspace.findOne({ locationId });
+    let workspace = await Workspace.findOne({ locationId });
+
+    // Determine the owner. Priority:
+    //   1. workspace.installerUserId (if already set)
+    //   2. the INSTALL webhook's Installation.userId — authoritative, GHL tells us who installed
+    //   3. self-heal: the first verifying user claims ownership
+    let ownerUserId = workspace?.installerUserId || null;
+    if (!ownerUserId) {
+      const Installation = require('../models/Installation');
+      const install = await Installation.findOne({ locationId, status: 'active' }).sort({ installedAt: -1 });
+      ownerUserId = install?.userId || install?.rawWebhookData?.userId || null;
+      if (!ownerUserId && userId) ownerUserId = userId; // last resort: first opener
+      if (workspace && ownerUserId) {
+        workspace = await Workspace.findOneAndUpdate(
+          { locationId, installerUserId: { $in: [null, undefined] } },
+          { $set: { installerUserId: ownerUserId } },
+          { new: true }
+        ) || workspace;
+        logger.info('[auth/verify] backfilled workspace owner', { locationId, ownerUserId, from: install?.userId ? 'installation' : 'first-opener' });
+      }
+    }
 
     // Resolve this user's role for permission gating. Admin if ANY of:
     //   - they're the installer/owner of this workspace (can never be locked out)
@@ -78,7 +98,7 @@ router.post('/verify', async (req, res) => {
     //   - setup isn't complete yet (so the first configurer isn't blocked)
     // Otherwise: agent (least privilege).
     let role = 'agent';
-    const isInstaller = userId && workspace?.installerUserId && workspace.installerUserId === userId;
+    const isInstaller = userId && ownerUserId && ownerUserId === userId;
     const isPromoted = userId && (workspace?.adminUserIds || []).includes(userId);
     if (isInstaller || isPromoted || !workspace?.setupComplete) {
       role = 'admin';
@@ -88,9 +108,8 @@ router.post('/verify', async (req, res) => {
       if (agent?.role === 'admin') role = 'admin';
     }
     logger.info('[auth/verify] role resolved', {
-      locationId, userId, role,
-      isInstaller, isPromoted, setupComplete: workspace?.setupComplete,
-      installerUserId: workspace?.installerUserId
+      locationId, userId, role, isInstaller, isPromoted,
+      setupComplete: workspace?.setupComplete, ownerUserId
     });
 
     const sessionToken = signSession({ locationId, companyId, userId, name, email, role });

@@ -74,6 +74,9 @@ router.post('/complete-setup', requireAdmin, async (req, res) => {
     }
     const current = await Workspace.findOne({ locationId: req.auth.locationId });
     ensurePortalSlug(update, current, req.auth.locationId);
+    // The user who completes setup is the owner/admin. This is the reliable signal — their SSO
+    // userId is in-hand and it sidesteps company-install / id-mismatch issues. Only set if unset.
+    if (!current?.installerUserId && req.auth.userId) update.installerUserId = req.auth.userId;
     const ws = await Workspace.findOneAndUpdate({ locationId: req.auth.locationId }, { $set: update }, { new: true });
     logger.info('✅ Setup completed — engine live', { locationId: req.auth.locationId, channels: ws.supportChannels });
     res.json({ success: true, workspace: ws });
