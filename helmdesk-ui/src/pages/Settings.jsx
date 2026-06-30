@@ -60,9 +60,6 @@ export default function Settings({ onSaved, notify }) {
     <>
       <div className="topbar">
         <h1>Settings</h1>
-        <button className="btn btn-accent" style={{ marginLeft: 'auto' }} disabled={saving} onClick={save}>
-          <Icon name="check" size={15} /> {saving ? 'Saving…' : 'Save changes'}
-        </button>
       </div>
       <div className="page">
         <div className="filters">
@@ -192,6 +189,12 @@ export default function Settings({ onSaved, notify }) {
             )}
           </div>
         )}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 4 }}>
+          <button className="btn btn-accent" disabled={saving} onClick={save}>
+            <Icon name="check" size={15} /> {saving ? 'Saving…' : 'Save changes'}
+          </button>
+        </div>
       </div>
     </>
   );
