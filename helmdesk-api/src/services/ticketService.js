@@ -411,14 +411,9 @@ async function appendCustomerMessage(workspace, ticket, { body, channel, ghlMess
 
 /** Send the configured auto-reply to the customer. */
 async function sendAutoReply(workspace, ticket) {
-  const type = mapChannelToSendType(ticket.channel);
-  if (!type) return;
-  await ghlService.sendMessage(workspace.locationId, {
-    type,
-    contactId: ticket.contactId,
-    message: workspace.autoReplyMessage,
-    ...(type === 'Email' ? { subject: `Re: ${ticket.subject}`, html: `<p>${workspace.autoReplyMessage}</p>` } : {})
-  });
+  const payload = buildSendPayload(ticket, workspace.autoReplyMessage);
+  if (!payload) return;
+  await ghlService.sendMessage(workspace.locationId, payload);
 }
 
 /**
@@ -445,19 +440,45 @@ function mapChannelToSendType(channel) {
 }
 
 /**
+ * Build the GHL send-message payload for a ticket reply.
+ *
+ * CRITICAL (verified live): when a ticket came in through a CUSTOM conversation provider, GHL
+ * requires the outbound `type` to be 'Custom' WITH the conversationProviderId — sending the
+ * underlying channel type (e.g. 'SMS') fails with CONVERSATION_PROVIDER_MISMATCH. So if the ticket
+ * carries a conversationProviderId, we send type:'Custom' + that providerId. Otherwise we map the
+ * channel to its native send type. Returns null if the channel can't be replied on (Call/portal).
+ */
+function buildSendPayload(ticket, message, { html, subject } = {}) {
+  if (!ticket.contactId) return null;
+
+  if (ticket.conversationProviderId) {
+    return {
+      type: 'Custom',
+      contactId: ticket.contactId,
+      conversationProviderId: ticket.conversationProviderId,
+      message
+    };
+  }
+
+  const type = mapChannelToSendType(ticket.channel);
+  if (!type) return null;
+  const payload = { type, contactId: ticket.contactId, message };
+  if (type === 'Email') {
+    payload.subject = subject || `Re: ${ticket.subject}`;
+    payload.html = html || `<p>${message}</p>`;
+  }
+  return payload;
+}
+
+/**
  * Agent replies to the customer. Sends through GHL on the original channel, stamps first-response,
  * stops the first-response SLA clock, and moves a new ticket to 'open'.
  */
 async function replyToCustomer(workspace, ticket, { body, agent, html, subject }) {
-  const type = mapChannelToSendType(ticket.channel);
   let ghlMessageId = null;
 
-  if (type && ticket.contactId) {
-    const payload = { type, contactId: ticket.contactId, message: body };
-    if (type === 'Email') {
-      payload.subject = subject || `Re: ${ticket.subject}`;
-      payload.html = html || `<p>${body}</p>`;
-    }
+  const payload = buildSendPayload(ticket, body, { html, subject });
+  if (payload) {
     const res = await ghlService.sendMessage(workspace.locationId, payload);
     ghlMessageId = res?.messageId || res?.id || null;
   }

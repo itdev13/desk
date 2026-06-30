@@ -46,6 +46,19 @@ router.post('/helmdesk', async (req, res) => {
     return res.status(200).json({ success: true, persisted: false });
   }
 
+  // GHL delivers ALL events to this single webhook URL, dispatched by `type`. Message events
+  // (InboundMessage / OutboundMessage) and User roster events carry no `appId`, so handle them
+  // here before the appId guard below.
+  if (type === 'InboundMessage' || type === 'OutboundMessage') {
+    try {
+      const result = type === 'InboundMessage' ? await processInbound(data) : await processOutbound(data);
+      return res.status(200).json({ success: true, type, ...result });
+    } catch (err) {
+      logger.error('Message webhook error', { message: err.message, type });
+      return res.status(200).json({ success: false, error: err.message }); // 200 so GHL doesn't retry-storm
+    }
+  }
+
   // User roster events (UserCreate / UserUpdate / UserDelete) keep the synced Agent collection
   // live without polling. They carry `type` + `id` but NO `appId`, so handle them before the
   // appId guard below. (Initial roster comes from syncAgents at install; these keep it fresh.)
@@ -199,68 +212,62 @@ router.post('/helmdesk', async (req, res) => {
  * Payload (per GHL docs): { type:'InboundMessage', locationId, contactId, conversationId,
  *   messageType, direction:'inbound', body, dateAdded, messageId, userId?, subject?, ... }
  * ════════════════════════════════════════════════════════════════════════════ */
+/**
+ * Process an InboundMessage payload → ticket. Shared by the dedicated /inbound route AND the
+ * unified /helmdesk dispatcher (GHL delivers all events to one URL). Returns a result object.
+ */
+async function processInbound(data) {
+  if (data.direction && data.direction !== 'inbound') return { ignored: 'not_inbound_direction' };
+  const locationId = data.locationId;
+  if (!locationId || !database.isConnected()) return { persisted: false };
+
+  const workspace = await Workspace.findOne({ locationId });
+  if (!workspace) {
+    logger.info('Inbound for unconfigured workspace — ignored', { locationId });
+    return { ignored: 'no_workspace' };
+  }
+
+  // Normalize channel from GHL's messageType (e.g. "TYPE_CUSTOM_PROVIDER_SMS" → "SMS",
+  // "TYPE_ACTIVITY_*" → null so system events never become tickets).
+  const channel = normalizeChannel(data.messageType || data.messageTypeString);
+
+  // Automation detection — the InboundMessage payload carries no reliable automation flag; the
+  // channel designation + dedup do the real filtering. Forward-compatible read of any markers.
+  const isAutomated = Boolean(data.isFromWorkflow || data.automated || data.source === 'workflow');
+
+  // Resolve contact display info (cached on the ticket for list rendering).
+  let contactName = data.fullName || null;
+  let contactEmail = data.email || null;
+  if (!contactName && data.contactId) {
+    const c = await ghlService.getContact(locationId, data.contactId);
+    contactName = c.name;
+    contactEmail = c.email;
+  }
+
+  const result = await ticketService.handleInbound(workspace, {
+    contactId: data.contactId,
+    conversationId: data.conversationId,
+    channel,
+    conversationProviderId: data.conversationProviderId || null,
+    body: data.body || '',
+    subject: data.subject || null,
+    isAutomated,
+    contactName,
+    contactEmail,
+    ghlMessageId: data.messageId || null,
+    at: data.dateAdded ? new Date(data.dateAdded) : new Date()
+  });
+  return { ...result, ticket: result.ticket?.ref };
+}
+
 router.post('/inbound', async (req, res) => {
   const data = req.body || {};
-  // Acknowledge immediately-ish; we still await so errors are logged, but always 200 on handled.
   try {
-    if (data.type && data.type !== 'InboundMessage') {
-      return res.status(200).json({ success: true, ignored: 'not_inbound' });
-    }
-    if (data.direction && data.direction !== 'inbound') {
-      return res.status(200).json({ success: true, ignored: 'not_inbound_direction' });
-    }
-    const locationId = data.locationId;
-    if (!locationId || !database.isConnected()) {
-      return res.status(200).json({ success: true, persisted: false });
-    }
-
-    const workspace = await Workspace.findOne({ locationId });
-    if (!workspace) {
-      logger.info('Inbound for unconfigured workspace — ignored', { locationId });
-      return res.status(200).json({ success: true, ignored: 'no_workspace' });
-    }
-
-    // Normalize channel from GHL's messageType (e.g. "TYPE_SMS" / "SMS" → "SMS").
-    const channel = normalizeChannel(data.messageType || data.messageTypeString);
-
-    // Automation detection — IMPORTANT: the InboundMessage webhook payload (per GHL docs) carries
-    // NO workflow/campaign/automation attribution field. So we cannot reliably tell that a given
-    // inbound is a reply to a marketing blast from the payload alone. The workspace's
-    // `ignoreAutomatedReplies` setting therefore relies primarily on:
-    //   (1) the agency designating which channels are "support" (the main noise filter), and
-    //   (2) the dedup gate collapsing ongoing threads into one ticket.
-    // We still read any future/optional markers GHL may add, so the flag is forward-compatible,
-    // but today this resolves false for standard inbound. (Agents can dismiss/merge edge cases.)
-    const isAutomated = Boolean(data.isFromWorkflow || data.automated || data.source === 'workflow');
-
-    // Resolve contact display info (cached on the ticket for list rendering).
-    let contactName = data.fullName || null;
-    let contactEmail = data.email || null;
-    if (!contactName && data.contactId) {
-      const c = await ghlService.getContact(locationId, data.contactId);
-      contactName = c.name;
-      contactEmail = c.email;
-    }
-
-    const result = await ticketService.handleInbound(workspace, {
-      contactId: data.contactId,
-      conversationId: data.conversationId,
-      channel,
-      conversationProviderId: data.conversationProviderId || null,
-      body: data.body || '',
-      // Email carries a real subject line — prefer it over deriving one from the body.
-      subject: data.subject || null,
-      isAutomated,
-      contactName,
-      contactEmail,
-      ghlMessageId: data.messageId || null,
-      at: data.dateAdded ? new Date(data.dateAdded) : new Date()
-    });
-
-    return res.status(200).json({ success: true, ...result, ticket: result.ticket?.ref });
+    if (data.type && data.type !== 'InboundMessage') return res.status(200).json({ success: true, ignored: 'not_inbound' });
+    const result = await processInbound(data);
+    return res.status(200).json({ success: true, ...result });
   } catch (err) {
     logger.error('Inbound webhook error', { message: err.message });
-    // Still 200 so GHL doesn't hammer retries for a transient app error; we've logged it.
     return res.status(200).json({ success: false, error: err.message });
   }
 });
@@ -275,27 +282,33 @@ router.post('/inbound', async (req, res) => {
  *     stamp first-response, and stop the SLA clock — so the ticket reflects reality.
  * Always 200 (GHL retries non-2xx).
  * ════════════════════════════════════════════════════════════════════════════ */
+/** Process an OutboundMessage payload. Shared by /outbound route + /helmdesk dispatcher. */
+async function processOutbound(data) {
+  if (data.direction && data.direction !== 'outbound') return { ignored: 'not_outbound_direction' };
+  const locationId = data.locationId;
+  if (!locationId || !database.isConnected()) return { persisted: false };
+
+  const workspace = await Workspace.findOne({ locationId });
+  if (!workspace) return { ignored: 'no_workspace' };
+
+  const result = await ticketService.handleOutbound(workspace, {
+    contactId: data.contactId,
+    conversationId: data.conversationId,
+    channel: normalizeChannel(data.messageType || data.messageTypeString),
+    body: data.body || '',
+    ghlMessageId: data.messageId || null,
+    userId: data.userId || null,
+    at: data.dateAdded ? new Date(data.dateAdded) : new Date()
+  });
+  return { ...result, ticket: result.ticket?.ref };
+}
+
 router.post('/outbound', async (req, res) => {
   const data = req.body || {};
   try {
     if (data.type && data.type !== 'OutboundMessage') return res.status(200).json({ success: true, ignored: 'not_outbound' });
-    if (data.direction && data.direction !== 'outbound') return res.status(200).json({ success: true, ignored: 'not_outbound_direction' });
-    const locationId = data.locationId;
-    if (!locationId || !database.isConnected()) return res.status(200).json({ success: true, persisted: false });
-
-    const workspace = await Workspace.findOne({ locationId });
-    if (!workspace) return res.status(200).json({ success: true, ignored: 'no_workspace' });
-
-    const result = await ticketService.handleOutbound(workspace, {
-      contactId: data.contactId,
-      conversationId: data.conversationId,
-      channel: normalizeChannel(data.messageType || data.messageTypeString),
-      body: data.body || '',
-      ghlMessageId: data.messageId || null,
-      userId: data.userId || null, // GHL user who sent it (for attribution)
-      at: data.dateAdded ? new Date(data.dateAdded) : new Date()
-    });
-    return res.status(200).json({ success: true, ...result, ticket: result.ticket?.ref });
+    const result = await processOutbound(data);
+    return res.status(200).json({ success: true, ...result });
   } catch (err) {
     logger.error('Outbound webhook error', { message: err.message });
     return res.status(200).json({ success: false, error: err.message });
@@ -304,13 +317,24 @@ router.post('/outbound', async (req, res) => {
 
 /**
  * Map GHL messageType variants to our canonical channel strings.
- * Targets are valid values of the official message-type enum so the channel we store can be
- * replied on directly (see ticketService.mapChannelToSendType). WebChat and Live_Chat are kept
- * distinct because the enum treats them as separate channels.
+ * Real-world messageType values are richer than the docs suggest, e.g.:
+ *   TYPE_SMS, TYPE_EMAIL, TYPE_CUSTOM_PROVIDER_SMS, TYPE_CUSTOM_PROVIDER_EMAIL,
+ *   TYPE_ACTIVITY_CONTACT / TYPE_ACTIVITY_OPPORTUNITY (system activities — NOT messages).
+ *
+ * Returns null for anything that isn't a real customer-message channel — including ACTIVITY/system
+ * types — so the channel filter drops them and we never create a ticket from "DnD enabled" etc.
+ * Targets are valid message-type enum values so the stored channel can be replied on directly.
  */
 function normalizeChannel(raw) {
   if (!raw) return null;
-  const v = String(raw).toUpperCase().replace(/^TYPE_/, '');
+  let v = String(raw).toUpperCase().replace(/^TYPE_/, '');
+
+  // System/activity pseudo-messages are not support messages — never ticket them.
+  if (v.startsWith('ACTIVITY')) return null;
+
+  // Custom-provider channels: TYPE_CUSTOM_PROVIDER_SMS / _EMAIL → the underlying channel.
+  v = v.replace(/^CUSTOM_PROVIDER_/, '');
+
   const map = {
     SMS: 'SMS',
     RCS: 'RCS',
