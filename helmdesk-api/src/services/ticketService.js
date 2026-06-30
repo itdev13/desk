@@ -219,6 +219,52 @@ async function handleInbound(workspace, payload) {
   return { action: 'created', ticket };
 }
 
+/**
+ * Handle an OutboundMessage (a reply SENT to the contact). The job is to capture replies made
+ * OUTSIDE HelmDesk (native GHL inbox / workflow) so the ticket reflects reality — while NOT
+ * double-recording replies we sent ourselves.
+ *
+ * Dedup: when we send a reply we store its ghlMessageId on the reply Comment. If a comment with
+ * this ghlMessageId already exists, this outbound is our own send → skip. Otherwise it's external →
+ * append it as a reply, stamp first-response, and stop the SLA clock.
+ */
+async function handleOutbound(workspace, { contactId, conversationId, channel, body = '', ghlMessageId = null, userId = null, at = new Date() }) {
+  // 1. Dedup against our own sends.
+  if (ghlMessageId) {
+    const mine = await Comment.findOne({ locationId: workspace.locationId, ghlMessageId });
+    if (mine) return { action: 'skipped_own_send' };
+  }
+
+  // 2. Find the contact's open ticket. If there's none, an outbound with no ticket is just a
+  //    proactive/outbound-only message — we don't create a ticket from it.
+  const ticket = await findDedupTicket(workspace.locationId, { contactId, conversationId });
+  if (!ticket) return { action: 'ignored', reason: 'no_open_ticket' };
+
+  // 3. Record the external reply.
+  await Comment.create({
+    locationId: workspace.locationId,
+    ticketId: ticket._id,
+    kind: 'reply',
+    body,
+    authorType: 'agent',
+    authorId: userId,
+    authorName: null, // we don't resolve the GHL user name here; the queue still shows the ticket
+    channel: channel || ticket.channel,
+    ghlMessageId
+  });
+
+  const now = at || new Date();
+  if (!ticket.firstResponseAt) ticket.firstResponseAt = now; // stop first-response SLA
+  if (ticket.status === 'new') ticket.status = 'open';
+  ticket.lastAgentMessageAt = now;
+  ticket.lastActivityAt = now;
+  ticket.messageCount += 1;
+  await recordEvent(ticket, 'replied', { actorType: 'agent', actorId: userId, meta: { via: 'external' } });
+  await ticket.save();
+  logger.info('↩️ External reply captured', { ref: ticket.ref });
+  return { action: 'external_reply', ticket };
+}
+
 /** Turn the first line of a message into a short subject. */
 function deriveSubject(body) {
   if (!body) return '(no subject)';
@@ -528,6 +574,7 @@ async function bumpAgentLoad(locationId, ghlUserId, delta) {
 
 module.exports = {
   handleInbound,
+  handleOutbound,
   createTicket,
   appendCustomerMessage,
   replyToCustomer,

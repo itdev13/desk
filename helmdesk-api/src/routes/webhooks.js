@@ -265,6 +265,43 @@ router.post('/inbound', async (req, res) => {
   }
 });
 
+/* ════════════════════════════════════════════════════════════════════════════
+ * OutboundMessage webhook — POST /api/webhooks/outbound
+ *
+ * Fires when a message is SENT to a contact. Two cases, and dedup is the whole game:
+ *   - Sent BY HelmDesk (agent replied in our app): we already recorded it, so we SKIP — matched
+ *     by the ghlMessageId we stored on our reply Comment.
+ *   - Sent OUTSIDE HelmDesk (native GHL inbox / workflow): record it on the contact's open ticket,
+ *     stamp first-response, and stop the SLA clock — so the ticket reflects reality.
+ * Always 200 (GHL retries non-2xx).
+ * ════════════════════════════════════════════════════════════════════════════ */
+router.post('/outbound', async (req, res) => {
+  const data = req.body || {};
+  try {
+    if (data.type && data.type !== 'OutboundMessage') return res.status(200).json({ success: true, ignored: 'not_outbound' });
+    if (data.direction && data.direction !== 'outbound') return res.status(200).json({ success: true, ignored: 'not_outbound_direction' });
+    const locationId = data.locationId;
+    if (!locationId || !database.isConnected()) return res.status(200).json({ success: true, persisted: false });
+
+    const workspace = await Workspace.findOne({ locationId });
+    if (!workspace) return res.status(200).json({ success: true, ignored: 'no_workspace' });
+
+    const result = await ticketService.handleOutbound(workspace, {
+      contactId: data.contactId,
+      conversationId: data.conversationId,
+      channel: normalizeChannel(data.messageType || data.messageTypeString),
+      body: data.body || '',
+      ghlMessageId: data.messageId || null,
+      userId: data.userId || null, // GHL user who sent it (for attribution)
+      at: data.dateAdded ? new Date(data.dateAdded) : new Date()
+    });
+    return res.status(200).json({ success: true, ...result, ticket: result.ticket?.ref });
+  } catch (err) {
+    logger.error('Outbound webhook error', { message: err.message });
+    return res.status(200).json({ success: false, error: err.message });
+  }
+});
+
 /**
  * Map GHL messageType variants to our canonical channel strings.
  * Targets are valid values of the official message-type enum so the channel we store can be
