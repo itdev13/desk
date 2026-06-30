@@ -71,18 +71,27 @@ router.post('/verify', async (req, res) => {
 
     const workspace = await Workspace.findOne({ locationId });
 
-    // Resolve this user's role for permission gating. Source of truth is the synced Agent record.
-    // Fallbacks: if setup isn't complete yet (no agents synced), treat the user as admin so they
-    // can configure the workspace; otherwise default to agent (least privilege).
+    // Resolve this user's role for permission gating. Admin if ANY of:
+    //   - they're the installer/owner of this workspace (can never be locked out)
+    //   - they're in the workspace's adminUserIds (owner-promoted)
+    //   - their synced Agent record has role 'admin'
+    //   - setup isn't complete yet (so the first configurer isn't blocked)
+    // Otherwise: agent (least privilege).
     let role = 'agent';
-    if (userId) {
+    const isInstaller = userId && workspace?.installerUserId && workspace.installerUserId === userId;
+    const isPromoted = userId && (workspace?.adminUserIds || []).includes(userId);
+    if (isInstaller || isPromoted || !workspace?.setupComplete) {
+      role = 'admin';
+    } else if (userId) {
       const Agent = require('../models/Agent');
       const agent = await Agent.findOne({ locationId, ghlUserId: userId });
-      if (agent) role = agent.role === 'admin' ? 'admin' : 'agent';
-      else if (!workspace?.setupComplete) role = 'admin';
-    } else if (!workspace?.setupComplete) {
-      role = 'admin';
+      if (agent?.role === 'admin') role = 'admin';
     }
+    logger.info('[auth/verify] role resolved', {
+      locationId, userId, role,
+      isInstaller, isPromoted, setupComplete: workspace?.setupComplete,
+      installerUserId: workspace?.installerUserId
+    });
 
     const sessionToken = signSession({ locationId, companyId, userId, name, email, role });
     res.json({

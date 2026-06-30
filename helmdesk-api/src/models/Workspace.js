@@ -38,6 +38,12 @@ const workspaceSchema = new mongoose.Schema(
     companyId: { type: String, index: true },
     locationName: { type: String, default: null },
 
+    // The GHL user who installed/connected the app. Always treated as an admin so the owner can
+    // never be locked out of Settings/Team, regardless of how their synced Agent role resolves.
+    installerUserId: { type: String, default: null },
+    // Extra users the owner promotes to admin from the Team screen (beyond their synced GHL role).
+    adminUserIds: { type: [String], default: [] },
+
     // ── Setup wizard state ──
     setupComplete: { type: Boolean, default: false },
 

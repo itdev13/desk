@@ -66,11 +66,13 @@ router.get('/callback', async (req, res) => {
       const details = await ghlService.getLocationDetails(tokenData.locationId);
       await OAuthToken.findOneAndUpdate({ locationId: tokenData.locationId }, { ...details });
 
-      // Ensure a Workspace exists (setup wizard will complete it).
+      // Ensure a Workspace exists (setup wizard will complete it). Record the installer as the
+      // owner/admin so they can't be locked out of Settings later. Only set installerUserId on
+      // first insert — a reconnect by a different user shouldn't steal ownership.
       await Workspace.findOneAndUpdate(
         { locationId: tokenData.locationId },
         {
-          $setOnInsert: { locationId: tokenData.locationId },
+          $setOnInsert: { locationId: tokenData.locationId, installerUserId: tokenData.userId || null },
           $set: { companyId: tokenData.companyId, locationName: details.locationName }
         },
         { upsert: true, new: true, setDefaultsOnInsert: true }

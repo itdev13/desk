@@ -5,6 +5,16 @@ const CompanyLocation = require('../models/CompanyLocation');
 const ghlService = require('./ghlService');
 
 /**
+ * Map a GHL user object to our role. GHL exposes the role inconsistently across endpoints —
+ * sometimes `roles.role`, sometimes a top-level `role` — and uses values like 'admin'/'account'.
+ * Treat 'admin' or 'account' (agency-level) as admin; everything else is an agent.
+ */
+function parseRole(u = {}) {
+  const r = (u.roles?.role || u.role || '').toString().toLowerCase();
+  return r === 'admin' || r === 'account' ? 'admin' : 'agent';
+}
+
+/**
  * Resolve the companyId for a location. GHL's GET /users/search needs it, but the auth session
  * doesn't always carry it (e.g. a location-level install, or the dev locationId fallback). Look it
  * up from the stored token, then the company↔location map.
@@ -51,7 +61,7 @@ async function syncAgents(locationId, companyId) {
     const doc = await Agent.findOneAndUpdate(
       { locationId, ghlUserId: u.id },
       {
-        $set: { name, email: u.email || null, role: u.roles?.role === 'admin' ? 'admin' : 'agent' },
+        $set: { name, email: u.email || null, role: parseRole(u) },
         $setOnInsert: { active: true, openTicketCount: 0 }
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
@@ -77,7 +87,7 @@ async function upsertAgentForLocation(locationId, user) {
     { locationId, ghlUserId: user.id },
     {
       // un-delete if the user is re-created in the CRM
-      $set: { name, email: user.email || null, role: user.role === 'admin' ? 'admin' : 'agent', deleted: false, deletedAt: null },
+      $set: { name, email: user.email || null, role: parseRole(user), deleted: false, deletedAt: null },
       $setOnInsert: { active: true, openTicketCount: 0 }
     },
     { upsert: true, new: true, setDefaultsOnInsert: true }
