@@ -26,6 +26,7 @@ export default function Settings({ onSaved, notify }) {
     try {
       const res = await api.updateSettings({
         supportChannels: ws.supportChannels,
+        supportProviderIds: ws.supportProviderIds || [],
         ignoreAutomatedReplies: ws.ignoreAutomatedReplies,
         ignoreShortMessages: ws.ignoreShortMessages,
         skipKeywords: ws.skipKeywords || [],
@@ -124,7 +125,17 @@ export default function Settings({ onSaved, notify }) {
           </div>
         )}
 
-        {tab === 'channels' && <ProvidersPanel notify={notify} />}
+        {tab === 'channels' && (
+          <ProvidersPanel
+            notify={notify}
+            selected={ws.supportProviderIds || []}
+            onToggle={(id) => set({
+              supportProviderIds: (ws.supportProviderIds || []).includes(id)
+                ? ws.supportProviderIds.filter((p) => p !== id)
+                : [...(ws.supportProviderIds || []), id]
+            })}
+          />
+        )}
 
         {tab === 'assignment' && (
           <div className="card">
@@ -203,11 +214,11 @@ export default function Settings({ onSaved, notify }) {
 }
 
 /**
- * Read-only list of the workspace's conversation providers, fetched from GHL at install and stored.
- * "Re-sync" re-fetches from GHL. Pure custom providers aren't returned by GHL's public API, so a
- * note explains that the list covers SMS/Email integrations only.
+ * Conversation providers, fetched from GHL at install and stored. Selectable: picking specific
+ * providers restricts ticket creation to messages from them (empty = accept all). "Re-sync"
+ * re-fetches. Custom providers may not appear (GHL's public API doesn't expose them).
  */
-function ProvidersPanel({ notify }) {
+function ProvidersPanel({ notify, selected = [], onToggle }) {
   const [providers, setProviders] = React.useState(null);
   const [syncing, setSyncing] = React.useState(false);
 
@@ -235,29 +246,38 @@ function ProvidersPanel({ notify }) {
         </button>
       </div>
       <p className="muted" style={{ marginBottom: 14 }}>
-        The integrations that deliver messages on your channels, used to label tickets &amp; reports.
-        Synced from your CRM. Custom providers may not appear (your CRM doesn't expose them).
+        Pick specific providers to only accept messages from them — leave all unchecked to accept
+        every provider on your channels. Synced from your CRM; custom providers may not appear.
       </p>
       {providers === null ? (
         <div className="muted">Loading…</div>
       ) : providers.length === 0 ? (
         <div className="muted">No providers found yet. Click Re-sync to pull them from your CRM.</div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {providers.map((p) => (
-            <div key={`${p.providerId}-${p.channel}`} className="toggle-row" style={{ padding: '10px 0', opacity: p.deleted ? 0.6 : 1 }}>
-              <div>
-                <div className="t-label">
-                  {p.name || p.providerId}
-                  {p.isDefault && !p.deleted && <span className="pill neutral plain" style={{ marginLeft: 6 }}>Default</span>}
-                  {p.deleted && <span className="pill crit plain" style={{ marginLeft: 6 }}>Deleted in CRM</span>}
-                </div>
-                <div className="t-desc">
-                  {p.deleted ? `${p.channel} · removed from your CRM` : `${p.channel}${p.type ? ` · ${p.type}` : ''}`}
-                </div>
-              </div>
-            </div>
-          ))}
+        <div className="opt-grid">
+          {providers.map((p) => {
+            const on = selected.includes(p.providerId);
+            return (
+              <button
+                key={`${p.providerId}-${p.channel}`}
+                className={`opt ${on ? 'on' : ''}`}
+                style={{ opacity: p.deleted ? 0.6 : 1 }}
+                disabled={p.deleted}
+                onClick={() => !p.deleted && onToggle?.(p.providerId)}
+              >
+                <span className="check">{on && <Icon name="check" size={13} />}</span>
+                <span style={{ display: 'flex', flexDirection: 'column', gap: 2, textAlign: 'left' }}>
+                  <span style={{ fontWeight: 600 }}>
+                    {p.name || p.providerId}
+                    {p.deleted && <span className="pill crit plain" style={{ marginLeft: 6 }}>Deleted</span>}
+                  </span>
+                  <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--slate)' }}>
+                    {p.channel}{p.isDefault && !p.deleted ? ' · default' : ''}{p.deleted ? ' · removed' : ''}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

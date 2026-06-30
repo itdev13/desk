@@ -20,11 +20,11 @@ export default function SetupWizard({ workspace, onDone, notify }) {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [agents, setAgents] = useState([]);
-  // Providers per channel (read-only), so the agency sees which integration delivers each channel.
-  const [providersByChannel, setProvidersByChannel] = useState({}); // { SMS: ['Twilio'], Email: ['Mailgun'] }
+  const [providers, setProviders] = useState([]); // [{providerId, name, channel}]
 
   const [form, setForm] = useState({
     supportChannels: ['Email', 'Live_Chat'],
+    supportProviderIds: [],
     ignoreAutomatedReplies: true,
     ignoreShortMessages: false,
     assignmentMode: 'round_robin',
@@ -45,17 +45,11 @@ export default function SetupWizard({ workspace, onDone, notify }) {
       .catch(() => api.agents().then((r) => setAgents(r.agents || [])).catch(() => {}))
       .finally(() => setAgentsLoaded(true));
 
-    // Sync + group providers by channel so Step 1 can show "SMS · Twilio" under each channel.
+    // Sync + load the conversation providers so they can be picked as support sources.
     api.syncProviders()
-      .then((r) => {
-        const byCh = {};
-        for (const p of r.providers || []) {
-          if (p.deleted || !p.name) continue;
-          (byCh[p.channel] ||= []).push(p.name);
-        }
-        setProvidersByChannel(byCh);
-      })
-      .catch(() => {});
+      .then((r) => setProviders((r.providers || []).filter((p) => !p.deleted)))
+      .catch(() => api.providers().then((r) => setProviders((r.providers || []).filter((p) => !p.deleted))).catch(() => {}));
+
 
     // Pre-fill from saved settings so a re-run of the wizard (e.g. after reinstall) shows the
     // agency's previous choices to confirm/tweak, rather than resetting to defaults.
@@ -65,6 +59,7 @@ export default function SetupWizard({ workspace, onDone, notify }) {
         setForm((f) => ({
           ...f,
           supportChannels: w.supportChannels?.length ? w.supportChannels : f.supportChannels,
+          supportProviderIds: w.supportProviderIds || f.supportProviderIds,
           ignoreAutomatedReplies: w.ignoreAutomatedReplies ?? f.ignoreAutomatedReplies,
           ignoreShortMessages: w.ignoreShortMessages ?? f.ignoreShortMessages,
           assignmentMode: w.assignmentMode || f.assignmentMode,
@@ -82,6 +77,8 @@ export default function SetupWizard({ workspace, onDone, notify }) {
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
   const toggleChannel = (key) =>
     set({ supportChannels: form.supportChannels.includes(key) ? form.supportChannels.filter((c) => c !== key) : [...form.supportChannels, key] });
+  const toggleProvider = (id) =>
+    set({ supportProviderIds: form.supportProviderIds.includes(id) ? form.supportProviderIds.filter((p) => p !== id) : [...form.supportProviderIds, id] });
 
   const steps = ['Channels', 'Filters', 'Assignment', 'SLA & Lifecycle'];
   const canNext = step === 0 ? form.supportChannels.length > 0 : true;
@@ -122,25 +119,38 @@ export default function SetupWizard({ workspace, onDone, notify }) {
                 <div className="opt-grid" style={{ marginTop: 20 }}>
                   {CHANNELS.map((c) => {
                     const on = form.supportChannels.includes(c.key);
-                    const provs = providersByChannel[c.key]; // only SMS/Email have provider data
                     return (
                       <button key={c.key} className={`opt ${on ? 'on' : ''}`} onClick={() => toggleChannel(c.key)}>
                         <span className="check">{on && <Icon name="check" size={13} />}</span>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                          {c.label}
-                          {provs?.length > 0 && (
-                            <span
-                              className="info-dot"
-                              title={`${provs.join(', ')} — ${c.label} conversation provider`}
-                              aria-label={`${provs.join(', ')} — ${c.label} conversation provider`}
-                              onClick={(e) => e.stopPropagation()}
-                            >i</span>
-                          )}
-                        </span>
+                        {c.label}
                       </button>
                     );
                   })}
                 </div>
+
+                {providers.length > 0 && (
+                  <>
+                    <h2 style={{ fontSize: 16, marginTop: 26 }}>Conversation providers</h2>
+                    <p className="lead" style={{ fontSize: 13 }}>
+                      Optional. Pick specific providers to only accept messages from them — leave all
+                      unchecked to accept every provider on the channels above.
+                    </p>
+                    <div className="opt-grid" style={{ marginTop: 14 }}>
+                      {providers.map((p) => {
+                        const on = form.supportProviderIds.includes(p.providerId);
+                        return (
+                          <button key={p.providerId} className={`opt ${on ? 'on' : ''}`} onClick={() => toggleProvider(p.providerId)}>
+                            <span className="check">{on && <Icon name="check" size={13} />}</span>
+                            <span style={{ display: 'flex', flexDirection: 'column', gap: 2, textAlign: 'left' }}>
+                              {p.name || p.providerId}
+                              <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--slate)' }}>{p.channel}</span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </>
             )}
 
