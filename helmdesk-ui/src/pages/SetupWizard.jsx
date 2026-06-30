@@ -124,12 +124,17 @@ export default function SetupWizard({ workspace, onDone, notify }) {
                     const on = form.supportChannels.includes(c.key);
                     const provs = providersByChannel[c.key]; // only SMS/Email have provider data
                     return (
-                      <button key={c.key} className={`opt ${on ? 'on' : ''}`} onClick={() => toggleChannel(c.key)} style={{ alignItems: 'flex-start' }}>
+                      <button key={c.key} className={`opt ${on ? 'on' : ''}`} onClick={() => toggleChannel(c.key)}>
                         <span className="check">{on && <Icon name="check" size={13} />}</span>
-                        <span style={{ display: 'flex', flexDirection: 'column', gap: 2, textAlign: 'left' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                           {c.label}
                           {provs?.length > 0 && (
-                            <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--slate)' }}>via {provs.join(', ')}</span>
+                            <span
+                              className="info-dot"
+                              title={`${provs.join(', ')} — ${c.label} conversation provider`}
+                              aria-label={`${provs.join(', ')} — ${c.label} conversation provider`}
+                              onClick={(e) => e.stopPropagation()}
+                            >i</span>
                           )}
                         </span>
                       </button>

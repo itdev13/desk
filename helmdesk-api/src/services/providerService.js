@@ -20,10 +20,8 @@ async function syncProviders(locationId) {
       ghlService.getConversationChannels(locationId, 'SMS'),
       ghlService.getConversationChannels(locationId, 'Email')
     ]);
-    fetched = [
-      ...sms.map((p) => ({ ...p, channel: 'SMS' })),
-      ...email.map((p) => ({ ...p, channel: 'Email' }))
-    ];
+    // getConversationChannels already stamps `channel` (the endpoint type) on each provider.
+    fetched = [...sms, ...email];
   } catch (err) {
     logger.warn('syncProviders: GHL fetch failed', { locationId, message: err.message });
   }
@@ -33,7 +31,7 @@ async function syncProviders(locationId) {
     await Provider.findOneAndUpdate(
       { locationId, providerId: p.id, channel: p.channel },
       // Re-appearing un-deletes it.
-      { $set: { name: p.name || null, type: p.type || null, isDefault: !!p.default, deleted: false, deletedAt: null, lastSyncedAt: now } },
+      { $set: { name: p.name || null, isDefault: !!p.default, deleted: false, deletedAt: null, lastSyncedAt: now } },
       { upsert: true, setDefaultsOnInsert: true }
     );
   }

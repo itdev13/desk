@@ -236,6 +236,16 @@ button { font-family: inherit; cursor: pointer; }
 .hd-select-opt.disabled { opacity: 0.5; cursor: not-allowed; }
 .hd-select-empty { padding: 10px; color: var(--slate); font-size: 13px; text-align: center; }
 
+/* ── Info dot (ⓘ tooltip) ── */
+.info-dot {
+  display: inline-grid; place-items: center;
+  width: 16px; height: 16px; border-radius: 50%; flex: none;
+  background: var(--accent-dk); color: #fff;
+  font-size: 10px; font-weight: 700; font-style: italic; font-family: var(--mono);
+  cursor: help; line-height: 1;
+}
+.info-dot:hover { filter: brightness(1.1); }
+
 /* ── Tag / chip input ── */
 .tag-input {
   display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
