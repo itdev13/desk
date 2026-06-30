@@ -61,6 +61,10 @@ export const api = {
   // Agents
   agents: () => request('/api/agents'),
   assignableAgents: () => request('/api/agents', { params: { assignable: '1' } }),
+
+  // Conversation providers
+  providers: () => request('/api/providers'),
+  syncProviders: () => request('/api/providers/sync', { method: 'POST' }),
   syncAgents: () => request('/api/agents/sync', { method: 'POST' }),
   updateAgent: (ghlUserId, body) => request(`/api/agents/${ghlUserId}`, { method: 'PATCH', body }),
 

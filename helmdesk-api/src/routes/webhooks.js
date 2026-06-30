@@ -8,6 +8,7 @@ const Subscription = require('../models/Subscription');
 const subscriptionService = require('../services/subscriptionService');
 const ticketService = require('../services/ticketService');
 const agentService = require('../services/agentService');
+const providerService = require('../services/providerService');
 const ghlService = require('../services/ghlService');
 const database = require('../config/database');
 const logger = require('../utils/logger');
@@ -105,8 +106,9 @@ router.post('/helmdesk', async (req, res) => {
                 { locationId, companyId, tokenType: 'location', accessToken: minted.accessToken, refreshToken: minted.refreshToken, expiresAt: new Date(Date.now() + minted.expiresIn * 1000), isActive: true },
                 { upsert: true, new: true }
               );
-              // Best-effort agent sync once the token exists.
+              // Best-effort agent + provider sync once the token exists.
               agentService.syncAgents(locationId, companyId).catch(() => {});
+              providerService.syncProviders(locationId).catch(() => {});
             });
           }
         }

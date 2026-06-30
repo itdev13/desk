@@ -124,6 +124,8 @@ export default function Settings({ onSaved, notify }) {
           </div>
         )}
 
+        {tab === 'channels' && <ProvidersPanel notify={notify} />}
+
         {tab === 'assignment' && (
           <div className="card">
             <h3>Assignment</h3>
@@ -197,5 +199,67 @@ export default function Settings({ onSaved, notify }) {
         </div>
       </div>
     </>
+  );
+}
+
+/**
+ * Read-only list of the workspace's conversation providers, fetched from GHL at install and stored.
+ * "Re-sync" re-fetches from GHL. Pure custom providers aren't returned by GHL's public API, so a
+ * note explains that the list covers SMS/Email integrations only.
+ */
+function ProvidersPanel({ notify }) {
+  const [providers, setProviders] = React.useState(null);
+  const [syncing, setSyncing] = React.useState(false);
+
+  // Auto-sync when the panel opens — GHL has no provider webhook, so this keeps the list fresh
+  // (and detects deletions) whenever an admin views Settings, without per-dashboard-view cost.
+  React.useEffect(() => {
+    api.syncProviders()
+      .then((r) => setProviders(r.providers || []))
+      .catch(() => api.providers().then((r) => setProviders(r.providers || [])).catch(() => setProviders([])));
+  }, []);
+
+  const resync = async () => {
+    setSyncing(true);
+    try { const r = await api.syncProviders(); setProviders(r.providers || []); notify(`Synced ${r.count} providers`); }
+    catch (err) { notify(err.message, true); }
+    finally { setSyncing(false); }
+  };
+
+  return (
+    <div className="card">
+      <div className="section-title" style={{ marginBottom: 6 }}>
+        <h3 style={{ margin: 0 }}>Conversation providers</h3>
+        <button className="btn btn-ghost btn-sm" disabled={syncing} onClick={resync}>
+          <Icon name="users" size={14} /> {syncing ? 'Syncing…' : 'Re-sync'}
+        </button>
+      </div>
+      <p className="muted" style={{ marginBottom: 14 }}>
+        The integrations that deliver messages on your channels, used to label tickets &amp; reports.
+        Synced from your CRM. Custom providers may not appear (your CRM doesn't expose them).
+      </p>
+      {providers === null ? (
+        <div className="muted">Loading…</div>
+      ) : providers.length === 0 ? (
+        <div className="muted">No providers found yet. Click Re-sync to pull them from your CRM.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {providers.map((p) => (
+            <div key={`${p.providerId}-${p.channel}`} className="toggle-row" style={{ padding: '10px 0', opacity: p.deleted ? 0.6 : 1 }}>
+              <div>
+                <div className="t-label">
+                  {p.name || p.providerId}
+                  {p.isDefault && !p.deleted && <span className="pill neutral plain" style={{ marginLeft: 6 }}>Default</span>}
+                  {p.deleted && <span className="pill crit plain" style={{ marginLeft: 6 }}>Deleted in CRM</span>}
+                </div>
+                <div className="t-desc">
+                  {p.deleted ? `${p.channel} · removed from your CRM` : `${p.channel}${p.type ? ` · ${p.type}` : ''}`}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
