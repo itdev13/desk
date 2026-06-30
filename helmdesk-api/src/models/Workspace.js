@@ -51,6 +51,11 @@ const workspaceSchema = new mongoose.Schema(
     // Valid values mirror GHL messageType: SMS, Email, WhatsApp, FB, IG, Live_Chat, Call, GMB.
     supportChannels: { type: [String], default: [] },
 
+    // Single toggle: when on, messages delivered through a custom conversation provider (which GHL
+    // reports as channel "Custom", e.g. TYPE_CUSTOM_PROVIDER_SMS) also become tickets — without
+    // needing to enumerate or select individual providers.
+    acceptConversationProviders: { type: Boolean, default: false },
+
     // Step 2 — ignore rules.
     ignoreAutomatedReplies: { type: Boolean, default: true }, // skip replies to workflow/campaign sends
     ignoreShortMessages: { type: Boolean, default: false }, // skip one-word acks ("ok", "thanks")

@@ -23,6 +23,7 @@ export default function SetupWizard({ workspace, onDone, notify }) {
 
   const [form, setForm] = useState({
     supportChannels: ['Email', 'Live_Chat'],
+    acceptConversationProviders: false,
     ignoreAutomatedReplies: true,
     ignoreShortMessages: false,
     assignmentMode: 'round_robin',
@@ -52,6 +53,7 @@ export default function SetupWizard({ workspace, onDone, notify }) {
         setForm((f) => ({
           ...f,
           supportChannels: w.supportChannels?.length ? w.supportChannels : f.supportChannels,
+          acceptConversationProviders: w.acceptConversationProviders ?? f.acceptConversationProviders,
           ignoreAutomatedReplies: w.ignoreAutomatedReplies ?? f.ignoreAutomatedReplies,
           ignoreShortMessages: w.ignoreShortMessages ?? f.ignoreShortMessages,
           assignmentMode: w.assignmentMode || f.assignmentMode,
@@ -116,6 +118,13 @@ export default function SetupWizard({ workspace, onDone, notify }) {
                       </button>
                     );
                   })}
+                </div>
+                <div className="toggle-row" style={{ marginTop: 18 }}>
+                  <div>
+                    <div className="t-label">Accept conversation providers</div>
+                    <div className="t-desc">Also create tickets from messages sent through a custom conversation provider.</div>
+                  </div>
+                  <Switch checked={form.acceptConversationProviders} onChange={(v) => set({ acceptConversationProviders: v })} />
                 </div>
               </>
             )}

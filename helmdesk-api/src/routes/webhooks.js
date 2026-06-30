@@ -38,6 +38,7 @@ router.post('/helmdesk', async (req, res) => {
   const { type, appId, companyId, locationId } = data;
 
   logger.info('📥 Lifecycle webhook', { type, appId, companyId, locationId });
+  logger.info('📦 Webhook payload', { type, payload: JSON.stringify(data).slice(0, 2000) });
 
   if (!type) {
     return res.status(400).json({ success: false, error: 'Missing required field: type' });

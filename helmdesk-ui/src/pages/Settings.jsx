@@ -26,6 +26,7 @@ export default function Settings({ onSaved, notify }) {
     try {
       const res = await api.updateSettings({
         supportChannels: ws.supportChannels,
+        acceptConversationProviders: ws.acceptConversationProviders,
         ignoreAutomatedReplies: ws.ignoreAutomatedReplies,
         ignoreShortMessages: ws.ignoreShortMessages,
         skipKeywords: ws.skipKeywords || [],
@@ -81,6 +82,10 @@ export default function Settings({ onSaved, notify }) {
               })}
             </div>
             <div style={{ marginTop: 18 }}>
+              <div className="toggle-row">
+                <div><div className="t-label">Accept conversation providers</div><div className="t-desc">Also create tickets from messages sent through a custom conversation provider.</div></div>
+                <Switch checked={ws.acceptConversationProviders} onChange={(v) => set({ acceptConversationProviders: v })} />
+              </div>
               <div className="toggle-row">
                 <div><div className="t-label">Ignore marketing &amp; automation replies</div><div className="t-desc">Keeps campaign replies out of the queue.</div></div>
                 <Switch checked={ws.ignoreAutomatedReplies} onChange={(v) => set({ ignoreAutomatedReplies: v })} />

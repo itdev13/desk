@@ -99,10 +99,17 @@ function shouldAccept(workspace, { channel, body, isAutomated }) {
   if (!workspace.setupComplete) return { accept: false, reason: 'setup_incomplete' };
 
   // 1. Channel gate — always applies. The message must be on a designated support channel.
-  if (!workspace.supportChannels.length) {
+  //    Custom-conversation-provider messages (channel "Custom") are accepted when the single
+  //    "accept conversation providers" toggle is on, without listing individual support channels.
+  const isCustomProvider = channel === 'Custom';
+  const channelAllowed =
+    (channel && workspace.supportChannels.includes(channel)) ||
+    (isCustomProvider && workspace.acceptConversationProviders);
+
+  if (!workspace.supportChannels.length && !(isCustomProvider && workspace.acceptConversationProviders)) {
     return { accept: false, reason: 'no_support_channels_configured' };
   }
-  if (channel && !workspace.supportChannels.includes(channel)) {
+  if (channel && !channelAllowed) {
     return { accept: false, reason: 'channel_not_support' };
   }
 
