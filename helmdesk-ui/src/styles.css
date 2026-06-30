@@ -332,6 +332,13 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .col { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-lg); display: flex; flex-direction: column; max-height: calc(100vh - 200px); }
 .col-head { padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--paper); border-radius: var(--r-lg) var(--r-lg) 0 0; }
 .col-head .ct { font-weight: 700; font-size: 13px; }
+.col-count {
+  flex: none; min-width: 22px; height: 22px; padding: 0 7px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--line-soft); color: var(--slate);
+  font-family: var(--mono); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;
+  border-radius: 999px; line-height: 1;
+}
 .col-body { padding: 10px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
 .kcard { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; cursor: pointer; box-shadow: var(--shadow); transition: 0.1s; }
 .kcard:hover { border-color: var(--slate-2); transform: translateY(-1px); }
@@ -352,6 +359,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .composer-tab { padding: 6px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 600; background: var(--paper); border: 1px solid var(--line); color: var(--slate); }
 .composer-tab.active { background: var(--ink); color: #fff; border-color: var(--ink); }
 .composer-tab.note.active { background: var(--accent-dk); border-color: var(--accent-dk); }
+.composer-tab:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .side-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 16px; box-shadow: var(--shadow); }
 .side-card h4 { margin: 0 0 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--slate); font-family: var(--mono); }

@@ -29,11 +29,13 @@ export default function TicketDetail({ id, onBack, user, notify }) {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { api.assignableAgents().then((r) => setAgents(r.agents || [])).catch(() => {}); }, []);
+  // If this ticket's channel can't be replied on (Call/portal), force the composer to Note mode.
+  useEffect(() => { if (data && data.canReply === false) setMode('note'); }, [data]);
 
   if (loading) return <div className="empty" style={{ paddingTop: 120 }}><div className="spinner" style={{ margin: '0 auto' }} /></div>;
   if (!data) return null;
 
-  const { ticket, comments, assigneeDeleted } = data;
+  const { ticket, comments, assigneeDeleted, canReply = true } = data;
   const sla = slaDisplay(ticket);
 
   const send = async () => {
@@ -91,7 +93,14 @@ export default function TicketDetail({ id, onBack, user, notify }) {
 
             <div className="composer" style={{ marginTop: 14 }}>
               <div className="composer-tabs">
-                <button className={`composer-tab ${mode === 'reply' ? 'active' : ''}`} onClick={() => setMode('reply')}>Reply to customer</button>
+                <button
+                  className={`composer-tab ${mode === 'reply' ? 'active' : ''}`}
+                  disabled={!canReply}
+                  title={!canReply ? `Can't reply on ${labelChannel(ticket.channel)} — use an internal note` : ''}
+                  onClick={() => canReply && setMode('reply')}
+                >
+                  Reply to customer
+                </button>
                 <button className={`composer-tab note ${mode === 'note' ? 'active' : ''}`} onClick={() => setMode('note')}>Internal note</button>
               </div>
               <textarea
@@ -101,7 +110,9 @@ export default function TicketDetail({ id, onBack, user, notify }) {
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
                 <span className="muted" style={{ fontSize: 12 }}>
-                  {mode === 'reply' ? `Sends to the customer via ${labelChannel(ticket.channel)}` : 'Visible to your team only — not sent to the customer'}
+                  {!canReply
+                    ? `${labelChannel(ticket.channel)} can't be replied to here — add an internal note, or reply in your CRM.`
+                    : mode === 'reply' ? `Sends to the customer via ${labelChannel(ticket.channel)}` : 'Visible to your team only — not sent to the customer'}
                 </span>
                 <button className="btn btn-accent" disabled={sending || !body.trim()} onClick={send}>
                   <Icon name={mode === 'reply' ? 'send' : 'plus'} size={14} /> {sending ? 'Sending…' : mode === 'reply' ? 'Send reply' : 'Add note'}

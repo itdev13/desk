@@ -478,17 +478,35 @@ function buildSendPayload(ticket, message, { html, subject } = {}) {
 }
 
 /**
+ * Can an agent send an outbound reply on this ticket's channel? False for receive-only sources
+ * (Call, portal) or a ticket with no contact. The UI uses this to disable the Reply tab and steer
+ * the agent to an internal note instead.
+ */
+function canReplyOnChannel(ticket) {
+  if (!ticket.contactId) return false;
+  if (ticket.conversationProviderId) return true; // custom provider → type:Custom works
+  return !!mapChannelToSendType(ticket.channel);
+}
+
+/**
  * Agent replies to the customer. Sends through GHL on the original channel, stamps first-response,
  * stops the first-response SLA clock, and moves a new ticket to 'open'.
  */
 async function replyToCustomer(workspace, ticket, { body, agent, html, subject }) {
-  let ghlMessageId = null;
-
   const payload = buildSendPayload(ticket, body, { html, subject });
-  if (payload) {
-    const res = await ghlService.sendMessage(workspace.locationId, payload);
-    ghlMessageId = res?.messageId || res?.id || null;
+  if (!payload) {
+    // No outbound text channel for this ticket (e.g. Call, portal, or missing contact). Do NOT
+    // fake-record a reply that never went out — surface a clear error so the UI can steer the
+    // agent to an internal note instead.
+    const err = new Error(`Can't send a reply on this ticket's channel (${ticket.channel || 'unknown'}). Use an internal note, or reply via your CRM.`);
+    err.status = 422;
+    err.code = 'CHANNEL_NOT_REPLYABLE';
+    throw err;
   }
+
+  let ghlMessageId = null;
+  const res = await ghlService.sendMessage(workspace.locationId, payload);
+  ghlMessageId = res?.messageId || res?.id || null;
 
   await Comment.create({
     locationId: ticket.locationId,
@@ -612,5 +630,6 @@ module.exports = {
   changePriority,
   recordEvent,
   computeSla,
-  shouldAccept
+  shouldAccept,
+  canReplyOnChannel
 };

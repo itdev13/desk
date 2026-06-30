@@ -107,7 +107,9 @@ router.get('/:id', async (req, res) => {
   ]);
   // Flag when the assigned agent was deleted in the CRM so the UI can prompt a reassignment.
   const assigneeDeleted = !!(ticket.assigneeId && assignee?.deleted);
-  res.json({ success: true, ticket, comments, events, assigneeDeleted });
+  // Whether the agent can send an outbound reply on this channel (false for Call/portal/no-contact).
+  const canReply = ticketService.canReplyOnChannel(ticket);
+  res.json({ success: true, ticket, comments, events, assigneeDeleted, canReply });
 });
 
 /** POST /api/tickets — manual ticket creation by an agent. */
@@ -153,8 +155,11 @@ router.post('/:id/reply', async (req, res) => {
     const updated = await ticketService.replyToCustomer(workspace, ticket, { body, html, subject, agent: actor(req) });
     res.json({ success: true, ticket: updated });
   } catch (error) {
-    logger.error('reply failed', { message: error.message });
-    res.status(500).json({ success: false, error: `Failed to send reply: ${error.message}` });
+    logger.error('reply failed', { message: error.message, code: error.code });
+    // Honor a structured status (e.g. 422 CHANNEL_NOT_REPLYABLE) so the UI can show the real reason.
+    const status = error.status || 500;
+    const msg = error.code ? error.message : `Failed to send reply: ${error.message}`;
+    res.status(status).json({ success: false, error: msg, code: error.code });
   }
 });
 

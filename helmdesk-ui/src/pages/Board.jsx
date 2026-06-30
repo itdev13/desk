@@ -56,7 +56,7 @@ export default function Board({ onOpen }) {
               >
                 <div className="col-head">
                   <span className="ct">{STATUS_LABEL[status]}</span>
-                  <span className="count" style={{ background: 'var(--line)', color: 'var(--slate)' }}>{(board[status] || []).length}</span>
+                  <span className="col-count">{(board[status] || []).length}</span>
                 </div>
                 <div className="col-body">
                   {(board[status] || []).map((t) => {
