@@ -9,7 +9,6 @@ router.use(requireAuth);
 /** Fields the agency may set via the wizard / settings screen. */
 const ALLOWED = [
   'supportChannels',
-  'supportProviderIds',
   'ignoreAutomatedReplies',
   'ignoreShortMessages',
   'skipKeywords',

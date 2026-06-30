@@ -95,7 +95,7 @@ function applyRules(workspace, { channel, body }) {
  * The filter gate: should this inbound message create/append a ticket at all?
  * Returns { accept: boolean, reason?: string }. Driven entirely by the agency's wizard settings.
  */
-function shouldAccept(workspace, { channel, body, isAutomated, conversationProviderId }) {
+function shouldAccept(workspace, { channel, body, isAutomated }) {
   if (!workspace.setupComplete) return { accept: false, reason: 'setup_incomplete' };
 
   // 1. Channel gate — always applies. The message must be on a designated support channel.
@@ -104,14 +104,6 @@ function shouldAccept(workspace, { channel, body, isAutomated, conversationProvi
   }
   if (channel && !workspace.supportChannels.includes(channel)) {
     return { accept: false, reason: 'channel_not_support' };
-  }
-
-  // 1b. Provider gate (optional). If the agency selected specific providers, an inbound that
-  //     carries a conversationProviderId must be in that set. Messages with no providerId (native
-  //     channels like FB/IG/WebChat) are unaffected — the channel gate already governs those.
-  if (workspace.supportProviderIds?.length && conversationProviderId &&
-      !workspace.supportProviderIds.includes(conversationProviderId)) {
-    return { accept: false, reason: 'provider_not_support' };
   }
 
   const text = (body || '').toLowerCase();
@@ -196,7 +188,7 @@ async function handleInbound(workspace, payload) {
     at = new Date()
   } = payload;
 
-  const gate = shouldAccept(workspace, { channel, body, isAutomated, conversationProviderId });
+  const gate = shouldAccept(workspace, { channel, body, isAutomated });
   if (!gate.accept) {
     logger.info('Inbound ignored', { locationId: workspace.locationId, reason: gate.reason, channel });
     return { action: 'ignored', reason: gate.reason };

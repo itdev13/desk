@@ -81,19 +81,13 @@ export default function Dashboard() {
           <div className="section-title" style={{ marginBottom: 14 }}><h2>Tickets by channel</h2></div>
           {byChannel.length === 0 ? <div className="muted">No tickets yet.</div> : (() => {
             const maxCh = Math.max(1, ...byChannel.map((c) => c.count));
-            return byChannel.map((c) => {
-              const names = (c.providers || []).map((p) => p.name).filter(Boolean);
-              return (
-                <div key={c.channel} className="bar-row">
-                  <span className="name" style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.25 }}>
-                    {channelLabel(c.channel)}
-                    {names.length > 0 && <small style={{ color: 'var(--slate)', fontSize: 11 }}>{names.join(', ')}</small>}
-                  </span>
-                  <div className="bar-track"><div className="bar-fill" style={{ width: `${(c.count / maxCh) * 100}%`, background: 'var(--info)' }} /></div>
-                  <span className="val">{c.count}</span>
-                </div>
-              );
-            });
+            return byChannel.map((c) => (
+              <div key={c.channel} className="bar-row">
+                <span className="name">{channelLabel(c.channel)}</span>
+                <div className="bar-track"><div className="bar-fill" style={{ width: `${(c.count / maxCh) * 100}%`, background: 'var(--info)' }} /></div>
+                <span className="val">{c.count}</span>
+              </div>
+            ));
           })()}
         </div>
       </div>
@@ -105,7 +99,7 @@ function channelLabel(c) {
   return {
     SMS: 'SMS', Email: 'Email', WhatsApp: 'WhatsApp', FB: 'Facebook', IG: 'Instagram',
     Live_Chat: 'Live Chat', WebChat: 'Web Chat', GMB: 'Google', Call: 'Call',
-    RCS: 'RCS', Custom: 'Provider', portal: 'Portal', unknown: 'Other'
+    RCS: 'RCS', Custom: 'Custom', portal: 'Portal', unknown: 'Other'
   }[c] || c;
 }
 

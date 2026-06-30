@@ -348,57 +348,6 @@ class GHLService {
     return this.apiRequest('POST', '/conversations/messages/inbound', locationId, data);
   }
 
-  // ── Conversation channels / providers ──────────────────────────────────────────
-  /**
-   * List the conversation providers for a location, for one channel ('SMS' or 'Email').
-   * GET /locations/{locationId}/conversationChannels/{type} — scope: locations.readonly.
-   *
-   * Response shape varies — we normalize all of these:
-   *   - flat array:        [{ id, name, type, default }]
-   *   - wrapped array:     { providers: [...] } / { conversationProviders: [...] }
-   *   - nested-by-type:    { conversationChannel: { SMS:[{conversationProvider:{_id,name,type}}] } }
-   *
-   * IMPORTANT: each provider's own `type` field is the CHANNEL ('SMS'/'Email'), not a sub-type.
-   * The channel for our purposes is the endpoint `type` we requested (that's what scopes the list).
-   * `id` may arrive as `id` or `_id`.
-   *
-   * NOTE: surfaces native + type-bound providers; pure custom providers may not appear. Best-effort.
-   */
-  async getConversationChannels(locationId, type) {
-    if (type !== 'SMS' && type !== 'Email') return [];
-    try {
-      const response = await this.apiRequest('GET', `/locations/${locationId}/conversationChannels/${type}`, locationId);
-
-      // Find the provider array across the possible response shapes.
-      let arr;
-      if (Array.isArray(response)) arr = response;
-      else if (Array.isArray(response.providers)) arr = response.providers;
-      else if (Array.isArray(response.conversationProviders)) arr = response.conversationProviders;
-      else {
-        const channel = response.conversationChannel || response;
-        arr = channel?.[type] || [];
-      }
-
-      return (arr || [])
-        .map((entry) => entry.conversationProvider || entry) // unwrap nested-by-type form
-        .map((p) => ({
-          id: p.id || p._id,
-          name: p.name || null,
-          // channel = the endpoint type we asked for; p.type here is the channel label, not metadata
-          channel: type,
-          default: !!p.default
-        }))
-        .filter((p) => p.id);
-    } catch (error) {
-      logger.warn('getConversationChannels failed (non-blocking):', {
-        locationId, type,
-        status: error.response?.status,
-        error: error.response?.data?.message || error.message
-      });
-      return [];
-    }
-  }
-
   // ── Users (agents) ────────────────────────────────────────────────────────────
   /**
    * Search users for a location/company — populates the agent roster for assignment.

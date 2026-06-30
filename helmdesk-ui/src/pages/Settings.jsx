@@ -26,7 +26,6 @@ export default function Settings({ onSaved, notify }) {
     try {
       const res = await api.updateSettings({
         supportChannels: ws.supportChannels,
-        supportProviderIds: ws.supportProviderIds || [],
         ignoreAutomatedReplies: ws.ignoreAutomatedReplies,
         ignoreShortMessages: ws.ignoreShortMessages,
         skipKeywords: ws.skipKeywords || [],
@@ -125,17 +124,6 @@ export default function Settings({ onSaved, notify }) {
           </div>
         )}
 
-        {tab === 'channels' && (
-          <ProvidersPanel
-            notify={notify}
-            selected={ws.supportProviderIds || []}
-            onToggle={(id) => set({
-              supportProviderIds: (ws.supportProviderIds || []).includes(id)
-                ? ws.supportProviderIds.filter((p) => p !== id)
-                : [...(ws.supportProviderIds || []), id]
-            })}
-          />
-        )}
 
         {tab === 'assignment' && (
           <div className="card">
@@ -210,76 +198,5 @@ export default function Settings({ onSaved, notify }) {
         </div>
       </div>
     </>
-  );
-}
-
-/**
- * Conversation providers, fetched from GHL at install and stored. Selectable: picking specific
- * providers restricts ticket creation to messages from them (empty = accept all). "Re-sync"
- * re-fetches. Custom providers may not appear (GHL's public API doesn't expose them).
- */
-function ProvidersPanel({ notify, selected = [], onToggle }) {
-  const [providers, setProviders] = React.useState(null);
-  const [syncing, setSyncing] = React.useState(false);
-
-  // Auto-sync when the panel opens — GHL has no provider webhook, so this keeps the list fresh
-  // (and detects deletions) whenever an admin views Settings, without per-dashboard-view cost.
-  React.useEffect(() => {
-    api.syncProviders()
-      .then((r) => setProviders(r.providers || []))
-      .catch(() => api.providers().then((r) => setProviders(r.providers || [])).catch(() => setProviders([])));
-  }, []);
-
-  const resync = async () => {
-    setSyncing(true);
-    try { const r = await api.syncProviders(); setProviders(r.providers || []); notify(`Synced ${r.count} providers`); }
-    catch (err) { notify(err.message, true); }
-    finally { setSyncing(false); }
-  };
-
-  return (
-    <div className="card">
-      <div className="section-title" style={{ marginBottom: 6 }}>
-        <h3 style={{ margin: 0 }}>Conversation providers</h3>
-        <button className="btn btn-ghost btn-sm" disabled={syncing} onClick={resync}>
-          <Icon name="users" size={14} /> {syncing ? 'Syncing…' : 'Re-sync'}
-        </button>
-      </div>
-      <p className="muted" style={{ marginBottom: 14 }}>
-        Pick specific providers to only accept messages from them — leave all unchecked to accept
-        every provider on your channels. Synced from your CRM; custom providers may not appear.
-      </p>
-      {providers === null ? (
-        <div className="muted">Loading…</div>
-      ) : providers.length === 0 ? (
-        <div className="muted">No providers found yet. Click Re-sync to pull them from your CRM.</div>
-      ) : (
-        <div className="opt-grid">
-          {providers.map((p) => {
-            const on = selected.includes(p.providerId);
-            return (
-              <button
-                key={`${p.providerId}-${p.channel}`}
-                className={`opt ${on ? 'on' : ''}`}
-                style={{ opacity: p.deleted ? 0.6 : 1 }}
-                disabled={p.deleted}
-                onClick={() => !p.deleted && onToggle?.(p.providerId)}
-              >
-                <span className="check">{on && <Icon name="check" size={13} />}</span>
-                <span style={{ display: 'flex', flexDirection: 'column', gap: 2, textAlign: 'left' }}>
-                  <span style={{ fontWeight: 600 }}>
-                    {p.name || p.providerId}
-                    {p.deleted && <span className="pill crit plain" style={{ marginLeft: 6 }}>Deleted</span>}
-                  </span>
-                  <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--slate)' }}>
-                    {p.channel}{p.isDefault && !p.deleted ? ' · default' : ''}{p.deleted ? ' · removed' : ''}
-                  </span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
   );
 }

@@ -85,7 +85,6 @@ class HelmDeskApp {
     this.app.use('/api/tickets', require('./routes/tickets'));
     this.app.use('/api/settings', require('./routes/settings'));
     this.app.use('/api/agents', require('./routes/agents'));
-    this.app.use('/api/providers', require('./routes/providers'));
     this.app.use('/api/dashboard', require('./routes/dashboard'));
     this.app.use('/api/subscription', require('./routes/subscription'));
     this.app.use('/portal', require('./routes/portal')); // public, unauthenticated intake

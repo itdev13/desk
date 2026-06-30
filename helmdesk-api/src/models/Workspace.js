@@ -51,11 +51,6 @@ const workspaceSchema = new mongoose.Schema(
     // Valid values mirror GHL messageType: SMS, Email, WhatsApp, FB, IG, Live_Chat, Call, GMB.
     supportChannels: { type: [String], default: [] },
 
-    // Optional provider-level filter. If non-empty, an inbound on a provider-backed channel only
-    // becomes a ticket when its conversationProviderId is in this set. Empty = all providers allowed
-    // for the selected channels (no provider restriction). Holds GHL conversationProvider ids.
-    supportProviderIds: { type: [String], default: [] },
-
     // Step 2 — ignore rules.
     ignoreAutomatedReplies: { type: Boolean, default: true }, // skip replies to workflow/campaign sends
     ignoreShortMessages: { type: Boolean, default: false }, // skip one-word acks ("ok", "thanks")
