@@ -3,6 +3,7 @@ const router = express.Router();
 const { requireAuth } = require('../middleware/auth');
 const Ticket = require('../models/Ticket');
 const TicketEvent = require('../models/TicketEvent');
+const providerService = require('../services/providerService');
 const logger = require('../utils/logger');
 
 router.use(requireAuth);
@@ -69,6 +70,11 @@ router.get('/', async (req, res) => {
     const slaPct = sla.total ? Math.round((sla.inSla / sla.total) * 100) : null;
     const avgFirstReplyMins = resolveAgg[0]?.avgMins != null ? Math.round(resolveAgg[0].avgMins) : null;
 
+    // Best-effort resolve provider ids → friendly names (cached). Only fetch if any channel
+    // actually carries a provider id, so we don't hit GHL for provider-less workspaces.
+    const hasProviders = byChannel.some((c) => (c.providers || []).filter(Boolean).length);
+    const providerMap = hasProviders ? await providerService.getProviderMap(locationId) : {};
+
     res.json({
       success: true,
       kpis: {
@@ -82,11 +88,16 @@ router.get('/', async (req, res) => {
       },
       statusCounts,
       byAgent: byAgent.map((a) => ({ agentId: a._id.id, name: a._id.name || 'Unassigned', open: a.n })),
-      byChannel: byChannel.map((c) => ({
-        channel: c._id,
-        count: c.n,
-        providerCount: (c.providers || []).filter(Boolean).length
-      }))
+      byChannel: byChannel.map((c) => {
+        const providerIds = (c.providers || []).filter(Boolean);
+        return {
+          channel: c._id,
+          count: c.n,
+          providerCount: providerIds.length,
+          // Friendly names where we could resolve them; unresolved custom providers omitted.
+          providers: providerIds.map((id) => ({ id, name: providerMap[id] || null }))
+        };
+      })
     });
   } catch (error) {
     logger.error('dashboard failed', { message: error.message });

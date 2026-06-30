@@ -42,6 +42,27 @@ export default function SetupWizard({ workspace, onDone, notify }) {
       .then((r) => setAgents(r.agents || []))
       .catch(() => api.agents().then((r) => setAgents(r.agents || [])).catch(() => {}))
       .finally(() => setAgentsLoaded(true));
+
+    // Pre-fill from saved settings so a re-run of the wizard (e.g. after reinstall) shows the
+    // agency's previous choices to confirm/tweak, rather than resetting to defaults.
+    api.getSettings()
+      .then((r) => {
+        const w = r.workspace || {};
+        setForm((f) => ({
+          ...f,
+          supportChannels: w.supportChannels?.length ? w.supportChannels : f.supportChannels,
+          ignoreAutomatedReplies: w.ignoreAutomatedReplies ?? f.ignoreAutomatedReplies,
+          ignoreShortMessages: w.ignoreShortMessages ?? f.ignoreShortMessages,
+          assignmentMode: w.assignmentMode || f.assignmentMode,
+          defaultAssigneeId: w.defaultAssigneeId ?? f.defaultAssigneeId,
+          slaTargets: w.slaTargets?.length ? w.slaTargets : f.slaTargets,
+          autoCloseResolvedDays: w.autoCloseResolvedDays ?? f.autoCloseResolvedDays,
+          autoReplyEnabled: w.autoReplyEnabled ?? f.autoReplyEnabled,
+          ticketNumberPrefix: w.ticketNumberPrefix || f.ticketNumberPrefix,
+          portalEnabled: w.portalEnabled ?? f.portalEnabled
+        }));
+      })
+      .catch(() => { /* no saved settings yet — keep defaults */ });
   }, []);
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));

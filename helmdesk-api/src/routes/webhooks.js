@@ -121,8 +121,14 @@ router.post('/helmdesk', async (req, res) => {
         );
         await subscriptionService.setStatus({ locationId, companyId }, 'canceled', data);
         await OAuthToken.deleteMany(locationId ? { locationId } : { companyId });
+        // Keep the workspace config + tickets (so reinstall restores everything), but flip
+        // setupComplete=false so a reinstall re-runs the wizard pre-filled with prior values —
+        // a confirm-and-go-live step. Settings/SLA/branding/keywords are all preserved.
+        if (locationId) {
+          await Workspace.updateOne({ locationId }, { $set: { setupComplete: false } });
+        }
         await recordSubscriptionTx({ event: 'cancellation', locationId, companyId, appId, webhookType: type, rawData: data });
-        logger.info('🗑️ Uninstalled — subscription canceled', { locationId, companyId });
+        logger.info('🗑️ Uninstalled — tokens removed, config kept (wizard will re-run on reinstall)', { locationId, companyId });
         break;
       }
 

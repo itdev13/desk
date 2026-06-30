@@ -236,6 +236,30 @@ button { font-family: inherit; cursor: pointer; }
 .hd-select-opt.disabled { opacity: 0.5; cursor: not-allowed; }
 .hd-select-empty { padding: 10px; color: var(--slate); font-size: 13px; text-align: center; }
 
+/* ── Tag / chip input ── */
+.tag-input {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px;
+  background: var(--panel); cursor: text; min-height: 42px;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.tag-input:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.tag-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent-soft); color: var(--accent-dk);
+  border: 1px solid #f0d9b0; border-radius: 999px;
+  padding: 3px 6px 3px 10px; font-size: 13px; font-weight: 600; white-space: nowrap;
+}
+.tag-x {
+  border: none; background: none; color: var(--accent-dk); cursor: pointer;
+  font-size: 16px; line-height: 1; padding: 0 2px; border-radius: 50%; opacity: 0.7;
+}
+.tag-x:hover { opacity: 1; }
+.tag-field {
+  flex: 1; min-width: 100px; border: none !important; outline: none;
+  padding: 4px 2px !important; font-size: 14px; background: none !important; box-shadow: none !important;
+}
+
 /* Hide the native number-input spinner (up/down stepper) — we don't need it for SLA/day fields. */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {

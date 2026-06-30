@@ -111,6 +111,48 @@ export function Select({ value, onChange, options = [], placeholder = 'Select…
   );
 }
 
+/**
+ * Tag/chip input. Type a value + Enter (or comma) to add a chip; Backspace on empty removes the
+ * last; click × to remove. value is a string[]; onChange(nextArray). De-dupes + lowercases.
+ */
+export function TagInput({ value = [], onChange, placeholder = 'Type and press Enter…' }) {
+  const [draft, setDraft] = React.useState('');
+  const inputRef = React.useRef(null);
+
+  const add = (raw) => {
+    const tag = String(raw).trim().toLowerCase();
+    if (!tag) return;
+    if (!value.includes(tag)) onChange([...value, tag]);
+    setDraft('');
+  };
+  const removeAt = (i) => onChange(value.filter((_, idx) => idx !== i));
+
+  const onKey = (e) => {
+    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); add(draft); }
+    else if (e.key === 'Backspace' && !draft && value.length) removeAt(value.length - 1);
+  };
+
+  return (
+    <div className="tag-input" onClick={() => inputRef.current?.focus()}>
+      {value.map((tag, i) => (
+        <span className="tag-chip" key={`${tag}-${i}`}>
+          {tag}
+          <button type="button" className="tag-x" aria-label={`Remove ${tag}`} onClick={(e) => { e.stopPropagation(); removeAt(i); }}>×</button>
+        </span>
+      ))}
+      <input
+        ref={inputRef}
+        className="tag-field"
+        value={draft}
+        placeholder={value.length ? '' : placeholder}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={onKey}
+        onBlur={() => add(draft)}
+      />
+    </div>
+  );
+}
+
 export function Switch({ checked, onChange }) {
   return (
     <label className="switch">

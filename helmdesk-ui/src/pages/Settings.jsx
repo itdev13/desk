@@ -1,12 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, portalUrl } from '../lib/api.js';
 import { CHANNELS } from '../lib/format.js';
-import { Icon, Switch, Select } from '../components/ui.jsx';
-
-/** Parse a comma-separated keyword string into a trimmed, de-duped, lowercase array. */
-function splitKeywords(str) {
-  return [...new Set((str || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean))];
-}
+import { Icon, Switch, Select, TagInput } from '../components/ui.jsx';
 
 /** Post-setup configuration. Same fields the wizard collected, plus white-label brand + portal. */
 export default function Settings({ onSaved, notify }) {
@@ -106,23 +101,21 @@ export default function Settings({ onSaved, notify }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 18 }}>
               <div className="field" style={{ margin: 0 }}>
                 <label>Always create a ticket if message contains</label>
-                <input
-                  type="text"
-                  value={(ws.createKeywords || []).join(', ')}
-                  onChange={(e) => set({ createKeywords: splitKeywords(e.target.value) })}
-                  placeholder="help, broken, urgent, refund"
+                <TagInput
+                  value={ws.createKeywords || []}
+                  onChange={(tags) => set({ createKeywords: tags })}
+                  placeholder="help, broken, urgent…"
                 />
-                <span className="hint">Comma-separated. Forces a ticket even if the filters above would skip it.</span>
+                <span className="hint">Press Enter to add each keyword. Forces a ticket even if the filters above would skip it.</span>
               </div>
               <div className="field" style={{ margin: 0 }}>
                 <label>Never create a ticket if message contains</label>
-                <input
-                  type="text"
-                  value={(ws.skipKeywords || []).join(', ')}
-                  onChange={(e) => set({ skipKeywords: splitKeywords(e.target.value) })}
-                  placeholder="unsubscribe, stop, opt out"
+                <TagInput
+                  value={ws.skipKeywords || []}
+                  onChange={(tags) => set({ skipKeywords: tags })}
+                  placeholder="unsubscribe, stop, opt out…"
                 />
-                <span className="hint">Comma-separated. These win over everything — no ticket is created.</span>
+                <span className="hint">Press Enter to add each keyword. These win over everything — no ticket is created.</span>
               </div>
             </div>
             {ws.autoReplyEnabled && (
