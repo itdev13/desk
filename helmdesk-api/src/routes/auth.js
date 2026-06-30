@@ -71,7 +71,20 @@ router.post('/verify', async (req, res) => {
 
     const workspace = await Workspace.findOne({ locationId });
 
-    const sessionToken = signSession({ locationId, companyId, userId, name, email });
+    // Resolve this user's role for permission gating. Source of truth is the synced Agent record.
+    // Fallbacks: if setup isn't complete yet (no agents synced), treat the user as admin so they
+    // can configure the workspace; otherwise default to agent (least privilege).
+    let role = 'agent';
+    if (userId) {
+      const Agent = require('../models/Agent');
+      const agent = await Agent.findOne({ locationId, ghlUserId: userId });
+      if (agent) role = agent.role === 'admin' ? 'admin' : 'agent';
+      else if (!workspace?.setupComplete) role = 'admin';
+    } else if (!workspace?.setupComplete) {
+      role = 'admin';
+    }
+
+    const sessionToken = signSession({ locationId, companyId, userId, name, email, role });
     res.json({
       success: true,
       token: sessionToken,
@@ -81,7 +94,7 @@ router.post('/verify', async (req, res) => {
         setupComplete: workspace?.setupComplete || false,
         brand: workspace?.brand || { name: 'HelmDesk', primaryColor: '#E0A24A' }
       },
-      user: { userId, name, email }
+      user: { userId, name, email, role }
     });
   } catch (error) {
     logger.error('auth/verify error', { message: error.message });

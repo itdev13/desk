@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { api } from '../lib/api.js';
 import { CHANNELS } from '../lib/format.js';
+import { Select } from './ui.jsx';
 
 /** Manual ticket creation (Path C). Agent logs a ticket on a customer's behalf. */
 export default function NewTicketModal({ onClose, onCreated, notify }) {
@@ -35,15 +36,13 @@ export default function NewTicketModal({ onClose, onCreated, notify }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="field">
             <label>Channel</label>
-            <select value={form.channel} onChange={(e) => set({ channel: e.target.value })}>
-              {CHANNELS.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
-            </select>
+            <Select value={form.channel} onChange={(v) => set({ channel: v })}
+              options={CHANNELS.map((c) => ({ value: c.key, label: c.label }))} />
           </div>
           <div className="field">
             <label>Priority</label>
-            <select value={form.priority} onChange={(e) => set({ priority: e.target.value })}>
-              {['urgent', 'high', 'normal', 'low'].map((p) => <option key={p} value={p}>{p[0].toUpperCase() + p.slice(1)}</option>)}
-            </select>
+            <Select value={form.priority} onChange={(v) => set({ priority: v })}
+              options={['urgent', 'high', 'normal', 'low'].map((p) => ({ value: p, label: p[0].toUpperCase() + p.slice(1) }))} />
           </div>
         </div>
         <div className="field">

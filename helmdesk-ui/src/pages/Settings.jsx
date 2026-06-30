@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { api } from '../lib/api.js';
+import { api, portalUrl } from '../lib/api.js';
 import { CHANNELS } from '../lib/format.js';
-import { Icon, Switch } from '../components/ui.jsx';
+import { Icon, Switch, Select } from '../components/ui.jsx';
 
 /** Parse a comma-separated keyword string into a trimmed, de-duped, lowercase array. */
 function splitKeywords(str) {
@@ -139,19 +139,25 @@ export default function Settings({ onSaved, notify }) {
             <h3>Assignment</h3>
             <div className="field" style={{ marginTop: 10 }}>
               <label>Mode</label>
-              <select value={ws.assignmentMode} onChange={(e) => set({ assignmentMode: e.target.value })}>
-                <option value="round_robin">Round-robin across active agents</option>
-                <option value="specific">Always one agent</option>
-                <option value="unassigned">Leave unassigned</option>
-              </select>
+              <Select
+                value={ws.assignmentMode}
+                onChange={(v) => set({ assignmentMode: v })}
+                options={[
+                  { value: 'round_robin', label: 'Round-robin across active agents' },
+                  { value: 'specific', label: 'Always one agent' },
+                  { value: 'unassigned', label: 'Leave unassigned' }
+                ]}
+              />
             </div>
             {ws.assignmentMode === 'specific' && (
               <div className="field">
                 <label>Default agent</label>
-                <select value={ws.defaultAssigneeId || ''} onChange={(e) => set({ defaultAssigneeId: e.target.value || null })}>
-                  <option value="">Select…</option>
-                  {agents.map((a) => <option key={a.ghlUserId} value={a.ghlUserId}>{a.name}</option>)}
-                </select>
+                <Select
+                  value={ws.defaultAssigneeId || ''}
+                  onChange={(v) => set({ defaultAssigneeId: v || null })}
+                  placeholder="Select an agent…"
+                  options={agents.map((a) => ({ value: a.ghlUserId, label: a.name }))}
+                />
               </div>
             )}
 
@@ -187,7 +193,7 @@ export default function Settings({ onSaved, notify }) {
             {ws.portalEnabled && ws.portalSlug && (
               <div className="field" style={{ marginTop: 12 }}>
                 <label>Public intake URL</label>
-                <input type="text" readOnly value={`${window.location.origin}/portal/${ws.portalSlug}`} onFocus={(e) => e.target.select()} />
+                <input type="text" readOnly value={portalUrl(ws.portalSlug)} onFocus={(e) => e.target.select()} />
                 <span className="hint">Share or embed this on the client's site.</span>
               </div>
             )}

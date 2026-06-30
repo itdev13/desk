@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireAdmin } = require('../middleware/auth');
 const Workspace = require('../models/Workspace');
 const logger = require('../utils/logger');
 
@@ -44,7 +44,7 @@ router.get('/', async (req, res) => {
 });
 
 /** PUT /api/settings — patch any allowed fields (used by the settings screen). */
-router.put('/', async (req, res) => {
+router.put('/', requireAdmin, async (req, res) => {
   try {
     const update = {};
     for (const key of ALLOWED) {
@@ -66,7 +66,7 @@ router.put('/', async (req, res) => {
  * Finalizes the wizard: saves the four steps and flips setupComplete=true so the engine goes live.
  * Generates a portal slug if portal intake was enabled.
  */
-router.post('/complete-setup', async (req, res) => {
+router.post('/complete-setup', requireAdmin, async (req, res) => {
   try {
     const update = { setupComplete: true };
     for (const key of ALLOWED) {

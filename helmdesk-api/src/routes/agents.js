@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireAdmin } = require('../middleware/auth');
 const Agent = require('../models/Agent');
 const agentService = require('../services/agentService');
 const logger = require('../utils/logger');
@@ -37,7 +37,7 @@ router.post('/sync', async (req, res) => {
 });
 
 /** PATCH /api/agents/:ghlUserId — toggle active / change role. */
-router.patch('/:ghlUserId', async (req, res) => {
+router.patch('/:ghlUserId', requireAdmin, async (req, res) => {
   const update = {};
   if (req.body.active !== undefined) update.active = req.body.active;
   if (req.body.role) update.role = req.body.role;

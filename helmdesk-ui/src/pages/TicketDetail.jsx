@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../lib/api.js';
 import { ago, slaDisplay, STATUS_LABEL, PRIORITY_LABEL } from '../lib/format.js';
-import { Icon, PriorityPill, Avatar } from '../components/ui.jsx';
+import { Icon, PriorityPill, Avatar, Select } from '../components/ui.jsx';
 
 /**
  * The ticket workspace: isolated conversation thread (customer messages, agent replies, internal
@@ -114,25 +114,33 @@ export default function TicketDetail({ id, onBack, user, notify }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div className="side-card">
               <h4>Status</h4>
-              <select value={ticket.status} onChange={(e) => patch(() => api.setStatus(id, e.target.value), `Status → ${STATUS_LABEL[e.target.value]}`)}>
-                {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
+              <Select
+                value={ticket.status}
+                onChange={(v) => patch(() => api.setStatus(id, v), `Status → ${STATUS_LABEL[v]}`)}
+                options={Object.entries(STATUS_LABEL).map(([k, v]) => ({ value: k, label: v }))}
+              />
               <div style={{ height: 12 }} />
               <h4>Priority</h4>
-              <select value={ticket.priority} onChange={(e) => patch(() => api.setPriority(id, e.target.value), `Priority → ${PRIORITY_LABEL[e.target.value]}`)}>
-                {Object.entries(PRIORITY_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
+              <Select
+                value={ticket.priority}
+                onChange={(v) => patch(() => api.setPriority(id, v), `Priority → ${PRIORITY_LABEL[v]}`)}
+                options={Object.entries(PRIORITY_LABEL).map(([k, v]) => ({ value: k, label: v }))}
+              />
               <div style={{ height: 12 }} />
               <h4>Assignee</h4>
-              <select value={ticket.assigneeId || ''} onChange={(e) => patch(() => api.setAssignee(id, e.target.value || null), 'Reassigned')}>
-                <option value="">Unassigned</option>
-                {/* If the current assignee was deleted in the CRM they're not in the assignable list —
-                    inject them so the select still shows who it's assigned to. */}
-                {assigneeDeleted && ticket.assigneeId && !agents.some((a) => a.ghlUserId === ticket.assigneeId) && (
-                  <option value={ticket.assigneeId}>{ticket.assigneeName || 'Deleted user'} (deleted)</option>
-                )}
-                {agents.map((a) => <option key={a.ghlUserId} value={a.ghlUserId}>{a.name}</option>)}
-              </select>
+              <Select
+                value={ticket.assigneeId || ''}
+                onChange={(v) => patch(() => api.setAssignee(id, v || null), 'Reassigned')}
+                placeholder="Unassigned"
+                options={[
+                  { value: '', label: 'Unassigned' },
+                  // If the current assignee was deleted in the CRM, inject them so the value still shows.
+                  ...(assigneeDeleted && ticket.assigneeId && !agents.some((a) => a.ghlUserId === ticket.assigneeId)
+                    ? [{ value: ticket.assigneeId, label: `${ticket.assigneeName || 'Deleted user'} (deleted)` }]
+                    : []),
+                  ...agents.map((a) => ({ value: a.ghlUserId, label: a.name }))
+                ]}
+              />
               {assigneeDeleted && (
                 <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 8, background: 'var(--crit-bg)', color: 'var(--crit)', fontSize: 12, lineHeight: 1.4 }}>
                   ⚠️ <strong>{ticket.assigneeName || 'This agent'}</strong> was deleted in your CRM. Please reassign this ticket.

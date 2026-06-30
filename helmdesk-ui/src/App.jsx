@@ -101,6 +101,7 @@ export default function App() {
         sub={sub}
         view={view}
         counts={counts}
+        isAdmin={user?.role === 'admin'}
         onNav={(v) => { setOpenTicketId(null); setView(v); }}
       />
       <div className="main">
@@ -112,10 +113,13 @@ export default function App() {
           <Board onOpen={goTicket} />
         ) : view === 'dashboard' ? (
           <Dashboard />
-        ) : view === 'team' ? (
+        ) : view === 'team' && user?.role === 'admin' ? (
           <Team notify={notify} />
-        ) : (
+        ) : view === 'settings' && user?.role === 'admin' ? (
           <Settings workspace={workspace} onSaved={setWorkspace} notify={notify} />
+        ) : (
+          // Non-admins (or unknown view) land on the queue — Settings/Team are admin-only.
+          <Queue onOpen={goTicket} user={user} notify={notify} onChange={refreshCounts} />
         )}
       </div>
       <Toast message={toast.message} error={toast.error} onDone={() => setToast({ message: '', error: false })} />
@@ -123,7 +127,7 @@ export default function App() {
   );
 }
 
-function Sidebar({ workspace, sub, view, counts, onNav }) {
+function Sidebar({ workspace, sub, view, counts, isAdmin, onNav }) {
   const brand = workspace?.brand || { name: 'HelmDesk' };
   const items = [
     { key: 'queue', label: 'Queue', icon: 'inbox', count: counts.open },
@@ -160,12 +164,17 @@ function Sidebar({ workspace, sub, view, counts, onNav }) {
         </button>
       )}
 
-      <div className="nav-label">Manage</div>
-      {manage.map((it) => (
-        <button key={it.key} className={`nav-item ${view === it.key ? 'active' : ''}`} onClick={() => onNav(it.key)}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Icon name={it.icon} /> {it.label}</span>
-        </button>
-      ))}
+      {/* Manage section is admin-only — agents can't change Team or Settings/branding. */}
+      {isAdmin && (
+        <>
+          <div className="nav-label">Manage</div>
+          {manage.map((it) => (
+            <button key={it.key} className={`nav-item ${view === it.key ? 'active' : ''}`} onClick={() => onNav(it.key)}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Icon name={it.icon} /> {it.label}</span>
+            </button>
+          ))}
+        </>
+      )}
 
       <div className="nav-spacer" />
       <div className="sidebar-foot">

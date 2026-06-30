@@ -4,6 +4,16 @@ let sessionToken = null;
 export function setToken(t) { sessionToken = t; }
 export function getToken() { return sessionToken; }
 
+/**
+ * Public portal URL for a slug. The /portal route is served by the API, so this must point at the
+ * API origin (VITE_API_URL) — NOT the app's own origin (window.location), which is the SPA host
+ * and has no /portal route. Falls back to current origin only in local single-origin dev.
+ */
+export function portalUrl(slug) {
+  const base = BASE || window.location.origin;
+  return `${base}/portal/${slug}`;
+}
+
 async function request(path, { method = 'GET', body, params, auth = true } = {}) {
   const url = new URL(`${BASE}${path}`, window.location.origin);
   if (params) Object.entries(params).forEach(([k, v]) => v != null && v !== '' && url.searchParams.set(k, v));

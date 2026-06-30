@@ -56,6 +56,61 @@ export function Toast({ message, error, onDone }) {
   return <div className={`toast ${error ? 'err' : ''}`}>{message}</div>;
 }
 
+/**
+ * Styled dropdown replacing the native <select> (which ignores our design system).
+ * Props: value, onChange(value), options [{value,label,meta?,disabled?}], placeholder.
+ * Keyboard: Enter/Space/ArrowDown opens; Esc closes; click-outside closes.
+ */
+export function Select({ value, onChange, options = [], placeholder = 'Select…', disabled = false }) {
+  const [open, setOpen] = React.useState(false);
+  const [active, setActive] = React.useState(-1);
+  const ref = React.useRef(null);
+  const selected = options.find((o) => o.value === value);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+
+  const pick = (opt) => { if (opt.disabled) return; onChange(opt.value); setOpen(false); };
+
+  const onKey = (e) => {
+    if (disabled) return;
+    if (!open && (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown')) { e.preventDefault(); setOpen(true); setActive(Math.max(0, options.findIndex((o) => o.value === value))); return; }
+    if (!open) return;
+    if (e.key === 'Escape') { setOpen(false); return; }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActive((i) => Math.min(options.length - 1, i + 1)); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); setActive((i) => Math.max(0, i - 1)); }
+    if (e.key === 'Enter' && active >= 0) { e.preventDefault(); pick(options[active]); }
+  };
+
+  return (
+    <div className={`hd-select ${disabled ? 'is-disabled' : ''}`} ref={ref}>
+      <button type="button" className={`hd-select-trigger ${open ? 'open' : ''}`} disabled={disabled}
+        onClick={() => setOpen((v) => !v)} onKeyDown={onKey} aria-haspopup="listbox" aria-expanded={open}>
+        <span className={selected ? 'hd-select-val' : 'hd-select-ph'}>{selected ? selected.label : placeholder}</span>
+        <svg className={`hd-select-caret ${open ? 'up' : ''}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+      </button>
+      {open && (
+        <ul className="hd-select-menu" role="listbox">
+          {options.length === 0 && <li className="hd-select-empty">No options</li>}
+          {options.map((o, i) => (
+            <li key={o.value ?? `opt-${i}`} role="option" aria-selected={o.value === value}
+              className={`hd-select-opt ${o.value === value ? 'sel' : ''} ${i === active ? 'active' : ''} ${o.disabled ? 'disabled' : ''}`}
+              onMouseEnter={() => setActive(i)} onClick={() => pick(o)}>
+              <span>{o.label}</span>
+              {o.meta && <span className="hd-select-meta">{o.meta}</span>}
+              {o.value === value && <Icon name="check" size={14} />}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function Switch({ checked, onChange }) {
   return (
     <label className="switch">

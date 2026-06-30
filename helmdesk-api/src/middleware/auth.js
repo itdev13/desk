@@ -22,7 +22,8 @@ function requireAuth(req, res, next) {
       companyId: decoded.companyId || null,
       userId: decoded.userId || null,
       name: decoded.name || null,
-      email: decoded.email || null
+      email: decoded.email || null,
+      role: decoded.role || 'agent'
     };
     if (!req.auth.locationId) {
       return res.status(401).json({ success: false, error: 'Invalid session: no locationId' });
@@ -34,13 +35,21 @@ function requireAuth(req, res, next) {
   }
 }
 
+/** Gate a route to admins only. Use after requireAuth. */
+function requireAdmin(req, res, next) {
+  if (req.auth?.role !== 'admin') {
+    return res.status(403).json({ success: false, error: 'Admin access required', code: 'ADMIN_ONLY' });
+  }
+  return next();
+}
+
 /** Mint a session token for a resolved user context. */
-function signSession({ locationId, companyId, userId, name, email }) {
+function signSession({ locationId, companyId, userId, name, email, role }) {
   return jwt.sign(
-    { locationId, companyId, userId, name, email },
+    { locationId, companyId, userId, name, email, role: role || 'agent' },
     process.env.JWT_SECRET,
     { expiresIn: process.env.SESSION_TTL || '12h' }
   );
 }
 
-module.exports = { requireAuth, signSession };
+module.exports = { requireAuth, requireAdmin, signSession };

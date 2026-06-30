@@ -203,6 +203,39 @@ button { font-family: inherit; cursor: pointer; }
 .field label { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
 .field .hint { font-size: 12px; color: var(--slate); font-weight: 400; }
 
+/* ── Styled Select (replaces native <select>) ── */
+.hd-select { position: relative; width: 100%; }
+.hd-select-trigger {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  padding: 9px 12px; font-size: 14px; color: var(--ink); text-align: left; cursor: pointer;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.hd-select-trigger:hover { border-color: var(--slate-2); }
+.hd-select-trigger.open { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.hd-select.is-disabled { opacity: 0.55; pointer-events: none; }
+.hd-select-ph { color: var(--slate); }
+.hd-select-caret { color: var(--slate); flex: none; transition: transform 0.15s; }
+.hd-select-caret.up { transform: rotate(180deg); }
+
+.hd-select-menu {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 40;
+  margin: 0; padding: 5px; list-style: none;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: var(--shadow-lg); max-height: 260px; overflow-y: auto;
+}
+.hd-select-opt {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; border-radius: 7px; font-size: 14px; color: var(--ink); cursor: pointer;
+}
+.hd-select-opt > span:first-child { flex: 1; }
+.hd-select-opt .hd-select-meta { font-size: 12px; color: var(--slate); font-family: var(--mono); }
+.hd-select-opt.active { background: var(--paper); }
+.hd-select-opt.sel { color: var(--accent-dk); font-weight: 600; }
+.hd-select-opt.sel .ico { color: var(--accent); }
+.hd-select-opt.disabled { opacity: 0.5; cursor: not-allowed; }
+.hd-select-empty { padding: 10px; color: var(--slate); font-size: 13px; text-align: center; }
+
 /* Hide the native number-input spinner (up/down stepper) — we don't need it for SLA/day fields. */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {

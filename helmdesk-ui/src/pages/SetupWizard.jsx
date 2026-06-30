@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api.js';
 import { CHANNELS } from '../lib/format.js';
-import { Icon, Switch } from '../components/ui.jsx';
+import { Icon, Switch, Select } from '../components/ui.jsx';
 import { LogoMark } from '../components/Logo.jsx';
 
 /**
@@ -147,10 +147,12 @@ export default function SetupWizard({ workspace, onDone, notify }) {
                 {form.assignmentMode === 'specific' && (
                   <div className="field" style={{ marginTop: 14 }}>
                     <label>Assign all tickets to</label>
-                    <select value={form.defaultAssigneeId || ''} onChange={(e) => set({ defaultAssigneeId: e.target.value || null })}>
-                      <option value="">Select an agent…</option>
-                      {agents.map((a) => <option key={a.ghlUserId} value={a.ghlUserId}>{a.name}</option>)}
-                    </select>
+                    <Select
+                      value={form.defaultAssigneeId || ''}
+                      onChange={(v) => set({ defaultAssigneeId: v || null })}
+                      placeholder="Select an agent…"
+                      options={agents.map((a) => ({ value: a.ghlUserId, label: a.name }))}
+                    />
                     {agentsLoaded && agents.length === 0 && (
                       <span className="hint" style={{ color: 'var(--warn)' }}>
                         No team members found yet.{' '}
