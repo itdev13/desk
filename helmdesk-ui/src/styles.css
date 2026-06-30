@@ -301,10 +301,11 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .switch input:checked + .slider::before { transform: translateX(18px); }
 
 /* selectable channel/option grid */
-.opt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.opt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .opt {
   display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1.5px solid var(--line);
-  border-radius: 10px; background: var(--panel); font-size: 13.5px; font-weight: 600; transition: 0.12s; text-align: left;
+  border-radius: 10px; background: var(--panel); font-size: 13.5px; font-weight: 600; transition: 0.12s;
+  text-align: left; white-space: nowrap; min-width: 0;
 }
 .opt:hover { border-color: var(--slate-2); }
 .opt.on { border-color: var(--accent); background: var(--accent-soft); }
