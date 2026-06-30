@@ -351,27 +351,44 @@ class GHLService {
   // ── Conversation channels / providers ──────────────────────────────────────────
   /**
    * List the conversation channels + their providers for a location, for one message type.
-   * GET /locations/{locationId}/conversation-channels/{type} — type is 'SMS' or 'Email' only.
-   * Scope: locations.readonly. Returns providers as [{ _id, name, type, default }] per type.
+   * type is 'SMS' or 'Email' only. Scope: locations.readonly.
    *
-   * NOTE (per GHL internals): this surfaces native + type-bound providers under SMS/Email, but
-   * NOT pure custom providers (stored under a Custom key the list endpoint never reads). So name
-   * resolution is best-effort — unmatched ids fall back to the raw id at the call site.
+   * Tries the canonical path then the deprecated camelCase alias — GHL maps both, but which one a
+   * given account/route resolves can differ, so we fall back rather than silently returning [].
+   *   1. GET /locations/{id}/conversation-channels/{type}   (canonical)
+   *   2. GET /locations/{id}/conversationChannels/{type}    (deprecated alias)
+   *
+   * NOTE (per GHL internals): surfaces native + type-bound providers under SMS/Email, but NOT pure
+   * custom providers. Name resolution is best-effort — unmatched ids fall back to the raw id.
    */
   async getConversationChannels(locationId, type) {
     if (type !== 'SMS' && type !== 'Email') return [];
-    try {
-      const response = await this.apiRequest('GET', `/locations/${locationId}/conversation-channels/${type}`, locationId);
-      const channel = response.conversationChannel || response;
-      const arr = channel?.[type] || [];
-      return arr
-        .map((entry) => entry.conversationProvider || entry)
-        .filter((p) => p && p._id)
-        .map((p) => ({ id: p._id, name: p.name || null, type: p.type || type, default: !!p.default }));
-    } catch (error) {
-      logger.warn('getConversationChannels failed (non-blocking):', { locationId, type, error: error.response?.data?.message || error.message });
-      return [];
+    const paths = [
+      `/locations/${locationId}/conversation-channels/${type}`,
+      `/locations/${locationId}/conversationChannels/${type}`
+    ];
+    let lastError;
+    for (const path of paths) {
+      try {
+        const response = await this.apiRequest('GET', path, locationId);
+        const channel = response.conversationChannel || response;
+        const arr = channel?.[type] || [];
+        return arr
+          .map((entry) => entry.conversationProvider || entry)
+          .filter((p) => p && p._id)
+          .map((p) => ({ id: p._id, name: p.name || null, type: p.type || type, default: !!p.default }));
+      } catch (error) {
+        lastError = error;
+        // Only try the alias if the canonical 404s; for other errors, stop and report.
+        if (error.response?.status !== 404) break;
+      }
     }
+    logger.warn('getConversationChannels failed (non-blocking):', {
+      locationId, type,
+      status: lastError?.response?.status,
+      error: lastError?.response?.data?.message || lastError?.message
+    });
+    return [];
   }
 
   // ── Users (agents) ────────────────────────────────────────────────────────────
