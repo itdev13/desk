@@ -80,12 +80,16 @@ export default function Settings({ onSaved, notify }) {
                   </button>
                 );
               })}
+              {/* Conversation providers as a chip: toggles acceptConversationProviders, not a channel. */}
+              <button
+                className={`opt ${ws.acceptConversationProviders ? 'on' : ''}`}
+                title="Also create tickets from messages sent through a custom conversation provider"
+                onClick={() => set({ acceptConversationProviders: !ws.acceptConversationProviders })}
+              >
+                <span className="check">{ws.acceptConversationProviders && <Icon name="check" size={13} />}</span>Conversation Providers
+              </button>
             </div>
             <div style={{ marginTop: 18 }}>
-              <div className="toggle-row">
-                <div><div className="t-label">Accept conversation providers</div><div className="t-desc">Also create tickets from messages sent through a custom conversation provider.</div></div>
-                <Switch checked={ws.acceptConversationProviders} onChange={(v) => set({ acceptConversationProviders: v })} />
-              </div>
               <div className="toggle-row">
                 <div><div className="t-label">Ignore marketing &amp; automation replies</div><div className="t-desc">Keeps campaign replies out of the queue.</div></div>
                 <Switch checked={ws.ignoreAutomatedReplies} onChange={(v) => set({ ignoreAutomatedReplies: v })} />

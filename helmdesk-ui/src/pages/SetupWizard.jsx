@@ -118,13 +118,15 @@ export default function SetupWizard({ workspace, onDone, notify }) {
                       </button>
                     );
                   })}
-                </div>
-                <div className="toggle-row" style={{ marginTop: 18 }}>
-                  <div>
-                    <div className="t-label">Accept conversation providers</div>
-                    <div className="t-desc">Also create tickets from messages sent through a custom conversation provider.</div>
-                  </div>
-                  <Switch checked={form.acceptConversationProviders} onChange={(v) => set({ acceptConversationProviders: v })} />
+                  {/* Conversation providers as a chip — toggles acceptConversationProviders. */}
+                  <button
+                    className={`opt ${form.acceptConversationProviders ? 'on' : ''}`}
+                    title="Also create tickets from messages sent through a custom conversation provider"
+                    onClick={() => set({ acceptConversationProviders: !form.acceptConversationProviders })}
+                  >
+                    <span className="check">{form.acceptConversationProviders && <Icon name="check" size={13} />}</span>
+                    Conversation Providers
+                  </button>
                 </div>
               </>
             )}
