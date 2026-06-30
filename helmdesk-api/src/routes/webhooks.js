@@ -228,13 +228,12 @@ async function processInbound(data) {
     return { ignored: 'no_workspace' };
   }
 
-  // Normalize channel from GHL's messageType (e.g. "TYPE_CUSTOM_PROVIDER_SMS" → "SMS",
-  // "TYPE_ACTIVITY_*" → null so system events never become tickets).
-  const channel = normalizeChannel(data.messageType || data.messageTypeString);
+  // Normalize channel from messageType (string), falling back to numeric messageTypeId.
+  // ACTIVITY/system/internal types → null so they never become tickets.
+  const channel = normalizeChannel(data.messageTypeString || data.messageType, data.messageTypeId);
 
-  // Automation detection — the InboundMessage payload carries no reliable automation flag; the
-  // channel designation + dedup do the real filtering. Forward-compatible read of any markers.
-  const isAutomated = Boolean(data.isFromWorkflow || data.automated || data.source === 'workflow');
+  // Real automation detection: source ∈ {workflow, campaign, bulk_actions} OR a TYPE_CAMPAIGN_* type.
+  const isAutomated = isAutomatedMessage(data);
 
   // Resolve contact display info (cached on the ticket for list rendering).
   let contactName = data.fullName || null;
@@ -295,7 +294,7 @@ async function processOutbound(data) {
   const result = await ticketService.handleOutbound(workspace, {
     contactId: data.contactId,
     conversationId: data.conversationId,
-    channel: normalizeChannel(data.messageType || data.messageTypeString),
+    channel: normalizeChannel(data.messageTypeString || data.messageType, data.messageTypeId),
     body: data.body || '',
     ghlMessageId: data.messageId || null,
     userId: data.userId || null,
@@ -316,44 +315,62 @@ router.post('/outbound', async (req, res) => {
   }
 });
 
+// Numeric messageTypeId → canonical channel (authoritative fallback when the string is missing).
+// Campaign/custom variants collapse to their base channel; ACTIVITY ids return null (handled below).
+const ID_TO_CHANNEL = {
+  1: 'Call', 24: 'Call', 13: 'Call', 8: 'Call', 34: 'Call', 10: 'Call', // calls/voicemail variants
+  2: 'SMS', 7: 'SMS', 4: 'SMS', 6: 'SMS', 14: 'SMS', 35: 'SMS', 45: 'SMS', // SMS + campaign/group/review SMS
+  20: 'SMS', 22: 'SMS', // custom SMS / custom-provider SMS
+  3: 'Email', 9: 'Email', 21: 'Email', 23: 'Email', 40: 'Email', // email + campaign/custom/external
+  5: 'WebChat',
+  11: 'FB', 12: 'FB', 32: 'FB', 60: 'FB', 61: 'FB',
+  15: 'GMB', 16: 'GMB',
+  18: 'IG', 33: 'IG',
+  19: 'WhatsApp',
+  29: 'Live_Chat', 30: 'Live_Chat',
+  41: 'TikTok', 42: 'TikTok',
+  43: 'RCS'
+};
+
 /**
- * Map GHL messageType variants to our canonical channel strings.
- * Real-world messageType values are richer than the docs suggest, e.g.:
- *   TYPE_SMS, TYPE_EMAIL, TYPE_CUSTOM_PROVIDER_SMS, TYPE_CUSTOM_PROVIDER_EMAIL,
- *   TYPE_ACTIVITY_CONTACT / TYPE_ACTIVITY_OPPORTUNITY (system activities — NOT messages).
- *
- * Returns null for anything that isn't a real customer-message channel — including ACTIVITY/system
- * types — so the channel filter drops them and we never create a ticket from "DnD enabled" etc.
- * Targets are valid message-type enum values so the stored channel can be replied on directly.
+ * Map a GHL message to our canonical channel string. Reads the messageTypeString first, falling
+ * back to the numeric messageTypeId (always present). Handles the full real-world enum:
+ *   - TYPE_CAMPAIGN_* / TYPE_CUSTOM_* / TYPE_CUSTOM_PROVIDER_* → base channel
+ *   - TYPE_ACTIVITY_* and other system/internal types → null (never become tickets)
+ * Targets are valid send-types so the stored channel can be replied on directly.
  */
-function normalizeChannel(raw) {
-  if (!raw) return null;
-  let v = String(raw).toUpperCase().replace(/^TYPE_/, '');
+function normalizeChannel(raw, messageTypeId) {
+  let v = raw ? String(raw).toUpperCase().replace(/^TYPE_/, '') : '';
 
-  // System/activity pseudo-messages are not support messages — never ticket them.
-  if (v.startsWith('ACTIVITY')) return null;
+  // System/activity/internal pseudo-messages are not support messages.
+  if (v.startsWith('ACTIVITY') || v.startsWith('INTERNAL') || v === 'REVIEW' || v === 'FORM_SUBMISSION') return null;
 
-  // Custom-provider channels: TYPE_CUSTOM_PROVIDER_SMS / _EMAIL → the underlying channel.
-  v = v.replace(/^CUSTOM_PROVIDER_/, '');
+  // Collapse campaign/custom prefixes to the base channel (a campaign email reply is still Email).
+  v = v.replace(/^CAMPAIGN_/, '').replace(/^CUSTOM_PROVIDER_/, '').replace(/^CUSTOM_/, '').replace(/^GROUP_/, '');
 
   const map = {
-    SMS: 'SMS',
-    RCS: 'RCS',
-    EMAIL: 'Email',
-    WHATSAPP: 'WhatsApp',
-    FB: 'FB',
-    FACEBOOK: 'FB',
-    IG: 'IG',
-    INSTAGRAM: 'IG',
-    LIVE_CHAT: 'Live_Chat',
-    WEBCHAT: 'WebChat',
-    GMB: 'GMB',
-    CUSTOM: 'Custom',
-    CALL: 'Call',
-    IVR_CALL: 'Call',
-    VOICEMAIL: 'Call'
+    SMS: 'SMS', RCS: 'RCS', EMAIL: 'Email', WHATSAPP: 'WhatsApp',
+    FB: 'FB', FACEBOOK: 'FB', IG: 'IG', INSTAGRAM: 'IG',
+    LIVE_CHAT: 'Live_Chat', WEBCHAT: 'WebChat', GMB: 'GMB', CUSTOM: 'Custom',
+    CALL: 'Call', IVR_CALL: 'Call', VOICEMAIL: 'Call', MANUAL_CALL: 'Call', MANUAL_SMS: 'SMS',
+    TIKTOK: 'TikTok'
   };
-  return map[v] || null;
+  if (map[v]) return map[v];
+
+  // Fallback: numeric id. ACTIVITY ids (25,26,27,28,31,38,44,51) are intentionally absent → null.
+  return (messageTypeId != null && ID_TO_CHANNEL[Number(messageTypeId)]) || null;
+}
+
+/**
+ * Detect a marketing/automation-originated message. Real signals (per GHL's MessageSource enum +
+ * the campaign messageTypes): source ∈ {workflow, campaign, bulk_actions}, OR a TYPE_CAMPAIGN_* type.
+ * Used by the "Ignore marketing & automation replies" filter.
+ */
+function isAutomatedMessage(data) {
+  const automatedSources = ['workflow', 'campaign', 'bulk_actions'];
+  if (automatedSources.includes(String(data.source || '').toLowerCase())) return true;
+  if (/^TYPE_CAMPAIGN_/.test(String(data.messageTypeString || '').toUpperCase())) return true;
+  return false;
 }
 
 module.exports = router;
