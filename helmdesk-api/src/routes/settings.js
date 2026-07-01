@@ -18,6 +18,7 @@ const ALLOWED = [
   'defaultAssigneeId',
   'slaTargets',
   'autoCloseResolvedDays',
+  'reopenWindowDays',
   'autoReplyEnabled',
   'autoReplyMessage',
   'ticketNumberPrefix',

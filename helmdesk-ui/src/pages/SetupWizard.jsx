@@ -30,6 +30,7 @@ export default function SetupWizard({ workspace, onDone, notify }) {
     defaultAssigneeId: null,
     slaTargets: Object.entries(SLA_PRESETS).map(([priority, v]) => ({ priority, ...v })),
     autoCloseResolvedDays: 7,
+    reopenWindowDays: 14,
     autoReplyEnabled: true,
     ticketNumberPrefix: 'HD-',
     portalEnabled: false
@@ -60,6 +61,7 @@ export default function SetupWizard({ workspace, onDone, notify }) {
           defaultAssigneeId: w.defaultAssigneeId ?? f.defaultAssigneeId,
           slaTargets: w.slaTargets?.length ? w.slaTargets : f.slaTargets,
           autoCloseResolvedDays: w.autoCloseResolvedDays ?? f.autoCloseResolvedDays,
+          reopenWindowDays: w.reopenWindowDays ?? f.reopenWindowDays,
           autoReplyEnabled: w.autoReplyEnabled ?? f.autoReplyEnabled,
           ticketNumberPrefix: w.ticketNumberPrefix || f.ticketNumberPrefix,
           portalEnabled: w.portalEnabled ?? f.portalEnabled
@@ -223,10 +225,24 @@ export default function SetupWizard({ workspace, onDone, notify }) {
                     </div>
                   ))}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 18 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginTop: 18 }}>
                   <div className="field" style={{ margin: 0 }}>
                     <label>Auto-close resolved after (days)</label>
                     <input type="number" value={form.autoCloseResolvedDays} onChange={(e) => set({ autoCloseResolvedDays: +e.target.value })} />
+                  </div>
+                  <div className="field" style={{ margin: 0 }}>
+                    <label>Reopen resolved within</label>
+                    <Select
+                      value={String(form.reopenWindowDays)}
+                      onChange={(v) => set({ reopenWindowDays: +v })}
+                      options={[
+                        { value: '0', label: 'Never — new ticket' },
+                        { value: '3', label: '3 days' },
+                        { value: '7', label: '7 days' },
+                        { value: '14', label: '14 days' },
+                        { value: '30', label: '30 days' }
+                      ]}
+                    />
                   </div>
                   <div className="field" style={{ margin: 0 }}>
                     <label>Ticket number prefix</label>

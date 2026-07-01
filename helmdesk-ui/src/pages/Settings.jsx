@@ -35,6 +35,7 @@ export default function Settings({ onSaved, notify }) {
         defaultAssigneeId: ws.defaultAssigneeId,
         slaTargets: ws.slaTargets,
         autoCloseResolvedDays: ws.autoCloseResolvedDays,
+        reopenWindowDays: ws.reopenWindowDays,
         autoReplyEnabled: ws.autoReplyEnabled,
         autoReplyMessage: ws.autoReplyMessage,
         ticketNumberPrefix: ws.ticketNumberPrefix,
@@ -171,8 +172,23 @@ export default function Settings({ onSaved, notify }) {
                 </div>
               ))}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginTop: 16 }}>
               <div className="field" style={{ margin: 0 }}><label>Auto-close resolved (days)</label><input type="number" value={ws.autoCloseResolvedDays} onChange={(e) => set({ autoCloseResolvedDays: +e.target.value })} /></div>
+              <div className="field" style={{ margin: 0 }}>
+                <label>Reopen resolved within</label>
+                <Select
+                  value={String(ws.reopenWindowDays ?? 14)}
+                  onChange={(v) => set({ reopenWindowDays: +v })}
+                  options={[
+                    { value: '0', label: 'Never — always new ticket' },
+                    { value: '3', label: '3 days' },
+                    { value: '7', label: '7 days' },
+                    { value: '14', label: '14 days' },
+                    { value: '30', label: '30 days' }
+                  ]}
+                />
+                <span className="hint">A reply within this window reopens the resolved ticket instead of creating a new one.</span>
+              </div>
               <div className="field" style={{ margin: 0 }}><label>Ticket number prefix</label><input type="text" value={ws.ticketNumberPrefix} onChange={(e) => set({ ticketNumberPrefix: e.target.value })} /></div>
             </div>
           </div>

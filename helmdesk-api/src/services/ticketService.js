@@ -149,31 +149,29 @@ function matchesKeyword(text, keywords) {
   });
 }
 
-// A customer reply within this window after resolve/close reopens the SAME ticket instead of
-// spawning a new one. Beyond it, a reply is treated as a fresh issue. Configurable per deploy.
-const REOPEN_WINDOW_DAYS = Number(process.env.REOPEN_WINDOW_DAYS || 14);
+// Default reopen window (days) if a workspace hasn't set one. Env override for a global default.
+const DEFAULT_REOPEN_WINDOW_DAYS = Number(process.env.REOPEN_WINDOW_DAYS || 14);
 
 /**
  * Find the ticket an inbound message belongs to (the dedup key). Matches the contact's most recent
  * OPEN ticket; if none, matches a recently resolved/closed one inside the reopen window so a
  * follow-up reply reopens it rather than creating a duplicate.
+ * `reopenWindowDays`: per-workspace. 0 → never reopen (only match still-open tickets).
  */
-function findDedupTicket(locationId, { contactId, conversationId }) {
+function findDedupTicket(locationId, { contactId, conversationId }, reopenWindowDays = DEFAULT_REOPEN_WINDOW_DAYS) {
   const base = {};
   if (conversationId) base.conversationId = conversationId;
   else if (contactId) base.contactId = contactId;
   else return null;
 
-  const reopenCutoff = new Date(Date.now() - REOPEN_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-  return Ticket.findOne({
-    locationId,
-    ...base,
-    $or: [
-      { status: { $in: OPEN_STATUSES } },
-      // recently resolved/closed → eligible to reopen
-      { status: { $in: ['resolved', 'closed'] }, lastActivityAt: { $gte: reopenCutoff } }
-    ]
-  }).sort({ lastActivityAt: -1 });
+  const windowDays = Number.isFinite(reopenWindowDays) ? reopenWindowDays : DEFAULT_REOPEN_WINDOW_DAYS;
+  const orClauses = [{ status: { $in: OPEN_STATUSES } }];
+  if (windowDays > 0) {
+    // recently resolved/closed → eligible to reopen
+    const reopenCutoff = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
+    orClauses.push({ status: { $in: ['resolved', 'closed'] }, lastActivityAt: { $gte: reopenCutoff } });
+  }
+  return Ticket.findOne({ locationId, ...base, $or: orClauses }).sort({ lastActivityAt: -1 });
 }
 
 /**
@@ -202,7 +200,7 @@ async function handleInbound(workspace, payload) {
   }
 
   // Dedup: append to the contact's open ticket — or reopen a recently resolved/closed one.
-  const existing = await findDedupTicket(workspace.locationId, { contactId, conversationId });
+  const existing = await findDedupTicket(workspace.locationId, { contactId, conversationId }, workspace.reopenWindowDays);
   if (existing) {
     const wasClosed = existing.status === 'resolved' || existing.status === 'closed';
     await appendCustomerMessage(workspace, existing, { body, channel, ghlMessageId, contactName, at });
@@ -244,7 +242,7 @@ async function handleOutbound(workspace, { contactId, conversationId, channel, b
 
   // 2. Find the contact's open ticket. If there's none, an outbound with no ticket is just a
   //    proactive/outbound-only message — we don't create a ticket from it.
-  const ticket = await findDedupTicket(workspace.locationId, { contactId, conversationId });
+  const ticket = await findDedupTicket(workspace.locationId, { contactId, conversationId }, workspace.reopenWindowDays);
   if (!ticket) return { action: 'ignored', reason: 'no_open_ticket' };
 
   // 3. Record the external reply.
