@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../lib/api.js';
-import { fmtMins, STATUS_LABEL } from '../lib/format.js';
+import { fmtMins, STATUS_LABEL, labelChannel } from '../lib/format.js';
 import { useAutoRefresh } from '../lib/useAutoRefresh.js';
 
 /**
@@ -88,7 +88,7 @@ export default function Dashboard() {
             const maxCh = Math.max(1, ...byChannel.map((c) => c.count));
             return byChannel.map((c) => (
               <div key={c.channel} className="bar-row">
-                <span className="name">{channelLabel(c.channel)}</span>
+                <span className="name">{labelChannel(c.channel === 'unknown' ? 'Other' : c.channel)}</span>
                 <div className="bar-track"><div className="bar-fill" style={{ width: `${(c.count / maxCh) * 100}%`, background: 'var(--info)' }} /></div>
                 <span className="val">{c.count}</span>
               </div>
@@ -100,13 +100,6 @@ export default function Dashboard() {
   );
 }
 
-function channelLabel(c) {
-  return {
-    SMS: 'SMS', Email: 'Email', WhatsApp: 'WhatsApp', FB: 'Facebook', IG: 'Instagram',
-    Live_Chat: 'Live Chat', WebChat: 'Web Chat', GMB: 'Google', Call: 'Call',
-    RCS: 'RCS', Custom: 'Custom', portal: 'Portal', unknown: 'Other'
-  }[c] || c;
-}
 
 function Kpi({ n, l, tone }) {
   return <div className={`kpi ${tone || ''}`}><div className="n">{n}</div><div className="l">{l}</div></div>;

@@ -374,6 +374,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .msg.customer { background: var(--panel); border: 1px solid var(--line); align-self: flex-start; }
 .msg.reply { background: var(--info-bg); border: 1px solid #cfe0f3; align-self: flex-end; }
 .msg.note { background: #fff8ec; border: 1px dashed var(--accent); align-self: stretch; max-width: 100%; }
+.msg.system { background: var(--paper); border: 1px dashed var(--line); align-self: flex-end; }
+.msg.system .meta { color: var(--slate-2); }
 .msg.note .meta { color: var(--accent-dk); }
 .composer { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 14px; box-shadow: var(--shadow); }
 .composer-tabs { display: flex; gap: 6px; margin-bottom: 10px; }

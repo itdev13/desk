@@ -16,6 +16,21 @@ export const CHANNELS = [
   { key: 'GMB', label: 'Google' }
 ];
 
+/** Friendly channel label (shared across Queue, Board, TicketDetail). */
+export function labelChannel(c) {
+  return {
+    SMS: 'SMS', Email: 'Email', WhatsApp: 'WhatsApp', FB: 'Facebook', IG: 'Instagram',
+    Live_Chat: 'Live Chat', WebChat: 'Web Chat', GMB: 'Google', Call: 'Call', RCS: 'RCS',
+    Custom: 'Custom Provider', CustomSMS: 'Custom Provider SMS', CustomEmail: 'Custom Provider Email',
+    portal: 'Portal'
+  }[c] || c || '—';
+}
+
+/** Is this a custom conversation-provider channel? (Shows the ⓘ provider-id hint.) */
+export function isCustomProviderChannel(c) {
+  return c === 'Custom' || c === 'CustomSMS' || c === 'CustomEmail';
+}
+
 /** A deterministic avatar color from a string. */
 const PALETTE = ['#b97e2c', '#3b6fb0', '#2f9e6b', '#5a687f', '#8e5db0', '#c0612f'];
 export function avatarColor(seed = '') {

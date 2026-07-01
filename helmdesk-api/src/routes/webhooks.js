@@ -345,8 +345,14 @@ function normalizeChannel(raw, messageTypeId) {
   // System/activity/internal pseudo-messages are not support messages.
   if (v.startsWith('ACTIVITY') || v.startsWith('INTERNAL') || v === 'REVIEW' || v === 'FORM_SUBMISSION') return null;
 
-  // Collapse campaign/custom prefixes to the base channel (a campaign email reply is still Email).
-  v = v.replace(/^CAMPAIGN_/, '').replace(/^CUSTOM_PROVIDER_/, '').replace(/^CUSTOM_/, '').replace(/^GROUP_/, '');
+  // Custom conversation providers get their OWN channel value (CustomSMS / CustomEmail) so the UI
+  // can label them "Custom Provider SMS/Email" and the send path knows to use type:Custom + the
+  // providerId. (Ids 22/23; strings TYPE_CUSTOM_PROVIDER_SMS/_EMAIL.)
+  if (v === 'CUSTOM_PROVIDER_SMS' || Number(messageTypeId) === 22) return 'CustomSMS';
+  if (v === 'CUSTOM_PROVIDER_EMAIL' || Number(messageTypeId) === 23) return 'CustomEmail';
+
+  // Collapse remaining campaign/custom prefixes to the base channel (a campaign email is still Email).
+  v = v.replace(/^CAMPAIGN_/, '').replace(/^CUSTOM_/, '').replace(/^GROUP_/, '');
 
   const map = {
     SMS: 'SMS', RCS: 'RCS', EMAIL: 'Email', WHATSAPP: 'WhatsApp',

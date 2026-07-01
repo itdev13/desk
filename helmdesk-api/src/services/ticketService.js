@@ -38,6 +38,20 @@ async function recordEvent(ticket, type, { actorType = 'system', actorId = null,
   }
 }
 
+/**
+ * Resolve a display name for an agent. Prefer the name passed from the session; if missing, look it
+ * up from the synced Agent record by GHL userId. Falls back to 'Agent' only if truly unknown.
+ * This is why the userId matters — it links a reply to the real user's name.
+ */
+async function agentNameFor(locationId, userId, fallbackName) {
+  if (fallbackName) return fallbackName;
+  if (userId) {
+    const a = await Agent.findOne({ locationId, ghlUserId: userId }).select('name').lean();
+    if (a?.name) return a.name;
+  }
+  return 'Agent';
+}
+
 /** Compute SLA due dates from the workspace policy and a creation time. */
 function computeSla(workspace, priority, from = new Date()) {
   const policy = workspace.slaFor(priority);
@@ -99,9 +113,9 @@ function shouldAccept(workspace, { channel, body, isAutomated }) {
   if (!workspace.setupComplete) return { accept: false, reason: 'setup_incomplete' };
 
   // 1. Channel gate — always applies. The message must be on a designated support channel.
-  //    Custom-conversation-provider messages (channel "Custom") are accepted when the single
-  //    "accept conversation providers" toggle is on, without listing individual support channels.
-  const isCustomProvider = channel === 'Custom';
+  //    Custom-conversation-provider messages (Custom / CustomSMS / CustomEmail) are accepted when
+  //    the single "accept conversation providers" toggle is on, without listing them as channels.
+  const isCustomProvider = channel === 'Custom' || channel === 'CustomSMS' || channel === 'CustomEmail';
   const channelAllowed =
     (channel && workspace.supportChannels.includes(channel)) ||
     (isCustomProvider && workspace.acceptConversationProviders);
@@ -246,7 +260,8 @@ async function handleOutbound(workspace, { contactId, conversationId, channel, b
   const ticket = await findDedupTicket(workspace.locationId, { contactId, conversationId }, workspace.reopenWindowDays);
   if (!ticket) return { action: 'ignored', reason: 'no_open_ticket' };
 
-  // 3. Record the external reply.
+  // 3. Record the external reply, attributed to the sending GHL user (resolved from the roster).
+  const authorName = await agentNameFor(workspace.locationId, userId, null);
   await Comment.create({
     locationId: workspace.locationId,
     ticketId: ticket._id,
@@ -254,7 +269,7 @@ async function handleOutbound(workspace, { contactId, conversationId, channel, b
     body,
     authorType: 'agent',
     authorId: userId,
-    authorName: null, // we don't resolve the GHL user name here; the queue still shows the ticket
+    authorName,
     channel: channel || ticket.channel,
     ghlMessageId
   });
@@ -415,11 +430,25 @@ async function appendCustomerMessage(workspace, ticket, { body, channel, ghlMess
   return ticket;
 }
 
-/** Send the configured auto-reply to the customer. */
+/** Send the configured auto-reply to the customer, and record it as a SYSTEM reply (not "Agent"). */
 async function sendAutoReply(workspace, ticket) {
   const payload = buildSendPayload(ticket, workspace.autoReplyMessage);
   if (!payload) return;
-  await ghlService.sendMessage(workspace.locationId, payload);
+  const res = await ghlService.sendMessage(workspace.locationId, payload);
+  const ghlMessageId = res?.messageId || res?.id || null;
+  // Record it ourselves as a system message. Storing the ghlMessageId means the OutboundMessage
+  // webhook that echoes this send will dedup against it (not re-record it as an "Agent" reply).
+  await Comment.create({
+    locationId: workspace.locationId,
+    ticketId: ticket._id,
+    kind: 'reply',
+    body: workspace.autoReplyMessage,
+    authorType: 'system',
+    authorId: null,
+    authorName: 'Auto-reply',
+    channel: ticket.channel,
+    ghlMessageId
+  });
 }
 
 /**
@@ -507,6 +536,7 @@ async function replyToCustomer(workspace, ticket, { body, agent, html, subject }
   const res = await ghlService.sendMessage(workspace.locationId, payload);
   ghlMessageId = res?.messageId || res?.id || null;
 
+  const authorName = await agentNameFor(ticket.locationId, agent?.id, agent?.name);
   await Comment.create({
     locationId: ticket.locationId,
     ticketId: ticket._id,
@@ -514,7 +544,7 @@ async function replyToCustomer(workspace, ticket, { body, agent, html, subject }
     body,
     authorType: 'agent',
     authorId: agent?.id,
-    authorName: agent?.name,
+    authorName,
     channel: ticket.channel,
     ghlMessageId
   });
@@ -532,6 +562,7 @@ async function replyToCustomer(workspace, ticket, { body, agent, html, subject }
 
 /** Add an internal note (never sent to the customer). Supports @mentions. */
 async function addNote(ticket, { body, agent, mentions = [] }) {
+  const authorName = await agentNameFor(ticket.locationId, agent?.id, agent?.name);
   await Comment.create({
     locationId: ticket.locationId,
     ticketId: ticket._id,
@@ -539,11 +570,11 @@ async function addNote(ticket, { body, agent, mentions = [] }) {
     body,
     authorType: 'agent',
     authorId: agent?.id,
-    authorName: agent?.name,
+    authorName,
     mentions
   });
   ticket.lastActivityAt = new Date();
-  await recordEvent(ticket, 'note_added', { actorType: 'agent', actorId: agent?.id, actorName: agent?.name, meta: { mentions } });
+  await recordEvent(ticket, 'note_added', { actorType: 'agent', actorId: agent?.id, actorName: authorName, meta: { mentions } });
   await ticket.save();
   return ticket;
 }

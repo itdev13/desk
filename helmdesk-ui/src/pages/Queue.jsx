@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../lib/api.js';
-import { ago, slaDisplay, fmtMins } from '../lib/format.js';
+import { ago, slaDisplay, fmtMins, labelChannel } from '../lib/format.js';
 import { Icon, PriorityPill, Avatar } from '../components/ui.jsx';
 import NewTicketModal from '../components/NewTicketModal.jsx';
 import { useAutoRefresh } from '../lib/useAutoRefresh.js';
@@ -130,6 +130,3 @@ function TicketRow({ t, onOpen }) {
   );
 }
 
-function labelChannel(c) {
-  return { Live_Chat: 'Live Chat', WebChat: 'Web Chat', FB: 'Facebook', IG: 'Instagram', GMB: 'Google', portal: 'Portal' }[c] || c;
-}

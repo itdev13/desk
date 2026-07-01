@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../lib/api.js';
-import { ago, slaDisplay, STATUS_LABEL, PRIORITY_LABEL } from '../lib/format.js';
+import { ago, slaDisplay, STATUS_LABEL, PRIORITY_LABEL, labelChannel, isCustomProviderChannel } from '../lib/format.js';
 import { Icon, PriorityPill, Avatar, Select } from '../components/ui.jsx';
 
 /**
@@ -79,15 +79,21 @@ export default function TicketDetail({ id, onBack, user, notify }) {
           {/* Thread + composer */}
           <div>
             <div className="thread">
-              {comments.map((c) => (
-                <div key={c._id} className={`msg ${c.kind}`}>
+              {comments.map((c) => {
+                const author = c.authorType === 'system'
+                  ? (c.authorName || 'Auto-reply')
+                  : c.kind === 'customer' ? (c.authorName || 'Customer')
+                  : c.kind === 'note' ? `${c.authorName || 'Agent'} · internal note`
+                  : (c.authorName || 'Agent');
+                return (
+                <div key={c._id} className={`msg ${c.kind} ${c.authorType === 'system' ? 'system' : ''}`}>
                   <div className="meta">
-                    {c.kind === 'customer' ? (c.authorName || 'Customer') : c.kind === 'note' ? `${c.authorName || 'Agent'} · internal note` : (c.authorName || 'Agent')}
-                    {' · '}{ago(c.createdAt)}
+                    {author}{' · '}{ago(c.createdAt)}
                   </div>
                   <div style={{ whiteSpace: 'pre-wrap' }}>{c.body}</div>
                 </div>
-              ))}
+                );
+              })}
               {comments.length === 0 && <div className="muted" style={{ textAlign: 'center', padding: 20 }}>No messages yet.</div>}
             </div>
 
@@ -175,7 +181,14 @@ export default function TicketDetail({ id, onBack, user, notify }) {
                   <div className="muted" style={{ fontSize: 12 }}>{ticket.contactEmail || ticket.channel}</div>
                 </div>
               </div>
-              <div className="kv"><span className="k">Channel</span><span>{labelChannel(ticket.channel)}</span></div>
+              <div className="kv"><span className="k">Channel</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  {labelChannel(ticket.channel)}
+                  {isCustomProviderChannel(ticket.channel) && ticket.conversationProviderId && (
+                    <span className="info-dot" title={`Conversation provider id: ${ticket.conversationProviderId}`}>i</span>
+                  )}
+                </span>
+              </div>
               <div className="kv"><span className="k">Source</span><span style={{ textTransform: 'capitalize' }}>{ticket.source}</span></div>
               <div className="kv"><span className="k">Opened</span><span>{ago(ticket.createdAt)}</span></div>
               <div className="kv"><span className="k">Messages</span><span>{ticket.messageCount}</span></div>
@@ -193,6 +206,3 @@ export default function TicketDetail({ id, onBack, user, notify }) {
   );
 }
 
-function labelChannel(c) {
-  return { Live_Chat: 'Live Chat', WebChat: 'Web Chat', FB: 'Facebook', IG: 'Instagram', GMB: 'Google', portal: 'Portal', SMS: 'SMS', Email: 'Email', WhatsApp: 'WhatsApp', RCS: 'RCS', Custom: 'Custom' }[c] || c || '—';
-}

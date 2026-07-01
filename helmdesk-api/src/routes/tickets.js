@@ -40,10 +40,17 @@ router.get('/', async (req, res) => {
 
     const query = { locationId };
 
-    if (view === 'mine') query.assigneeId = req.auth.userId;
-    else if (view === 'unassigned') query.assigneeId = null;
-    else if (view === 'open') query.status = { $in: Ticket.OPEN_STATUSES };
-    else if (view === 'overdue') {
+    // 'mine' and 'unassigned' are scoped to OPEN tickets so the lists match the KPI counts
+    // (a resolved/closed ticket isn't "waiting on me" or "needs picking up").
+    if (view === 'mine') {
+      query.assigneeId = req.auth.userId;
+      query.status = { $in: Ticket.OPEN_STATUSES };
+    } else if (view === 'unassigned') {
+      query.assigneeId = null;
+      query.status = { $in: Ticket.OPEN_STATUSES };
+    } else if (view === 'open') {
+      query.status = { $in: Ticket.OPEN_STATUSES };
+    } else if (view === 'overdue') {
       query.status = { $in: Ticket.OPEN_STATUSES };
       query.breached = true;
     }
