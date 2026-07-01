@@ -282,6 +282,16 @@ button { font-family: inherit; cursor: pointer; }
 .sla-preview-list .dot.urgent { background: var(--crit); }
 .sla-preview-list .dot.high { background: var(--warn); }
 .sla-preview-list .dot.normal { background: var(--info); }
+.sla-preview-note { margin-top: 12px; padding-top: 12px; border-top: 1px solid #f0dcc0; }
+.sla-preview-note-title {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--accent-dk); margin-bottom: 8px;
+}
+.sla-preview-note ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.sla-preview-note li { position: relative; padding-left: 18px; font-size: 12.5px; color: var(--slate-2); line-height: 1.5; }
+.sla-preview-note li::before { content: ''; position: absolute; left: 4px; top: 8px; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.sla-preview-note li b { color: var(--ink); font-weight: 700; }
+.sla-preview-note li em { font-style: normal; font-weight: 600; color: var(--accent-dk); }
 
 /* ── Info dot (ⓘ tooltip) ── */
 .info-dot {

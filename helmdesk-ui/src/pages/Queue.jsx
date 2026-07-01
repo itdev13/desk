@@ -19,10 +19,12 @@ const AGENT_VIEWS = [
   { key: 'all', label: 'All' }
 ];
 
-export default function Queue({ onOpen, notify, onChange, user }) {
+export default function Queue({ onOpen, notify, onChange, user, viewOverride }) {
   const isAdmin = user?.role === 'admin';
   const VIEWS = isAdmin ? ADMIN_VIEWS : AGENT_VIEWS;
-  const [view, setView] = useState('open');
+  const [view, setView] = useState(viewOverride || 'open');
+  // When the nav drives the filter (e.g. clicking the top "Overdue" tab), sync the chip selection.
+  useEffect(() => { if (viewOverride) setView(viewOverride); }, [viewOverride]);
   const [q, setQ] = useState('');
   const debouncedQ = useDebounce(q, 350); // search fires 350ms after typing stops
   const [tickets, setTickets] = useState([]);

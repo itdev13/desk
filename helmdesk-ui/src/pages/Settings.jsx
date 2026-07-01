@@ -38,6 +38,15 @@ export function SlaPreview({ targets }) {
           );
         })}
       </ul>
+      <div className="sla-preview-note">
+        <div className="sla-preview-note-title">What happens when a target is missed</div>
+        <ul>
+          <li><b>First-response target</b> — the clock stops the moment an agent sends the first reply. If it isn't met in time, the ticket is flagged <em>breached</em>.</li>
+          <li><b>Resolve target</b> — measured until the ticket is marked <em>Resolved</em>. Miss it and the ticket is flagged <em>breached</em>.</li>
+          <li>Clocks <b>pause</b> while a ticket is <em>Pending / On hold</em> (waiting on the customer), so you're never penalised for their response time.</li>
+          <li>A breached ticket turns <b>red</b>, surfaces under the <b>Overdue</b> filter, and drops out of your <b>In-SLA %</b>. It's a visibility flag only — nothing is auto-closed or reassigned.</li>
+        </ul>
+      </div>
     </div>
   );
 }

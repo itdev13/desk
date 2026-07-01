@@ -22,6 +22,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [sub, setSub] = useState(null);
   const [view, setView] = useState('queue'); // queue | board | dashboard | team | settings
+  const [queueView, setQueueView] = useState('open'); // which filter the Queue should show
   const [openTicketId, setOpenTicketId] = useState(null);
   const [counts, setCounts] = useState({});
   const [toast, setToast] = useState({ message: '', error: false });
@@ -104,15 +105,16 @@ export default function App() {
         workspace={workspace}
         sub={sub}
         view={view}
+        queueView={queueView}
         counts={counts}
         isAdmin={user?.role === 'admin'}
-        onNav={(v) => { setOpenTicketId(null); setView(v); }}
+        onNav={(v, qv) => { setOpenTicketId(null); setView(v); if (qv) setQueueView(qv); }}
       />
       <div className="main">
         {openTicketId ? (
           <TicketDetail id={openTicketId} onBack={closeTicket} user={user} notify={notify} onChange={refreshCounts} />
         ) : view === 'queue' ? (
-          <Queue onOpen={goTicket} user={user} notify={notify} onChange={refreshCounts} />
+          <Queue onOpen={goTicket} user={user} notify={notify} onChange={refreshCounts} viewOverride={queueView} />
         ) : view === 'board' ? (
           <Board onOpen={goTicket} />
         ) : view === 'dashboard' ? (
@@ -123,7 +125,7 @@ export default function App() {
           <Settings workspace={workspace} onSaved={setWorkspace} notify={notify} />
         ) : (
           // Non-admins (or unknown view) land on the queue — Settings/Team are admin-only.
-          <Queue onOpen={goTicket} user={user} notify={notify} onChange={refreshCounts} />
+          <Queue onOpen={goTicket} user={user} notify={notify} onChange={refreshCounts} viewOverride={queueView} />
         )}
       </div>
       <Toast message={toast.message} error={toast.error} onDone={() => setToast({ message: '', error: false })} />
@@ -131,7 +133,7 @@ export default function App() {
   );
 }
 
-function TopNav({ workspace, sub, view, counts, isAdmin, onNav }) {
+function TopNav({ workspace, sub, view, queueView, counts, isAdmin, onNav }) {
   const brand = workspace?.brand || { name: 'HelmDesk' };
   const tabs = [
     { key: 'queue', label: 'Queue', icon: 'inbox', count: counts.open },
@@ -155,14 +157,20 @@ function TopNav({ workspace, sub, view, counts, isAdmin, onNav }) {
       </div>
 
       <div className="topnav-tabs">
-        {tabs.map((it) => (
-          <button key={it.key} className={`nav-tab ${view === it.key ? 'active' : ''}`} onClick={() => onNav(it.key)}>
-            <Icon name={it.icon} /> {it.label}
-            {it.count != null && <span className="count">{it.count}</span>}
-          </button>
-        ))}
+        {tabs.map((it) => {
+          // The Queue tab is "active" only when we're on the queue AND not in the Overdue sub-view.
+          const active = it.key === 'queue' ? (view === 'queue' && queueView !== 'overdue') : view === it.key;
+          return (
+            <button key={it.key} className={`nav-tab ${active ? 'active' : ''}`}
+              onClick={() => onNav(it.key, it.key === 'queue' ? 'open' : undefined)}>
+              <Icon name={it.icon} /> {it.label}
+              {it.count != null && <span className="count">{it.count}</span>}
+            </button>
+          );
+        })}
         {counts.overdue > 0 && (
-          <button className="nav-tab alert" onClick={() => onNav('queue')}>
+          <button className={`nav-tab alert ${view === 'queue' && queueView === 'overdue' ? 'active' : ''}`}
+            onClick={() => onNav('queue', 'overdue')}>
             <Icon name="alert" /> Overdue<span className="count">{counts.overdue}</span>
           </button>
         )}
