@@ -68,12 +68,17 @@ button { font-family: inherit; cursor: pointer; }
 .topnav-sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
 .nav-tab {
   display: inline-flex; align-items: center; gap: 8px;
-  padding: 8px 12px; border-radius: 8px; font-size: 13.5px; font-weight: 600;
-  color: var(--slate); border: none; background: none; cursor: pointer;
-  position: relative; transition: background 0.12s, color 0.12s;
+  padding: 7px 13px; border-radius: 9px; font-size: 13.5px; font-weight: 600;
+  color: var(--slate); background: var(--panel); cursor: pointer;
+  border: 1px solid var(--line); box-shadow: 0 1px 0 rgba(15,23,41,0.03);
+  position: relative; transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s, transform 0.08s;
 }
-.nav-tab:hover { background: var(--line-soft); color: var(--ink); }
-.nav-tab.active { color: var(--accent-dk); background: var(--accent-soft); box-shadow: inset 0 -2px 0 var(--accent); }
+.nav-tab:hover { color: var(--ink); border-color: var(--accent); box-shadow: 0 2px 6px rgba(15,23,41,0.08); transform: translateY(-1px); }
+.nav-tab:active { transform: translateY(0); box-shadow: 0 1px 0 rgba(15,23,41,0.05); }
+.nav-tab.active {
+  color: var(--accent-dk); background: var(--accent-soft);
+  border-color: var(--accent); box-shadow: 0 1px 3px rgba(185,126,44,0.25);
+}
 .nav-tab .ico { width: 17px; height: 17px; flex: none; }
 .nav-tab .count {
   font-family: var(--mono); font-size: 11px; font-weight: 700;
