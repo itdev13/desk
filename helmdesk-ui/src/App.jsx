@@ -141,12 +141,15 @@ function TopNav({ workspace, sub, view, queueView, counts, isAdmin, onNav }) {
   const tabs = [
     { key: 'queue', label: 'Queue', icon: 'inbox', count: counts.open },
     { key: 'board', label: 'Board', icon: 'board' },
-    { key: 'dashboard', label: 'Dashboard', icon: 'chart' },
-    { key: 'support', label: 'Support', icon: 'lifebuoy' }
+    { key: 'dashboard', label: 'Dashboard', icon: 'chart' }
   ];
+  // Right-hand group: Support is for everyone; Team/Settings are admin-only.
   const manage = [
-    { key: 'team', label: 'Team', icon: 'users' },
-    { key: 'settings', label: 'Settings', icon: 'gear' }
+    { key: 'support', label: 'Support', icon: 'lifebuoy' },
+    ...(isAdmin ? [
+      { key: 'team', label: 'Team', icon: 'users' },
+      { key: 'settings', label: 'Settings', icon: 'gear' }
+    ] : [])
   ];
   return (
     <nav className="topnav">
@@ -178,16 +181,12 @@ function TopNav({ workspace, sub, view, queueView, counts, isAdmin, onNav }) {
             <Icon name="alert" /> Overdue<span className="count">{counts.overdue}</span>
           </button>
         )}
-        {isAdmin && (
-          <>
-            <span className="topnav-sep" />
-            {manage.map((it) => (
-              <button key={it.key} className={`nav-tab ${view === it.key ? 'active' : ''}`} onClick={() => onNav(it.key)}>
-                <Icon name={it.icon} /> {it.label}
-              </button>
-            ))}
-          </>
-        )}
+        <span className="topnav-sep" />
+        {manage.map((it) => (
+          <button key={it.key} className={`nav-tab ${view === it.key ? 'active' : ''}`} onClick={() => onNav(it.key)}>
+            <Icon name={it.icon} /> {it.label}
+          </button>
+        ))}
       </div>
 
       <div className="topnav-right">

@@ -258,7 +258,6 @@ export default function Settings({ onSaved, notify }) {
               </div>
               <div className="field" style={{ margin: 0 }}><label>Ticket number prefix</label><input type="text" value={ws.ticketNumberPrefix} onChange={(e) => set({ ticketNumberPrefix: e.target.value })} /></div>
             </div>
-            <SlaPreview targets={ws.slaTargets} />
           </div>
         )}
 
@@ -289,6 +288,9 @@ export default function Settings({ onSaved, notify }) {
             <Icon name="check" size={15} /> {saving ? 'Saving…' : 'Save changes'}
           </button>
         </div>
+
+        {/* Reference info sits below the save action — it's read-only guidance, not a setting. */}
+        {tab === 'assignment' && <SlaPreview targets={ws.slaTargets} />}
       </div>
     </>
   );

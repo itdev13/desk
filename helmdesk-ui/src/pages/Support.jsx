@@ -65,7 +65,7 @@ export default function Support({ notify }) {
           <form onSubmit={sendContact} style={{ marginTop: 16 }}>
             <div className="field">
               <label>Subject</label>
-              <input value={form.subject} maxLength={140}
+              <input type="text" value={form.subject} maxLength={140}
                 placeholder="e.g. How do I route tickets to a specific agent?"
                 onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} />
             </div>
