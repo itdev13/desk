@@ -87,6 +87,7 @@ class HelmDeskApp {
     this.app.use('/api/agents', require('./routes/agents'));
     this.app.use('/api/dashboard', require('./routes/dashboard'));
     this.app.use('/api/subscription', require('./routes/subscription'));
+    this.app.use('/api/support', require('./routes/support'));
     this.app.use('/portal', require('./routes/portal')); // public, unauthenticated intake
 
     // Serve the built Custom Page UI (if present) at /app, same-origin for the GHL iframe.

@@ -10,6 +10,7 @@ import TicketDetail from './pages/TicketDetail.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Settings from './pages/Settings.jsx';
 import Team from './pages/Team.jsx';
+import Support from './pages/Support.jsx';
 
 /**
  * App root. Resolves the GHL session (SSO blob or ?locationId dev fallback), then either runs the
@@ -119,6 +120,8 @@ export default function App() {
           <Board onOpen={goTicket} />
         ) : view === 'dashboard' ? (
           <Dashboard />
+        ) : view === 'support' ? (
+          <Support notify={notify} />
         ) : view === 'team' && user?.role === 'admin' ? (
           <Team notify={notify} />
         ) : view === 'settings' && user?.role === 'admin' ? (
@@ -138,7 +141,8 @@ function TopNav({ workspace, sub, view, queueView, counts, isAdmin, onNav }) {
   const tabs = [
     { key: 'queue', label: 'Queue', icon: 'inbox', count: counts.open },
     { key: 'board', label: 'Board', icon: 'board' },
-    { key: 'dashboard', label: 'Dashboard', icon: 'chart' }
+    { key: 'dashboard', label: 'Dashboard', icon: 'chart' },
+    { key: 'support', label: 'Support', icon: 'lifebuoy' }
   ];
   const manage = [
     { key: 'team', label: 'Team', icon: 'users' },

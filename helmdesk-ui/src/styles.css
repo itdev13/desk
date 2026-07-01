@@ -267,7 +267,7 @@ button { font-family: inherit; cursor: pointer; }
 
 /* ── SLA live plain-English preview ── */
 .sla-preview {
-  margin-top: 14px; padding: 14px 16px;
+  margin-top: 22px; padding: 14px 16px;
   background: var(--accent-soft); border: 1px solid #f0dcc0; border-radius: 10px;
 }
 .sla-preview-title {
@@ -452,3 +452,20 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   .detail { grid-template-columns: 1fr; }
   .dash-grid { grid-template-columns: 1fr; }
 }
+
+/* ── Support tab ── */
+.support-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+.support-note { font-size: 13px; color: var(--slate); line-height: 1.5; }
+.support-price { display: flex; align-items: baseline; gap: 8px; margin-bottom: 14px; }
+.support-price .amt { font-size: 34px; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; }
+.support-price .per { font-size: 13px; color: var(--slate); }
+.support-perks { list-style: none; margin: 0 0 18px; padding: 0; display: grid; gap: 8px; }
+.support-perks li { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-3); }
+.support-perks li .ico { color: var(--good); flex: none; }
+.support-fineprint { margin: 12px 0 0; font-size: 11.5px; color: var(--slate-2); line-height: 1.5; }
+.support-paid-ok {
+  display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 9px;
+  background: var(--good-bg); color: var(--good); font-size: 13px; font-weight: 600;
+}
+.support-paid-ok .ico { flex: none; }
+@media (max-width: 860px) { .support-grid { grid-template-columns: 1fr; } }

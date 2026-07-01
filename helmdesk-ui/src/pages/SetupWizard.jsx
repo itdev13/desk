@@ -231,7 +231,6 @@ export default function SetupWizard({ workspace, onDone, notify }) {
                     </div>
                   ))}
                 </div>
-                <SlaPreview targets={form.slaTargets} />
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginTop: 18 }}>
                   <div className="field" style={{ margin: 0 }}>
                     <label>Auto-close resolved after (days)</label>
@@ -256,6 +255,7 @@ export default function SetupWizard({ workspace, onDone, notify }) {
                     <input type="text" value={form.ticketNumberPrefix} onChange={(e) => set({ ticketNumberPrefix: e.target.value })} />
                   </div>
                 </div>
+                <SlaPreview targets={form.slaTargets} />
                 <div className="toggle-row" style={{ marginTop: 10 }}>
                   <div>
                     <div className="t-label">Enable client portal intake</div>

@@ -382,6 +382,47 @@ class GHLService {
       return [];
     }
   }
+
+  // ── Marketplace billing (one-time wallet charge) ─────────────────────────────
+  /**
+   * Charge the agency's GHL wallet a one-time amount via the marketplace billing API.
+   * Used for the paid onboarding call ($2 / 30 min) — this is revenue we collect, not a
+   * per-use API cost. Requires GHL_APP_ID and a meter created in the marketplace dashboard
+   * (GHL_ONBOARDING_METER_ID). Idempotent per `eventId`.
+   *
+   * Returns { chargeId }. Throws with err.insufficientFunds / err.walletScope on a funds failure.
+   */
+  async chargeWallet({ companyId, locationId, meterId, amountUsd, units = 1, eventId, description }) {
+    const accessToken = await this.getValidToken(locationId);
+    const price = Number((amountUsd / units).toFixed(4));
+    try {
+      const { data } = await axios.post(
+        `${this.baseURL}/marketplace/billing/charges`,
+        {
+          companyId,
+          meterId,
+          units,
+          price,
+          appId: process.env.GHL_APP_ID,
+          eventId,
+          locationId,
+          description
+        },
+        { headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json', Version: this.version } }
+      );
+      const chargeId = data.chargeId || data.id || data._id;
+      logger.info('Wallet charge successful', { locationId, companyId, chargeId, amountUsd });
+      return { chargeId, raw: data };
+    } catch (error) {
+      const ghlMsg = error.response?.data?.message || error.message || '';
+      logger.error('Wallet charge failed', { locationId, companyId, ghlError: error.response?.data || ghlMsg });
+      const err = new Error(ghlMsg || 'Payment failed. Please check your wallet balance.');
+      err.insufficientFunds = /insufficient|not enough funds|low balance/i.test(ghlMsg);
+      err.walletScope = /agency/i.test(ghlMsg) ? 'agency' : /location|sub-?account/i.test(ghlMsg) ? 'location' : null;
+      err.status = err.insufficientFunds ? 402 : 502;
+      throw err;
+    }
+  }
 }
 
 module.exports = new GHLService();

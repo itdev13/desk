@@ -235,7 +235,6 @@ export default function Settings({ onSaved, notify }) {
                 </div>
               ))}
             </div>
-            <SlaPreview targets={ws.slaTargets} />
             <div style={{ marginTop: 24 }}>
               <SectionHeader icon="hash" title="Ticket lifecycle"
                 description="What happens after a ticket is resolved, and how ticket numbers look." />
@@ -259,6 +258,7 @@ export default function Settings({ onSaved, notify }) {
               </div>
               <div className="field" style={{ margin: 0 }}><label>Ticket number prefix</label><input type="text" value={ws.ticketNumberPrefix} onChange={(e) => set({ ticketNumberPrefix: e.target.value })} /></div>
             </div>
+            <SlaPreview targets={ws.slaTargets} />
           </div>
         )}
 

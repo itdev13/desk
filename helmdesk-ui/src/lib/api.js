@@ -70,5 +70,10 @@ export const api = {
   trend: (days = 14) => request('/api/dashboard/trend', { params: { days } }),
 
   // Subscription
-  subscription: () => request('/api/subscription/status')
+  subscription: () => request('/api/subscription/status'),
+
+  // Support
+  supportConfig: () => request('/api/support/config'),
+  supportContact: (body) => request('/api/support/contact', { method: 'POST', body }),
+  bookOnboardingCall: () => request('/api/support/onboarding-call', { method: 'POST' })
 };
