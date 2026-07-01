@@ -130,7 +130,7 @@ button { font-family: inherit; cursor: pointer; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ── Content paddings ── */
-.page { padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+.page { padding: 24px; display: flex; flex-direction: column; gap: 5px; }
 
 /* ── KPI strip ── */
 .kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }

@@ -80,13 +80,34 @@ export function slaDisplay(ticket) {
   return { text: fmtDur(mins), sub: label, tone };
 }
 
+/**
+ * Human duration in natural units — shows the two most-significant non-zero units, e.g.
+ * 45 → "45m", 73 → "1h 13m", 1500 → "1d 1h", 44700 → "1mo 1d", 526000 → "1y".
+ * Used for both the SLA countdown and the breach overage.
+ */
 function fmtDur(mins) {
-  if (mins < 60) return `${mins}m`;
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  if (h < 24) return m ? `${h}:${String(m).padStart(2, '0')}` : `${h}h`;
-  const d = Math.floor(h / 24);
-  return `${d}d ${h % 24}h`;
+  if (mins < 1) return '0m';
+  const MIN = 1, HOUR = 60, DAY = 60 * 24, MONTH = DAY * 30, YEAR = DAY * 365;
+  const units = [
+    { v: YEAR, s: 'y' },
+    { v: MONTH, s: 'mo' },
+    { v: DAY, s: 'd' },
+    { v: HOUR, s: 'h' },
+    { v: MIN, s: 'm' }
+  ];
+  const parts = [];
+  let rem = mins;
+  for (const u of units) {
+    if (rem >= u.v) {
+      const n = Math.floor(rem / u.v);
+      rem -= n * u.v;
+      parts.push(`${n}${u.s}`);
+      if (parts.length === 2) break;
+    } else if (parts.length) {
+      break; // stop once we've started, so we show two *consecutive* units (e.g. 1d 1h, not 1d 30m)
+    }
+  }
+  return parts.join(' ') || '0m';
 }
 
 export function fmtMins(mins) {
