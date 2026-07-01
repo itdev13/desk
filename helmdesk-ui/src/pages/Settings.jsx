@@ -1,7 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { api, portalUrl } from '../lib/api.js';
 import { CHANNELS } from '../lib/format.js';
-import { Icon, Switch, Select, TagInput } from '../components/ui.jsx';
+import { Icon, Switch, Select, TagInput, SectionHeader } from '../components/ui.jsx';
+
+/** Render a minutes value as a friendly duration, e.g. 60 → "1h", 1440 → "1d", 90 → "1h 30m". */
+export function durationLabel(mins) {
+  const n = Number(mins);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  if (n < 60) return `${n}m`;
+  const h = Math.floor(n / 60), m = n % 60;
+  if (h < 24) return m ? `${h}h ${m}m` : `${h}h`;
+  const d = Math.floor(h / 24), rh = h % 24;
+  return rh ? `${d}d ${rh}h` : `${d}d`;
+}
 
 /** Post-setup configuration. Same fields the wizard collected, plus white-label brand + portal. */
 export default function Settings({ onSaved, notify }) {
@@ -70,8 +81,8 @@ export default function Settings({ onSaved, notify }) {
 
         {tab === 'channels' && (
           <div className="card">
-            <h3>Support channels</h3>
-            <p className="muted" style={{ marginBottom: 14 }}>Only messages on these channels become tickets.</p>
+            <SectionHeader icon="filter" title="Support channels"
+              description="Only messages on the channels you pick become tickets — everything else stays in your inbox untouched." />
             <div className="opt-grid">
               {CHANNELS.map((c) => {
                 const on = ws.supportChannels.includes(c.key);
@@ -137,8 +148,9 @@ export default function Settings({ onSaved, notify }) {
 
         {tab === 'assignment' && (
           <div className="card">
-            <h3>Assignment</h3>
-            <div className="field" style={{ marginTop: 10 }}>
+            <SectionHeader icon="route" title="Assignment"
+              description="How new tickets get an owner when they're created." />
+            <div className="field">
               <label>Mode</label>
               <Select
                 value={ws.assignmentMode}
@@ -162,22 +174,40 @@ export default function Settings({ onSaved, notify }) {
               </div>
             )}
 
-            <h3 style={{ marginTop: 18 }}>SLA targets (minutes)</h3>
-            <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
+            <div style={{ marginTop: 24 }}>
+              <SectionHeader icon="clock" title="Response targets (SLA)"
+                description="How fast you aim to reply and resolve, per priority. Tickets turn red when a target is about to be missed. Values are in minutes." />
+            </div>
+            <div className="sla-grid">
+              <div className="sla-grid-head">
+                <span className="col-lbl">Priority</span>
+                <span className="col-lbl">First response</span>
+                <span className="col-lbl">Resolve</span>
+              </div>
               {ws.slaTargets.map((t, i) => (
-                <div key={t.priority} style={{ display: 'grid', gridTemplateColumns: '90px 1fr 1fr', gap: 10, alignItems: 'center' }}>
+                <div key={t.priority} className="sla-row">
                   <span className={`pill ${t.priority}`}>{t.priority}</span>
-                  <input type="number" value={t.firstResponseMins} onChange={(e) => { const v = [...ws.slaTargets]; v[i] = { ...t, firstResponseMins: +e.target.value }; set({ slaTargets: v }); }} />
-                  <input type="number" value={t.resolveMins} onChange={(e) => { const v = [...ws.slaTargets]; v[i] = { ...t, resolveMins: +e.target.value }; set({ slaTargets: v }); }} />
+                  <div className="sla-input-wrap">
+                    <input type="number" value={t.firstResponseMins} onChange={(e) => { const v = [...ws.slaTargets]; v[i] = { ...t, firstResponseMins: +e.target.value }; set({ slaTargets: v }); }} />
+                    <span className="unit">{durationLabel(t.firstResponseMins)}</span>
+                  </div>
+                  <div className="sla-input-wrap">
+                    <input type="number" value={t.resolveMins} onChange={(e) => { const v = [...ws.slaTargets]; v[i] = { ...t, resolveMins: +e.target.value }; set({ slaTargets: v }); }} />
+                    <span className="unit">{durationLabel(t.resolveMins)}</span>
+                  </div>
                 </div>
               ))}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginTop: 16 }}>
-              <div className="field" style={{ margin: 0 }}><label>Auto-close resolved (days)</label><input type="number" value={ws.autoCloseResolvedDays} onChange={(e) => set({ autoCloseResolvedDays: +e.target.value })} /></div>
+            <div style={{ marginTop: 24 }}>
+              <SectionHeader icon="hash" title="Ticket lifecycle"
+                description="What happens after a ticket is resolved, and how ticket numbers look." />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
+              <div className="field" style={{ margin: 0 }}><label>Auto-close resolved (days)</label><input type="number" value={ws.autoCloseResolvedDays} onChange={(e) => set({ autoCloseResolvedDays: +e.target.value })} /><span className="hint">0 = never auto-close.</span></div>
               <div className="field" style={{ margin: 0 }}>
                 <label>Reopen resolved within</label>
                 <Select
-                  value={String(ws.reopenWindowDays ?? 14)}
+                  value={String(ws.reopenWindowDays ?? 0)}
                   onChange={(v) => set({ reopenWindowDays: +v })}
                   options={[
                     { value: '0', label: 'Never — always new ticket' },
@@ -196,8 +226,8 @@ export default function Settings({ onSaved, notify }) {
 
         {tab === 'brand' && (
           <div className="card">
-            <h3>White-label branding</h3>
-            <p className="muted" style={{ marginBottom: 14 }}>Make HelmDesk your own when you resell it to clients.</p>
+            <SectionHeader icon="palette" title="White-label branding"
+              description="Make HelmDesk your own when you resell it to clients — set the brand name, color, and a public intake form." />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <div className="field" style={{ margin: 0 }}><label>Brand name</label><input type="text" value={ws.brand?.name || ''} onChange={(e) => set({ brand: { ...ws.brand, name: e.target.value } })} /></div>
               <div className="field" style={{ margin: 0 }}><label>Primary color</label><input type="text" value={ws.brand?.primaryColor || ''} onChange={(e) => set({ brand: { ...ws.brand, primaryColor: e.target.value } })} placeholder="#E0A24A" /></div>

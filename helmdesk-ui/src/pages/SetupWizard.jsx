@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api.js';
 import { CHANNELS } from '../lib/format.js';
 import { Icon, Switch, Select } from '../components/ui.jsx';
+import { durationLabel } from './Settings.jsx';
 import { LogoMark } from '../components/Logo.jsx';
 
 /**
@@ -30,7 +31,7 @@ export default function SetupWizard({ workspace, onDone, notify }) {
     defaultAssigneeId: null,
     slaTargets: Object.entries(SLA_PRESETS).map(([priority, v]) => ({ priority, ...v })),
     autoCloseResolvedDays: 7,
-    reopenWindowDays: 14,
+    reopenWindowDays: 0,
     autoReplyEnabled: true,
     ticketNumberPrefix: 'HD-',
     portalEnabled: false
@@ -205,22 +206,27 @@ export default function SetupWizard({ workspace, onDone, notify }) {
             {step === 3 && (
               <>
                 <h2>Response targets &amp; lifecycle</h2>
-                <p className="lead">Set how fast you aim to respond. Tickets turn red when a target is about to be missed.</p>
-                <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
+                <p className="lead">How fast you aim to reply and resolve, per priority (in minutes). Tickets turn red when a target is about to be missed.</p>
+                <div className="sla-grid" style={{ marginTop: 16 }}>
+                  <div className="sla-grid-head">
+                    <span className="col-lbl">Priority</span>
+                    <span className="col-lbl">First response</span>
+                    <span className="col-lbl">Resolve</span>
+                  </div>
                   {form.slaTargets.map((t, i) => (
-                    <div key={t.priority} style={{ display: 'grid', gridTemplateColumns: '90px 1fr 1fr', gap: 10, alignItems: 'center' }}>
+                    <div key={t.priority} className="sla-row">
                       <span className={`pill ${t.priority}`}>{t.priority}</span>
-                      <div className="field" style={{ margin: 0 }}>
-                        <label style={{ fontSize: 11 }}>First reply (min)</label>
+                      <div className="sla-input-wrap">
                         <input type="number" value={t.firstResponseMins} onChange={(e) => {
                           const v = [...form.slaTargets]; v[i] = { ...t, firstResponseMins: +e.target.value }; set({ slaTargets: v });
                         }} />
+                        <span className="unit">{durationLabel(t.firstResponseMins)}</span>
                       </div>
-                      <div className="field" style={{ margin: 0 }}>
-                        <label style={{ fontSize: 11 }}>Resolve (min)</label>
+                      <div className="sla-input-wrap">
                         <input type="number" value={t.resolveMins} onChange={(e) => {
                           const v = [...form.slaTargets]; v[i] = { ...t, resolveMins: +e.target.value }; set({ slaTargets: v });
                         }} />
+                        <span className="unit">{durationLabel(t.resolveMins)}</span>
                       </div>
                     </div>
                   ))}

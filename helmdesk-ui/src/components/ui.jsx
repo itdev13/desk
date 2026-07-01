@@ -15,9 +15,31 @@ export function Icon({ name, size = 17 }) {
     plus: <><path d="M12 5v14M5 12h14" /></>,
     check: <><path d="M20 6 9 17l-5-5" /></>,
     back: <><path d="M19 12H5M12 19l-7-7 7-7" /></>,
-    send: <><path d="m22 2-7 20-4-9-9-4z" /><path d="M22 2 11 13" /></>
+    send: <><path d="m22 2-7 20-4-9-9-4z" /><path d="M22 2 11 13" /></>,
+    clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
+    filter: <><path d="M22 3H2l8 9.46V19l4 2v-8.54z" /></>,
+    route: <><circle cx="6" cy="19" r="3" /><circle cx="18" cy="5" r="3" /><path d="M6 16V9a4 4 0 0 1 4-4h4" /></>,
+    palette: <><circle cx="12" cy="12" r="10" /><circle cx="8" cy="10" r="1" /><circle cx="12" cy="8" r="1" /><circle cx="16" cy="10" r="1" /><path d="M12 22a10 10 0 0 1 0-20c4 0 6 3 6 6a3 3 0 0 1-3 3h-2a2 2 0 0 0-1 3.7A2 2 0 0 1 12 22z" /></>,
+    hash: <><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18" /></>,
+    tag: <><path d="M20.59 13.41 12 22l-9-9V3h10l7.59 7.59a2 2 0 0 1 0 2.82z" /><circle cx="7.5" cy="7.5" r="1.5" /></>
   };
   return <svg {...p} className="ico">{paths[name] || null}</svg>;
+}
+
+/**
+ * A section header: icon in a soft tile + title + one-line description. Makes each settings group
+ * self-explanatory. Used across Settings and the wizard.
+ */
+export function SectionHeader({ icon, title, description }) {
+  return (
+    <div className="section-head">
+      {icon && <span className="section-ico"><Icon name={icon} size={18} /></span>}
+      <div>
+        <div className="section-head-title">{title}</div>
+        {description && <div className="section-head-desc">{description}</div>}
+      </div>
+    </div>
+  );
 }
 
 export function PriorityPill({ priority }) {

@@ -149,8 +149,9 @@ function matchesKeyword(text, keywords) {
   });
 }
 
-// Default reopen window (days) if a workspace hasn't set one. Env override for a global default.
-const DEFAULT_REOPEN_WINDOW_DAYS = Number(process.env.REOPEN_WINDOW_DAYS || 14);
+// Default reopen window (days) if a workspace hasn't set one. Default 0 = always create a new
+// ticket (never reopen a resolved one). Env override sets a different global default.
+const DEFAULT_REOPEN_WINDOW_DAYS = Number(process.env.REOPEN_WINDOW_DAYS ?? 0);
 
 /**
  * Find the ticket an inbound message belongs to (the dedup key). Matches the contact's most recent

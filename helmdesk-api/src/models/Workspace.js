@@ -84,8 +84,9 @@ const workspaceSchema = new mongoose.Schema(
     },
     autoCloseResolvedDays: { type: Number, default: 7 }, // 0 = never auto-close
     // A customer message this many days after a ticket was resolved/closed REOPENS that ticket;
-    // beyond the window, a new ticket is created. 0 = always create a new ticket (never reopen).
-    reopenWindowDays: { type: Number, default: 14 },
+    // beyond the window, a new ticket is created. Default 0 = always create a new ticket (never
+    // reopen); an agency can opt into a reopen window (3/7/14/30) in setup or Settings.
+    reopenWindowDays: { type: Number, default: 0 },
     autoReplyEnabled: { type: Boolean, default: true },
     autoReplyMessage: {
       type: String,
