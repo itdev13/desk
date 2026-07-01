@@ -19,22 +19,25 @@ router.get('/', async (req, res) => {
     const since30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const OPEN = Ticket.OPEN_STATUSES;
 
+    // Non-admins see metrics for THEIR tickets only; admins see the whole workspace.
+    const scope = req.auth.role !== 'admin' ? { locationId, assigneeId: req.auth.userId } : { locationId };
+
     const [byStatus, openTotal, overdue, unassigned, mine, byAgent, slaAgg, resolveAgg, byChannel] = await Promise.all([
       // Counts by status.
-      Ticket.aggregate([{ $match: { locationId } }, { $group: { _id: '$status', n: { $sum: 1 } } }]),
-      Ticket.countDocuments({ locationId, status: { $in: OPEN } }),
-      Ticket.countDocuments({ locationId, status: { $in: OPEN }, breached: true }),
-      Ticket.countDocuments({ locationId, status: { $in: OPEN }, assigneeId: null }),
+      Ticket.aggregate([{ $match: { ...scope } }, { $group: { _id: '$status', n: { $sum: 1 } } }]),
+      Ticket.countDocuments({ ...scope, status: { $in: OPEN } }),
+      Ticket.countDocuments({ ...scope, status: { $in: OPEN }, breached: true }),
+      Ticket.countDocuments({ ...scope, status: { $in: OPEN }, assigneeId: null }),
       Ticket.countDocuments({ locationId, status: { $in: OPEN }, assigneeId: req.auth.userId }),
       // Per-agent open load.
       Ticket.aggregate([
-        { $match: { locationId, status: { $in: OPEN } } },
+        { $match: { ...scope, status: { $in: OPEN } } },
         { $group: { _id: { id: '$assigneeId', name: '$assigneeName' }, n: { $sum: 1 } } },
         { $sort: { n: -1 } }
       ]),
       // SLA adherence over the last 30 days of resolved tickets.
       Ticket.aggregate([
-        { $match: { locationId, resolvedAt: { $gte: since30 } } },
+        { $match: { ...scope, resolvedAt: { $gte: since30 } } },
         {
           $group: {
             _id: null,
@@ -45,13 +48,13 @@ router.get('/', async (req, res) => {
       ]),
       // Average first-response time (minutes) over the last 30 days.
       Ticket.aggregate([
-        { $match: { locationId, firstResponseAt: { $ne: null }, createdAt: { $gte: since30 } } },
+        { $match: { ...scope, firstResponseAt: { $ne: null }, createdAt: { $gte: since30 } } },
         { $project: { mins: { $divide: [{ $subtract: ['$firstResponseAt', '$createdAt'] }, 60000] } } },
         { $group: { _id: null, avgMins: { $avg: '$mins' }, n: { $sum: 1 } } }
       ]),
       // Tickets by channel.
       Ticket.aggregate([
-        { $match: { locationId } },
+        { $match: { ...scope } },
         { $group: { _id: { $ifNull: ['$channel', 'unknown'] }, n: { $sum: 1 } } },
         { $sort: { n: -1 } }
       ])
@@ -92,14 +95,15 @@ router.get('/trend', async (req, res) => {
     const { locationId } = req.auth;
     const days = Math.min(Math.max(parseInt(req.query.days, 10) || 14, 1), 90);
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const scope = req.auth.role !== 'admin' ? { locationId, assigneeId: req.auth.userId } : { locationId };
 
     const [created, resolved] = await Promise.all([
       Ticket.aggregate([
-        { $match: { locationId, createdAt: { $gte: since } } },
+        { $match: { ...scope, createdAt: { $gte: since } } },
         { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, n: { $sum: 1 } } }
       ]),
       Ticket.aggregate([
-        { $match: { locationId, resolvedAt: { $gte: since } } },
+        { $match: { ...scope, resolvedAt: { $gte: since } } },
         { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$resolvedAt' } }, n: { $sum: 1 } } }
       ])
     ]);

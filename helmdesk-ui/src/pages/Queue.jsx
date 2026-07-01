@@ -3,19 +3,28 @@ import { api } from '../lib/api.js';
 import { ago, slaDisplay, fmtMins, labelChannel } from '../lib/format.js';
 import { Icon, PriorityPill, Avatar } from '../components/ui.jsx';
 import NewTicketModal from '../components/NewTicketModal.jsx';
-import { useAutoRefresh } from '../lib/useAutoRefresh.js';
+import { useAutoRefresh, useDebounce } from '../lib/useAutoRefresh.js';
 
-const VIEWS = [
+const ADMIN_VIEWS = [
   { key: 'mine', label: 'My queue' },
   { key: 'unassigned', label: 'Unassigned' },
   { key: 'open', label: 'All open' },
   { key: 'overdue', label: 'Overdue' },
   { key: 'all', label: 'All' }
 ];
+// Agents only see their own tickets (server-enforced), so the cross-queue views don't apply.
+const AGENT_VIEWS = [
+  { key: 'open', label: 'Open' },
+  { key: 'overdue', label: 'Overdue' },
+  { key: 'all', label: 'All' }
+];
 
-export default function Queue({ onOpen, notify, onChange }) {
+export default function Queue({ onOpen, notify, onChange, user }) {
+  const isAdmin = user?.role === 'admin';
+  const VIEWS = isAdmin ? ADMIN_VIEWS : AGENT_VIEWS;
   const [view, setView] = useState('open');
   const [q, setQ] = useState('');
+  const debouncedQ = useDebounce(q, 350); // search fires 350ms after typing stops
   const [tickets, setTickets] = useState([]);
   const [kpis, setKpis] = useState({});
   const [loading, setLoading] = useState(true);
@@ -26,7 +35,7 @@ export default function Queue({ onOpen, notify, onChange }) {
     if (!silent) setLoading(true);
     try {
       const [list, dash] = await Promise.all([
-        api.listTickets({ view, q: q || undefined, limit: 50 }),
+        api.listTickets({ view, q: debouncedQ || undefined, limit: 50 }),
         api.dashboard()
       ]);
       setTickets(list.tickets || []);
@@ -36,7 +45,7 @@ export default function Queue({ onOpen, notify, onChange }) {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [view, q, notify]);
+  }, [view, debouncedQ, notify]);
 
   useEffect(() => { load(); }, [load]);
   // Keep the queue live: poll every 20s + refresh when the tab regains focus.
@@ -57,10 +66,9 @@ export default function Queue({ onOpen, notify, onChange }) {
         <div className="search">
           <Icon name="search" size={15} />
           <input
-            placeholder="Search tickets, contacts, #ref…"
+            placeholder="Search subject, contact name, #ref…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && load()}
           />
         </div>
         <button className="btn btn-accent" onClick={() => setShowNew(true)}><Icon name="plus" size={15} /> New ticket</button>
@@ -70,7 +78,7 @@ export default function Queue({ onOpen, notify, onChange }) {
         <div className="kpis">
           <Kpi n={kpis.open ?? '—'} l="Open" />
           <Kpi n={kpis.overdue ?? 0} l="Overdue" tone={kpis.overdue ? 'alert' : ''} />
-          <Kpi n={kpis.unassigned ?? 0} l="Unassigned" />
+          {isAdmin && <Kpi n={kpis.unassigned ?? 0} l="Unassigned" />}
           <Kpi n={fmtMins(kpis.avgFirstReplyMins)} l="Avg first reply" />
           <Kpi n={kpis.inSlaPct != null ? `${kpis.inSlaPct}%` : '—'} l="In SLA · 30d" tone={kpis.inSlaPct >= 90 ? 'good' : ''} />
         </div>
@@ -126,6 +134,7 @@ function TicketRow({ t, onOpen }) {
         <div className={`sla ${sla.tone}`}>{sla.text}{sla.sub && <small>{sla.sub}</small>}</div>
         {t.assigneeName ? <Avatar name={t.assigneeName} /> : <div className="avatar" style={{ background: '#cdd5e1', color: '#5a687f' }}>?</div>}
       </div>
+      <span className="chev"><Icon name="chevron" size={16} /></span>
     </button>
   );
 }

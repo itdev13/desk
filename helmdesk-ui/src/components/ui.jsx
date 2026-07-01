@@ -21,7 +21,8 @@ export function Icon({ name, size = 17 }) {
     route: <><circle cx="6" cy="19" r="3" /><circle cx="18" cy="5" r="3" /><path d="M6 16V9a4 4 0 0 1 4-4h4" /></>,
     palette: <><circle cx="12" cy="12" r="10" /><circle cx="8" cy="10" r="1" /><circle cx="12" cy="8" r="1" /><circle cx="16" cy="10" r="1" /><path d="M12 22a10 10 0 0 1 0-20c4 0 6 3 6 6a3 3 0 0 1-3 3h-2a2 2 0 0 0-1 3.7A2 2 0 0 1 12 22z" /></>,
     hash: <><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18" /></>,
-    tag: <><path d="M20.59 13.41 12 22l-9-9V3h10l7.59 7.59a2 2 0 0 1 0 2.82z" /><circle cx="7.5" cy="7.5" r="1.5" /></>
+    tag: <><path d="M20.59 13.41 12 22l-9-9V3h10l7.59 7.59a2 2 0 0 1 0 2.82z" /><circle cx="7.5" cy="7.5" r="1.5" /></>,
+    chevron: <><path d="m9 18 6-6-6-6" /></>
   };
   return <svg {...p} className="ico">{paths[name] || null}</svg>;
 }

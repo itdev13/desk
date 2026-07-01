@@ -11,9 +11,15 @@ const logger = require('../utils/logger');
 
 router.use(requireAuth);
 
-/** Shared helper: load a ticket scoped to the caller's workspace, or 404. */
+/**
+ * Shared helper: load a ticket scoped to the caller's workspace, or 404.
+ * Non-admins are additionally scoped to tickets assigned to them — so they can't open, reply to,
+ * or mutate a ticket that isn't theirs, even by guessing the id. (Admins see all.)
+ */
 async function loadTicket(req, res) {
-  const ticket = await Ticket.findOne({ _id: req.params.id, locationId: req.auth.locationId });
+  const query = { _id: req.params.id, locationId: req.auth.locationId };
+  if (req.auth.role !== 'admin') query.assigneeId = req.auth.userId;
+  const ticket = await Ticket.findOne(query);
   if (!ticket) {
     res.status(404).json({ success: false, error: 'Ticket not found' });
     return null;
@@ -66,6 +72,10 @@ router.get('/', async (req, res) => {
       ];
     }
 
+    // ACCESS SCOPE: non-admins may only see tickets assigned to them — this overrides any view
+    // or assignee filter. Enforced here server-side (not just hidden in the UI).
+    if (req.auth.role !== 'admin') query.assigneeId = req.auth.userId;
+
     const [tickets, total] = await Promise.all([
       Ticket.find(query).sort({ lastActivityAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
       Ticket.countDocuments(query)
@@ -86,10 +96,12 @@ router.get('/board', async (req, res) => {
   try {
     const { locationId } = req.auth;
     const columns = ['new', 'open', 'pending', 'resolved'];
+    // Non-admins only see their own tickets on the board.
+    const scope = req.auth.role !== 'admin' ? { assigneeId: req.auth.userId } : {};
     const result = {};
     await Promise.all(
       columns.map(async (status) => {
-        result[status] = await Ticket.find({ locationId, status })
+        result[status] = await Ticket.find({ locationId, status, ...scope })
           .sort({ lastActivityAt: -1 })
           .limit(50)
           .lean();

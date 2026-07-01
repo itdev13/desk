@@ -1,4 +1,17 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
+/**
+ * Returns `value` delayed by `delay` ms — updates only after the input stops changing. Use to
+ * avoid firing a search request on every keystroke (search runs ~delay ms after the user pauses).
+ */
+export function useDebounce(value, delay = 350) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  }, [value, delay]);
+  return debounced;
+}
 
 /**
  * Keep a view fresh without manual reloads. Calls `fn`:
