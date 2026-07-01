@@ -14,6 +14,34 @@ export function durationLabel(mins) {
   return rh ? `${d}d ${rh}h` : `${d}d`;
 }
 
+/** Plain-English SLA line for one priority row, e.g. "Urgent → first reply within 2m, resolve within 4h". */
+export function slaSentence(t) {
+  const label = { urgent: 'Urgent', high: 'High', normal: 'Normal', low: 'Low' }[t.priority] || t.priority;
+  const fr = durationLabel(t.firstResponseMins), rz = durationLabel(t.resolveMins);
+  return { label, priority: t.priority, first: fr || '—', resolve: rz || '—' };
+}
+
+/** Live preview strip: one readable line per priority, updates as the targets are edited. */
+export function SlaPreview({ targets }) {
+  return (
+    <div className="sla-preview">
+      <div className="sla-preview-title">In plain English</div>
+      <ul className="sla-preview-list">
+        {targets.map((t) => {
+          const s = slaSentence(t);
+          return (
+            <li key={t.priority}>
+              <span className={`dot ${s.priority}`} />
+              <strong>{s.label}</strong>
+              <span>tickets: first reply within <b>{s.first}</b>, resolve within <b>{s.resolve}</b>.</span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 /** Post-setup configuration. Same fields the wizard collected, plus white-label brand + portal. */
 export default function Settings({ onSaved, notify }) {
   const [ws, setWs] = useState(null);
@@ -198,6 +226,7 @@ export default function Settings({ onSaved, notify }) {
                 </div>
               ))}
             </div>
+            <SlaPreview targets={ws.slaTargets} />
             <div style={{ marginTop: 24 }}>
               <SectionHeader icon="hash" title="Ticket lifecycle"
                 description="What happens after a ticket is resolved, and how ticket numbers look." />

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api.js';
 import { CHANNELS } from '../lib/format.js';
 import { Icon, Switch, Select } from '../components/ui.jsx';
-import { durationLabel } from './Settings.jsx';
+import { durationLabel, SlaPreview } from './Settings.jsx';
 import { LogoMark } from '../components/Logo.jsx';
 
 /**
@@ -231,6 +231,7 @@ export default function SetupWizard({ workspace, onDone, notify }) {
                     </div>
                   ))}
                 </div>
+                <SlaPreview targets={form.slaTargets} />
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginTop: 18 }}>
                   <div className="field" style={{ margin: 0 }}>
                     <label>Auto-close resolved after (days)</label>
