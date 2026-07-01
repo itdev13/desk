@@ -3,6 +3,7 @@ import { api } from '../lib/api.js';
 import { ago, slaDisplay, fmtMins } from '../lib/format.js';
 import { Icon, PriorityPill, Avatar } from '../components/ui.jsx';
 import NewTicketModal from '../components/NewTicketModal.jsx';
+import { useAutoRefresh } from '../lib/useAutoRefresh.js';
 
 const VIEWS = [
   { key: 'mine', label: 'My queue' },
@@ -20,8 +21,9 @@ export default function Queue({ onOpen, notify, onChange }) {
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  // silent=true for background polls/focus refreshes: no spinner flicker, no error toast.
+  const load = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
     try {
       const [list, dash] = await Promise.all([
         api.listTickets({ view, q: q || undefined, limit: 50 }),
@@ -30,13 +32,15 @@ export default function Queue({ onOpen, notify, onChange }) {
       setTickets(list.tickets || []);
       setKpis(dash.kpis || {});
     } catch (err) {
-      notify(err.message, true);
+      if (!silent) notify(err.message, true);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [view, q, notify]);
 
   useEffect(() => { load(); }, [load]);
+  // Keep the queue live: poll every 20s + refresh when the tab regains focus.
+  useAutoRefresh(useCallback(() => load({ silent: true }), [load]));
 
   const onCreated = (t) => {
     setShowNew(false);

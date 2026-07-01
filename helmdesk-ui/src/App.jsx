@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { api, setToken } from './lib/api.js';
 import { Spinner, Icon, Toast } from './components/ui.jsx';
 import { LogoMark } from './components/Logo.jsx';
+import { useAutoRefresh } from './lib/useAutoRefresh.js';
 import SetupWizard from './pages/SetupWizard.jsx';
 import Queue from './pages/Queue.jsx';
 import Board from './pages/Board.jsx';
@@ -77,6 +78,9 @@ export default function App() {
       setCounts(d.kpis || {});
     } catch { /* ignore */ }
   }, []);
+
+  // Keep the sidebar counts (Open / Overdue) live while in the app — poll + focus refresh.
+  useAutoRefresh(refreshCounts, { enabled: phase === 'app' });
 
   const finishSetup = (ws) => {
     setWorkspace(ws);

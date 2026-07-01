@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../lib/api.js';
 import { fmtMins, STATUS_LABEL } from '../lib/format.js';
+import { useAutoRefresh } from '../lib/useAutoRefresh.js';
 
 /**
  * Reporting dashboard — the metrics an agency can show its own clients ("94% in SLA").
@@ -14,17 +15,21 @@ export default function Dashboard() {
   const [trend, setTrend] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    Promise.all([api.dashboard(), api.trend(14)])
-      .then(([d, t]) => {
-        setKpis(d.kpis || {});
-        setStatusCounts(d.statusCounts || {});
-        setByAgent(d.byAgent || []);
-        setByChannel(d.byChannel || []);
-        setTrend(t.trend || []);
-      })
-      .finally(() => setLoading(false));
+  const load = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
+    try {
+      const [d, t] = await Promise.all([api.dashboard(), api.trend(14)]);
+      setKpis(d.kpis || {});
+      setStatusCounts(d.statusCounts || {});
+      setByAgent(d.byAgent || []);
+      setByChannel(d.byChannel || []);
+      setTrend(t.trend || []);
+    } finally {
+      if (!silent) setLoading(false);
+    }
   }, []);
+  useEffect(() => { load(); }, [load]);
+  useAutoRefresh(useCallback(() => load({ silent: true }), [load]));
 
   if (loading) return (<><div className="topbar"><h1>Dashboard</h1></div><div className="empty"><div className="spinner" style={{ margin: '0 auto' }} /></div></>);
 

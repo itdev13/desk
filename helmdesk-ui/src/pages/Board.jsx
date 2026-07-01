@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../lib/api.js';
 import { ago, slaDisplay } from '../lib/format.js';
 import { PriorityPill, Avatar } from '../components/ui.jsx';
 import { STATUS_LABEL } from '../lib/format.js';
+import { useAutoRefresh } from '../lib/useAutoRefresh.js';
 
 /**
  * Kanban board — the visual the idea-board comments asked for most. Tickets bucketed by status
@@ -14,17 +15,19 @@ export default function Board({ onOpen }) {
   const [loading, setLoading] = useState(true);
   const [dragId, setDragId] = useState(null);
 
-  const load = async () => {
-    setLoading(true);
+  const load = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
     try {
       const res = await api.board();
       setBoard(res.board || {});
       setColumns(res.columns || []);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  };
-  useEffect(() => { load(); }, []);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+  // Don't poll mid-drag (would fight the optimistic move); otherwise poll + focus refresh.
+  useAutoRefresh(useCallback(() => { if (!dragId) load({ silent: true }); }, [load, dragId]));
 
   const drop = async (status) => {
     if (!dragId) return;
