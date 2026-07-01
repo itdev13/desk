@@ -8,7 +8,7 @@ import { Icon, PriorityPill, Avatar, Select } from '../components/ui.jsx';
  * notes), a composer that toggles between Reply (sent to customer via GHL) and Note (internal),
  * and a side panel to drive status / priority / assignee.
  */
-export default function TicketDetail({ id, onBack, user, notify }) {
+export default function TicketDetail({ id, onBack, user, notify, onChange }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [agents, setAgents] = useState([]);
@@ -51,6 +51,7 @@ export default function TicketDetail({ id, onBack, user, notify }) {
       }
       setBody('');
       await load();
+      onChange?.(); // refresh sidebar counts (reply can move new→open)
     } catch (err) {
       notify(err.message, true);
     } finally {
@@ -59,7 +60,14 @@ export default function TicketDetail({ id, onBack, user, notify }) {
   };
 
   const patch = async (fn, label) => {
-    try { await fn(); notify(label); await load(); } catch (err) { notify(err.message, true); }
+    try {
+      await fn();
+      notify(label);
+      await load();
+      onChange?.(); // status/priority/assignee change → refresh sidebar counts immediately
+    } catch (err) {
+      notify(err.message, true);
+    }
   };
 
   return (

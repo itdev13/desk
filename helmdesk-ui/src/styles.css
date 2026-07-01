@@ -52,49 +52,47 @@ a { color: inherit; }
 button { font-family: inherit; cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 
-/* ── App shell: fixed sidebar + scrollable main ── */
-.shell { display: grid; grid-template-columns: 220px 1fr; height: 100vh; }
+/* ── App shell: top nav + full-width scrollable main (reclaims the left column) ── */
+.shell { display: flex; flex-direction: column; height: 100vh; }
 
-.sidebar {
-  background: var(--ink);
-  color: #b8c2d4;
-  display: flex;
-  flex-direction: column;
-  padding: 16px 12px;
-  gap: 2px;
-  overflow-y: auto;
+.topnav {
+  display: flex; align-items: center; gap: 20px;
+  padding: 10px 20px; background: var(--panel); border-bottom: 1px solid var(--line);
+  flex: none;
 }
-.ws-head { display: flex; align-items: center; gap: 10px; padding: 4px 8px 18px; }
-.ws-badge {
-  width: 30px; height: 30px; border-radius: 8px; flex: none;
-  background: var(--accent); color: var(--ink);
-  display: grid; place-items: center; font-weight: 800; font-size: 15px; font-family: var(--mono);
-}
-.ws-name { font-size: 13px; color: #fff; font-weight: 700; line-height: 1.15; }
-.ws-name small { display: block; color: var(--slate-2); font-weight: 400; font-size: 11px; }
+.topnav-brand { display: flex; align-items: center; gap: 10px; flex: none; }
+.topnav-brand .ws-name { font-size: 14px; color: var(--ink); font-weight: 800; line-height: 1.1; }
+.topnav-brand .ws-name small { display: block; color: var(--slate); font-weight: 500; font-size: 11px; }
 
-.nav-label {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.13em;
-  text-transform: uppercase; color: #5e6b83; padding: 14px 9px 6px;
+.topnav-tabs { display: flex; align-items: center; gap: 4px; }
+.topnav-sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
+.nav-tab {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 12px; border-radius: 8px; font-size: 13.5px; font-weight: 600;
+  color: var(--slate); border: none; background: none; cursor: pointer;
+  position: relative; transition: background 0.12s, color 0.12s;
 }
-.nav-item {
-  display: flex; align-items: center; gap: 10px; justify-content: space-between;
-  padding: 8px 10px; border-radius: 8px; font-size: 13.5px; color: #9ca8be;
-  border: none; background: none; width: 100%; text-align: left; transition: background 0.12s, color 0.12s;
+.nav-tab:hover { background: var(--paper); color: var(--ink); }
+.nav-tab.active { color: var(--ink); background: var(--accent-soft); }
+.nav-tab .ico { width: 17px; height: 17px; flex: none; }
+.nav-tab .count {
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  background: var(--line-soft); color: var(--slate);
+  padding: 1px 7px; border-radius: 999px; min-width: 20px; text-align: center;
 }
-.nav-item:hover { background: var(--ink-3); color: #e6ebf3; }
-.nav-item.active { background: var(--ink-3); color: #fff; font-weight: 600; }
-.nav-item .ico { width: 17px; height: 17px; flex: none; opacity: 0.9; }
-.nav-item .count {
-  font-family: var(--mono); font-size: 11px; background: #2c3850; color: #b8c2d4;
-  padding: 1px 8px; border-radius: 999px; min-width: 22px; text-align: center;
-}
-.nav-item.active .count { background: var(--accent); color: var(--ink); font-weight: 700; }
-.nav-spacer { flex: 1; }
-.sidebar-foot { padding: 12px 8px 4px; font-size: 11px; color: #5e6b83; border-top: 1px solid var(--line-dark); margin-top: 8px; }
-.sidebar-foot .plan { color: var(--accent); font-weight: 600; font-family: var(--mono); }
+.nav-tab.active .count { background: var(--accent); color: var(--ink); }
+.nav-tab.alert .count { background: var(--crit); color: #fff; }
 
-.main { overflow-y: auto; display: flex; flex-direction: column; min-width: 0; }
+.topnav-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+.topnav-plan { font-size: 11.5px; color: var(--slate); font-family: var(--mono); }
+.topnav-plan b { color: var(--accent-dk); }
+
+.main { overflow-y: auto; display: flex; flex-direction: column; min-width: 0; flex: 1; }
+
+@media (max-width: 720px) {
+  .topnav { flex-wrap: wrap; gap: 8px 14px; }
+  .topnav-tabs { order: 3; width: 100%; overflow-x: auto; }
+}
 
 /* ── Top bar ── */
 .topbar {

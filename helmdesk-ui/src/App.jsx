@@ -100,7 +100,7 @@ export default function App() {
   // ── Main console ──
   return (
     <div className="shell">
-      <Sidebar
+      <TopNav
         workspace={workspace}
         sub={sub}
         view={view}
@@ -110,7 +110,7 @@ export default function App() {
       />
       <div className="main">
         {openTicketId ? (
-          <TicketDetail id={openTicketId} onBack={closeTicket} user={user} notify={notify} />
+          <TicketDetail id={openTicketId} onBack={closeTicket} user={user} notify={notify} onChange={refreshCounts} />
         ) : view === 'queue' ? (
           <Queue onOpen={goTicket} user={user} notify={notify} onChange={refreshCounts} />
         ) : view === 'board' ? (
@@ -131,9 +131,9 @@ export default function App() {
   );
 }
 
-function Sidebar({ workspace, sub, view, counts, isAdmin, onNav }) {
+function TopNav({ workspace, sub, view, counts, isAdmin, onNav }) {
   const brand = workspace?.brand || { name: 'HelmDesk' };
-  const items = [
+  const tabs = [
     { key: 'queue', label: 'Queue', icon: 'inbox', count: counts.open },
     { key: 'board', label: 'Board', icon: 'board' },
     { key: 'dashboard', label: 'Dashboard', icon: 'chart' }
@@ -143,8 +143,8 @@ function Sidebar({ workspace, sub, view, counts, isAdmin, onNav }) {
     { key: 'settings', label: 'Settings', icon: 'gear' }
   ];
   return (
-    <nav className="sidebar">
-      <div className="ws-head">
+    <nav className="topnav">
+      <div className="topnav-brand">
         {(!brand.name || brand.name === 'HelmDesk')
           ? <LogoMark size={30} />
           : <div className="ws-badge" style={brand.primaryColor ? { background: brand.primaryColor } : undefined}>{brand.name[0].toUpperCase()}</div>}
@@ -154,36 +154,32 @@ function Sidebar({ workspace, sub, view, counts, isAdmin, onNav }) {
         </div>
       </div>
 
-      <div className="nav-label">Support</div>
-      {items.map((it) => (
-        <button key={it.key} className={`nav-item ${view === it.key ? 'active' : ''}`} onClick={() => onNav(it.key)}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Icon name={it.icon} /> {it.label}</span>
-          {it.count != null && <span className="count">{it.count}</span>}
-        </button>
-      ))}
-      {counts.overdue > 0 && (
-        <button className="nav-item" onClick={() => onNav('queue')} style={{ color: '#e88' }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Icon name="alert" /> Overdue</span>
-          <span className="count" style={{ background: '#d64545', color: '#fff' }}>{counts.overdue}</span>
-        </button>
-      )}
+      <div className="topnav-tabs">
+        {tabs.map((it) => (
+          <button key={it.key} className={`nav-tab ${view === it.key ? 'active' : ''}`} onClick={() => onNav(it.key)}>
+            <Icon name={it.icon} /> {it.label}
+            {it.count != null && <span className="count">{it.count}</span>}
+          </button>
+        ))}
+        {counts.overdue > 0 && (
+          <button className="nav-tab alert" onClick={() => onNav('queue')}>
+            <Icon name="alert" /> Overdue<span className="count">{counts.overdue}</span>
+          </button>
+        )}
+        {isAdmin && (
+          <>
+            <span className="topnav-sep" />
+            {manage.map((it) => (
+              <button key={it.key} className={`nav-tab ${view === it.key ? 'active' : ''}`} onClick={() => onNav(it.key)}>
+                <Icon name={it.icon} /> {it.label}
+              </button>
+            ))}
+          </>
+        )}
+      </div>
 
-      {/* Manage section is admin-only — agents can't change Team or Settings/branding. */}
-      {isAdmin && (
-        <>
-          <div className="nav-label">Manage</div>
-          {manage.map((it) => (
-            <button key={it.key} className={`nav-item ${view === it.key ? 'active' : ''}`} onClick={() => onNav(it.key)}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Icon name={it.icon} /> {it.label}</span>
-            </button>
-          ))}
-        </>
-      )}
-
-      <div className="nav-spacer" />
-      <div className="sidebar-foot">
-        Plan: <span className="plan">{sub?.plan?.name || '—'}</span>
-        {sub?.status === 'trialing' && ' (trial)'}
+      <div className="topnav-right">
+        <span className="topnav-plan">Plan: <b>{sub?.plan?.name || '—'}</b>{sub?.status === 'trialing' && ' (trial)'}</span>
       </div>
     </nav>
   );
