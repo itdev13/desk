@@ -22,7 +22,7 @@ function defaultPlan() {
  * Optional multi-tier catalog. GHL only sends a planId — we map it to a tier.
  *   PLANS_JSON='{"<starterId>":{"name":"Starter","priceUsd":29,"seatLimit":3},
  *                "<teamId>":{"name":"Team","priceUsd":79,"seatLimit":10},
- *                "<agencyId>":{"name":"Agency","priceUsd":149,"seatLimit":9999}}'
+ *                "<agencyId>":{"name":"Agency","priceUsd":99,"seatLimit":9999}}'
  */
 function planCatalog() {
   try {
