@@ -126,7 +126,7 @@ export default function App() {
         ) : view === 'plan' ? (
           <Plan notify={notify} />
         ) : view === 'team' && user?.role === 'admin' ? (
-          <Team notify={notify} />
+          <Team notify={notify} onNavPlan={() => setView('plan')} />
         ) : view === 'settings' && user?.role === 'admin' ? (
           <Settings workspace={workspace} onSaved={setWorkspace} notify={notify} onNavPlan={() => setView('plan')} />
         ) : (

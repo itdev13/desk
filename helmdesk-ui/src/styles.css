@@ -154,6 +154,18 @@ button { font-family: inherit; cursor: pointer; }
 }
 .link-btn:hover { color: var(--ink); }
 
+/* ── Team seat-usage bar ── */
+.seat-bar {
+  padding: 14px 16px; border-radius: 10px; background: var(--panel);
+  border: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px;
+}
+.seat-bar.is-full { background: var(--accent-soft); border-color: #f0dcc0; }
+.seat-bar-text { font-size: 13px; color: var(--ink-3); line-height: 1.45; }
+.seat-bar-text b { color: var(--ink); font-weight: 700; }
+.seat-bar-track { height: 6px; border-radius: 999px; background: var(--line-soft); overflow: hidden; }
+.seat-bar-track span { display: block; height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.3s; }
+.seat-bar.is-full .seat-bar-track span { background: var(--crit); }
+
 .main { overflow-y: auto; display: flex; flex-direction: column; min-width: 0; flex: 1; }
 
 @media (max-width: 720px) {

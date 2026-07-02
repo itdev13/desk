@@ -93,6 +93,53 @@ async function syncAgents(locationId, companyId) {
 }
 
 /**
+ * Reconcile active agents against the current plan's seat limit. Called on PLAN_CHANGE so up/down
+ * grades take effect without a manual re-sync.
+ *
+ *   - DOWNGRADE (active > limit): keep admins first, then earliest-added, up to the limit; set the
+ *     rest inactive. Their existing ticket assignments are left intact (still resolvable) — they
+ *     just won't receive NEW round-robin tickets.
+ *   - UPGRADE (seats freed): reactivate inactive, non-deleted agents (earliest-added first) up to
+ *     the new limit, so previously-capped agents come back automatically.
+ *
+ * Returns { seatLimit, deactivated, reactivated } for logging. No-ops on an unlimited plan.
+ */
+async function reconcileSeats(locationId) {
+  const subscriptionService = require('./subscriptionService');
+  const { seatLimit } = await subscriptionService.planFeatures(locationId).catch(() => ({ seatLimit: 9999 }));
+  if (!Number.isFinite(seatLimit) || seatLimit >= 9999) {
+    return { seatLimit: seatLimit ?? 9999, deactivated: 0, reactivated: 0 };
+  }
+
+  // Rank: admins before agents, then earliest-created first — deterministic and fair.
+  const rank = (a) => [a.role === 'admin' ? 0 : 1, new Date(a.createdAt || 0).getTime()];
+  const cmp = (a, b) => { const ra = rank(a), rb = rank(b); return ra[0] - rb[0] || ra[1] - rb[1]; };
+
+  const agents = await Agent.find({ locationId, deleted: { $ne: true } });
+  const active = agents.filter((a) => a.active).sort(cmp);
+  const inactive = agents.filter((a) => !a.active).sort(cmp);
+
+  let deactivated = 0;
+  let reactivated = 0;
+
+  if (active.length > seatLimit) {
+    // Downgrade: keep the top `seatLimit`, deactivate the overflow.
+    const toDeactivate = active.slice(seatLimit);
+    for (const a of toDeactivate) { a.active = false; await a.save(); deactivated += 1; }
+  } else if (active.length < seatLimit && inactive.length) {
+    // Upgrade: fill the freed seats from the inactive pool.
+    const freeSeats = seatLimit - active.length;
+    const toReactivate = inactive.slice(0, freeSeats);
+    for (const a of toReactivate) { a.active = true; await a.save(); reactivated += 1; }
+  }
+
+  if (deactivated || reactivated) {
+    logger.info('🔧 Seats reconciled to plan', { locationId, seatLimit, deactivated, reactivated });
+  }
+  return { seatLimit, deactivated, reactivated };
+}
+
+/**
  * Upsert a single agent from a User webhook (UserCreate / UserUpdate). Idempotent; preserves the
  * HelmDesk-only `active` flag and load count on update, sets them only on insert.
  */
@@ -160,6 +207,7 @@ async function handleUserDelete(data) {
 
 module.exports = {
   syncAgents,
+  reconcileSeats,
   resolveCompanyId,
   handleUserUpsert,
   handleUserDelete

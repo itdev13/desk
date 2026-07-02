@@ -162,6 +162,13 @@ router.post('/helmdesk', async (req, res) => {
           periodStart: sub?.currentPeriodStart, periodEnd: sub?.currentPeriodEnd, webhookType: type, rawData: data
         });
         logger.info('🔁 Plan changed', { locationId, newPlanId, oldPlanId });
+        // Reconcile active agents to the new plan's seat limit (down: deactivate overflow; up:
+        // reactivate previously-capped agents). Non-blocking — a failure here never fails the webhook.
+        if (locationId) {
+          agentService.reconcileSeats(locationId)
+            .then((r) => logger.info('🔧 Seats reconciled after plan change', { locationId, ...r }))
+            .catch((e) => logger.warn('Seat reconcile failed (non-fatal)', { locationId, message: e.message }));
+        }
         break;
       }
 
