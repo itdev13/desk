@@ -15,4 +15,14 @@ router.get('/status', async (req, res) => {
   }
 });
 
+/** GET /api/subscription/plans — all tiers for the pricing page, with the current one flagged. */
+router.get('/plans', async (req, res) => {
+  try {
+    const data = await subscriptionService.listPlans(req.auth.locationId);
+    res.json({ success: true, ...data });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;

@@ -71,6 +71,7 @@ export const api = {
 
   // Subscription
   subscription: () => request('/api/subscription/status'),
+  plans: () => request('/api/subscription/plans'),
 
   // Support
   supportConfig: () => request('/api/support/config'),

@@ -39,6 +39,12 @@ function planForId(planId) {
   return defaultPlan();
 }
 
+/** Sensible feature bullets when a catalog tier doesn't specify its own `features` array. */
+function defaultFeatures(p) {
+  const seats = (p.seatLimit ?? 3) >= 9999 ? 'Unlimited agents' : `Up to ${p.seatLimit ?? 3} agents`;
+  return [seats, 'Unlimited tickets', 'SLA tracking & alerts', 'Kanban board & dashboard', 'White-label branding'];
+}
+
 function isRequired() {
   // Default ON. Set SUBSCRIPTION_REQUIRED=false for local testing without a real plan.
   return String(process.env.SUBSCRIPTION_REQUIRED ?? 'true').toLowerCase() !== 'false';
@@ -125,6 +131,38 @@ class SubscriptionService {
       status: sub.status,
       plan: { name: sub.planName, priceUsd: sub.priceUsd, seatLimit: sub.seatLimit },
       currentPeriodEnd: sub.currentPeriodEnd
+    };
+  }
+
+  /**
+   * All purchasable plans for the pricing page, ordered by price, with the caller's current plan
+   * flagged. Sourced from PLANS_JSON (the catalog) with the single default plan as a fallback.
+   * Upgrades happen in the GHL marketplace, so we also return the marketplace upgrade URL.
+   */
+  async listPlans(locationId) {
+    const catalog = planCatalog();
+    const current = await this.getStatus(locationId);
+    const currentName = (current.plan?.name || '').replace(/\s*\(Trial\)\s*$/i, '');
+
+    // Build the tier list: from the catalog if configured, else the single default plan.
+    let tiers = Object.entries(catalog).map(([planId, p]) => ({ planId, ...p }));
+    if (tiers.length === 0) tiers = [{ planId: null, ...defaultPlan() }];
+    tiers.sort((a, b) => (a.priceUsd || 0) - (b.priceUsd || 0));
+
+    const plans = tiers.map((p) => ({
+      planId: p.planId,
+      name: p.name,
+      priceUsd: p.priceUsd,
+      seatLimit: p.seatLimit ?? 3,
+      features: Array.isArray(p.features) ? p.features : defaultFeatures(p),
+      isCurrent: p.name === currentName
+    }));
+
+    return {
+      plans,
+      current: { name: current.plan?.name, status: current.status, priceUsd: current.plan?.priceUsd },
+      // Where the "Upgrade" button sends the user (GHL marketplace app / billing page).
+      upgradeUrl: process.env.MARKETPLACE_UPGRADE_URL || ''
     };
   }
 

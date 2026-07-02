@@ -11,6 +11,7 @@ import Dashboard from './pages/Dashboard.jsx';
 import Settings from './pages/Settings.jsx';
 import Team from './pages/Team.jsx';
 import Support from './pages/Support.jsx';
+import Plan from './pages/Plan.jsx';
 
 /**
  * App root. Resolves the GHL session (SSO blob or ?locationId dev fallback), then either runs the
@@ -122,6 +123,8 @@ export default function App() {
           <Dashboard />
         ) : view === 'support' ? (
           <Support notify={notify} />
+        ) : view === 'plan' ? (
+          <Plan notify={notify} />
         ) : view === 'team' && user?.role === 'admin' ? (
           <Team notify={notify} />
         ) : view === 'settings' && user?.role === 'admin' ? (
@@ -143,14 +146,11 @@ function TopNav({ workspace, sub, view, queueView, counts, isAdmin, onNav }) {
     { key: 'board', label: 'Board', icon: 'board' },
     { key: 'dashboard', label: 'Dashboard', icon: 'chart' }
   ];
-  // Right-hand group: Support is for everyone; Team/Settings are admin-only.
-  const manage = [
-    { key: 'support', label: 'Support', icon: 'lifebuoy' },
-    ...(isAdmin ? [
-      { key: 'team', label: 'Team', icon: 'users' },
-      { key: 'settings', label: 'Settings', icon: 'gear' }
-    ] : [])
-  ];
+  // Admin-only management tabs (Team / Settings). Support + Plan live on the far right.
+  const manage = isAdmin ? [
+    { key: 'team', label: 'Team', icon: 'users' },
+    { key: 'settings', label: 'Settings', icon: 'gear' }
+  ] : [];
   return (
     <nav className="topnav">
       <div className="topnav-brand">
@@ -181,7 +181,7 @@ function TopNav({ workspace, sub, view, queueView, counts, isAdmin, onNav }) {
             <Icon name="alert" /> Overdue<span className="count">{counts.overdue}</span>
           </button>
         )}
-        <span className="topnav-sep" />
+        {manage.length > 0 && <span className="topnav-sep" />}
         {manage.map((it) => (
           <button key={it.key} className={`nav-tab ${view === it.key ? 'active' : ''}`} onClick={() => onNav(it.key)}>
             <Icon name={it.icon} /> {it.label}
@@ -190,7 +190,15 @@ function TopNav({ workspace, sub, view, queueView, counts, isAdmin, onNav }) {
       </div>
 
       <div className="topnav-right">
-        <span className="topnav-plan">Plan: <b>{sub?.plan?.name || '—'}</b>{sub?.status === 'trialing' && ' (trial)'}</span>
+        <button className={`nav-tab ${view === 'support' ? 'active' : ''}`} onClick={() => onNav('support')}>
+          <Icon name="lifebuoy" /> Support
+        </button>
+        <button className={`plan-pill ${view === 'plan' ? 'active' : ''}`} onClick={() => onNav('plan')}
+          title="View plans &amp; billing">
+          <span className="plan-pill-label">Plan</span>
+          <span className="plan-pill-name">{(sub?.plan?.name || '—').replace(/\s*\(Trial\)\s*$/i, '')}</span>
+          {sub?.status === 'trialing' && <span className="plan-pill-trial">Trial</span>}
+        </button>
       </div>
     </nav>
   );
