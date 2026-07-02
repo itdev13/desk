@@ -57,10 +57,12 @@ export default function Settings({ onSaved, notify }) {
   const [agents, setAgents] = useState([]);
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState('channels');
+  const [whiteLabel, setWhiteLabel] = useState(true); // gates the branding tab; assume allowed until known
 
   useEffect(() => {
     api.getSettings().then((r) => setWs(r.workspace)).catch((e) => notify(e.message, true));
     api.assignableAgents().then((r) => setAgents(r.agents || [])).catch(() => {});
+    api.subscription().then((s) => setWhiteLabel(s.plan?.whiteLabel !== false)).catch(() => {});
   }, [notify]);
 
   if (!ws) return (<><div className="topbar"><h1>Settings</h1></div><div className="empty"><div className="spinner" style={{ margin: '0 auto' }} /></div></>);
@@ -264,7 +266,14 @@ export default function Settings({ onSaved, notify }) {
         {tab === 'brand' && (
           <div className="card">
             <SectionHeader icon="palette" title="White-label branding"
-              description="Make HelmDesk your own when you resell it to clients — set the brand name, color, and a public intake form." />
+              description="Make the app your own when you resell it to clients — set the brand name, color, and a public intake form." />
+            {!whiteLabel && (
+              <div className="plan-lock">
+                <Icon name="palette" size={16} />
+                <span>White-label branding & the client portal are an <b>Agency plan</b> feature. Upgrade your plan to customize these.</span>
+              </div>
+            )}
+            <fieldset disabled={!whiteLabel} style={{ border: 'none', padding: 0, margin: 0, opacity: whiteLabel ? 1 : 0.55 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <div className="field" style={{ margin: 0 }}><label>Brand name</label><input type="text" value={ws.brand?.name || ''} onChange={(e) => set({ brand: { ...ws.brand, name: e.target.value } })} /></div>
               <div className="field" style={{ margin: 0 }}><label>Primary color</label><input type="text" value={ws.brand?.primaryColor || ''} onChange={(e) => set({ brand: { ...ws.brand, primaryColor: e.target.value } })} placeholder="#E0A24A" /></div>
@@ -280,6 +289,7 @@ export default function Settings({ onSaved, notify }) {
                 <span className="hint">Share or embed this on the client's site.</span>
               </div>
             )}
+            </fieldset>
           </div>
         )}
 

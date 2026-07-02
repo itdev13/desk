@@ -2,7 +2,11 @@ const express = require('express');
 const router = express.Router();
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const Workspace = require('../models/Workspace');
+const subscriptionService = require('../services/subscriptionService');
 const logger = require('../utils/logger');
+
+// Fields that require the white-label (top) tier. Non-entitled plans can't change these.
+const WHITE_LABEL_FIELDS = ['brand', 'portalEnabled'];
 
 router.use(requireAuth);
 
@@ -52,6 +56,21 @@ router.put('/', requireAdmin, async (req, res) => {
     for (const key of ALLOWED) {
       if (req.body[key] !== undefined) update[key] = req.body[key];
     }
+
+    // White-label (brand + portal) is a top-tier perk. If the plan isn't entitled, block the change
+    // rather than silently dropping it, so the UI can prompt an upgrade.
+    const touchesWhiteLabel = WHITE_LABEL_FIELDS.some((k) => k in update);
+    if (touchesWhiteLabel) {
+      const { whiteLabel, planName } = await subscriptionService.planFeatures(req.auth.locationId);
+      if (!whiteLabel) {
+        return res.status(402).json({
+          success: false,
+          code: 'PLAN_UPGRADE_REQUIRED',
+          error: `White-label branding and the client portal are available on the Agency plan. Upgrade from ${planName || 'your current plan'} to customize these.`
+        });
+      }
+    }
+
     const current = await Workspace.findOne({ locationId: req.auth.locationId });
     if (!current) return res.status(404).json({ success: false, error: 'Workspace not found' });
     ensurePortalSlug(update, current, req.auth.locationId);

@@ -133,7 +133,21 @@ button { font-family: inherit; cursor: pointer; }
 .plan-features li { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-3); }
 .plan-features li .ico { color: var(--good); flex: none; }
 .plan-card .btn { width: 100%; justify-content: center; }
+/* Current-plan button: filled amber, reads as "you are here" (disabled but not greyed). */
+.plan-current-btn {
+  background: var(--accent); color: var(--ink); border: 1px solid var(--accent);
+  font-weight: 700; opacity: 1; cursor: default;
+}
+.plan-current-btn:disabled { opacity: 1; cursor: default; }
+.plan-current-btn .ico { color: var(--ink); }
 .plan-foot { font-size: 12px; color: var(--slate); line-height: 1.5; margin: 4px 0 0; }
+.plan-lock {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding: 11px 14px;
+  border-radius: 10px; background: var(--accent-soft); border: 1px solid #f0dcc0;
+  color: var(--accent-dk); font-size: 13px; line-height: 1.45;
+}
+.plan-lock .ico { flex: none; }
+.plan-lock b { color: var(--ink); }
 
 .main { overflow-y: auto; display: flex; flex-direction: column; min-width: 0; flex: 1; }
 

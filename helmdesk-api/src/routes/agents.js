@@ -3,6 +3,7 @@ const router = express.Router();
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const Agent = require('../models/Agent');
 const agentService = require('../services/agentService');
+const subscriptionService = require('../services/subscriptionService');
 const logger = require('../utils/logger');
 
 router.use(requireAuth);
@@ -38,16 +39,40 @@ router.post('/sync', async (req, res) => {
 
 /** PATCH /api/agents/:ghlUserId — toggle active / change role. */
 router.patch('/:ghlUserId', requireAdmin, async (req, res) => {
-  const update = {};
-  if (req.body.active !== undefined) update.active = req.body.active;
-  if (req.body.role) update.role = req.body.role;
-  const agent = await Agent.findOneAndUpdate(
-    { locationId: req.auth.locationId, ghlUserId: req.params.ghlUserId },
-    { $set: update },
-    { new: true }
-  );
-  if (!agent) return res.status(404).json({ success: false, error: 'Agent not found' });
-  res.json({ success: true, agent });
+  try {
+    const update = {};
+    if (req.body.active !== undefined) update.active = req.body.active;
+    if (req.body.role) update.role = req.body.role;
+
+    // Seat limit: block turning an agent ACTIVE past the plan's seat allowance.
+    if (update.active === true) {
+      const { seatLimit, planName } = await subscriptionService.planFeatures(req.auth.locationId);
+      if (seatLimit < 9999) {
+        const alreadyActive = await Agent.countDocuments({
+          locationId: req.auth.locationId, active: true, deleted: { $ne: true },
+          ghlUserId: { $ne: req.params.ghlUserId }
+        });
+        if (alreadyActive >= seatLimit) {
+          return res.status(402).json({
+            success: false,
+            code: 'SEAT_LIMIT',
+            error: `Your ${planName || 'current'} plan allows ${seatLimit} active agent${seatLimit === 1 ? '' : 's'}. Upgrade your plan to add more.`
+          });
+        }
+      }
+    }
+
+    const agent = await Agent.findOneAndUpdate(
+      { locationId: req.auth.locationId, ghlUserId: req.params.ghlUserId },
+      { $set: update },
+      { new: true }
+    );
+    if (!agent) return res.status(404).json({ success: false, error: 'Agent not found' });
+    res.json({ success: true, agent });
+  } catch (error) {
+    logger.error('agent update failed', { message: error.message });
+    res.status(error.status || 500).json({ success: false, error: error.message });
+  }
 });
 
 module.exports = router;

@@ -60,7 +60,9 @@ export default function Plan({ notify }) {
                   ))}
                 </ul>
                 {isCurrent ? (
-                  <button className="btn btn-ghost" disabled>Your plan</button>
+                  <button className="btn plan-current-btn" disabled>
+                    <Icon name="check" size={15} /> Current plan
+                  </button>
                 ) : isUpgrade ? (
                   <button className="btn btn-accent" onClick={onUpgrade}>Upgrade to {p.name}</button>
                 ) : (

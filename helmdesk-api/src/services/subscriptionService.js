@@ -22,7 +22,7 @@ function defaultPlan() {
  * Optional multi-tier catalog. GHL only sends a planId — we map it to a tier.
  *   PLANS_JSON='{"<starterId>":{"name":"Starter","priceUsd":29,"seatLimit":3},
  *                "<teamId>":{"name":"Team","priceUsd":79,"seatLimit":10},
- *                "<agencyId>":{"name":"Agency","priceUsd":199,"seatLimit":9999}}'
+ *                "<agencyId>":{"name":"Agency","priceUsd":149,"seatLimit":9999}}'
  */
 function planCatalog() {
   try {
@@ -39,10 +39,28 @@ function planForId(planId) {
   return defaultPlan();
 }
 
-/** Sensible feature bullets when a catalog tier doesn't specify its own `features` array. */
+/**
+ * White-label entitlement for a plan: the top tier (unlimited seats), or any catalog plan flagged
+ * `whiteLabel:true`. Single source of truth for both getStatus() and planFeatures().
+ */
+function whiteLabelFor(plan) {
+  const name = (plan?.name || '').replace(/\s*\(Trial\)\s*$/i, '');
+  const catalog = planCatalog();
+  const entry = Object.values(catalog).find((p) => p.name === name);
+  return Number(plan?.seatLimit ?? 3) >= 9999 || entry?.whiteLabel === true;
+}
+
+/**
+ * Sensible feature bullets when a catalog tier doesn't specify its own `features` array.
+ * Reflects what the tier ACTUALLY grants — white-label only appears on white-label tiers so the
+ * card doesn't advertise a feature the plan can't use.
+ */
 function defaultFeatures(p) {
   const seats = (p.seatLimit ?? 3) >= 9999 ? 'Unlimited agents' : `Up to ${p.seatLimit ?? 3} agents`;
-  return [seats, 'Unlimited tickets', 'SLA tracking & alerts', 'Kanban board & dashboard', 'White-label branding'];
+  const bullets = [seats, 'Unlimited tickets', 'SLA tracking & alerts', 'Kanban board & dashboard'];
+  // White-label + client portal is the top-tier differentiator; other tiers show routing instead.
+  bullets.push(whiteLabelFor(p) ? 'White-label branding & client portal' : 'Round-robin assignment');
+  return bullets;
 }
 
 function isRequired() {
@@ -123,13 +141,17 @@ class SubscriptionService {
     }
     const Subscription = require('../models/Subscription');
     const sub = await Subscription.findOne({ locationId });
-    if (!sub) return { entitled: !isRequired(), status: 'none', plan: defaultPlan(), required: isRequired() };
+    if (!sub) {
+      const p = defaultPlan();
+      return { entitled: !isRequired(), status: 'none', plan: { ...p, whiteLabel: whiteLabelFor(p) }, required: isRequired() };
+    }
 
+    const plan = { name: sub.planName, priceUsd: sub.priceUsd, seatLimit: sub.seatLimit };
     return {
       entitled: isRequired() ? sub.isEntitled() : true,
       required: isRequired(),
       status: sub.status,
-      plan: { name: sub.planName, priceUsd: sub.priceUsd, seatLimit: sub.seatLimit },
+      plan: { ...plan, whiteLabel: whiteLabelFor(plan) },
       currentPeriodEnd: sub.currentPeriodEnd
     };
   }
@@ -171,11 +193,25 @@ class SubscriptionService {
     if (!isRequired()) return;
     const status = await this.getStatus(locationId);
     if (!status.entitled) {
-      const err = new Error('An active HelmDesk subscription is required for this workspace.');
+      const err = new Error('An active subscription is required for this workspace.');
       err.status = 402;
       err.code = 'SUBSCRIPTION_REQUIRED';
       throw err;
     }
+  }
+
+  /**
+   * Resolve the entitlements the current plan grants, for enforcement:
+   *   - seatLimit: max active agents (9999 = unlimited)
+   *   - whiteLabel: may set custom brand/color/portal (top tier, or whiteLabel:true in PLANS_JSON)
+   * Falls back to generous values when a plan can't be resolved so we never wrongly lock a paying
+   * customer out.
+   */
+  async planFeatures(locationId) {
+    const status = await this.getStatus(locationId);
+    const seatLimit = Number(status.plan?.seatLimit ?? 3);
+    const name = (status.plan?.name || '').replace(/\s*\(Trial\)\s*$/i, '');
+    return { seatLimit, whiteLabel: whiteLabelFor(status.plan), planName: name };
   }
 }
 

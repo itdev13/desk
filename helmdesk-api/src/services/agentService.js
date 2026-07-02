@@ -45,8 +45,10 @@ async function resolveCompanyId(locationId, companyId) {
 
 /**
  * Syncs the agent roster for a workspace from GHL's user list. Idempotent — safe to call on
- * setup, on demand from the Team screen, and after installs. New users are added as active agents;
- * existing ones get name/email refreshed without clobbering their active flag or load count.
+ * setup, on demand from the Team screen, and after installs. Existing agents get name/email/role
+ * refreshed without clobbering their `active` flag or load count. New users are added active only
+ * up to the plan's seat limit; any beyond that come in INACTIVE, so an admin picks which to enable
+ * (rather than silently exceeding the plan).
  */
 async function syncAgents(locationId, companyId) {
   logger.info('[agentSync] START', { locationId, companyIdFromAuth: companyId || null });
@@ -55,25 +57,38 @@ async function syncAgents(locationId, companyId) {
   const users = await ghlService.searchUsers(locationId, { companyId: resolvedCompanyId });
   logger.info('[agentSync] searchUsers returned', { locationId, userCount: users.length });
 
+  // How many active seats the plan allows, and how many are already used — so new inserts past
+  // the cap default to inactive. Resolved lazily to avoid a hard dependency cycle.
+  const subscriptionService = require('./subscriptionService');
+  const { seatLimit } = await subscriptionService.planFeatures(locationId).catch(() => ({ seatLimit: 9999 }));
+  let activeCount = await Agent.countDocuments({ locationId, active: true, deleted: { $ne: true } });
+
   const synced = [];
+  let capped = 0;
   for (const u of users) {
     const name = u.name || [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email || 'Agent';
+    const existing = await Agent.findOne({ locationId, ghlUserId: u.id }).select('active').lean();
+    // A brand-new agent becomes active only if there's a free seat.
+    const activateOnInsert = !existing && (seatLimit >= 9999 || activeCount < seatLimit);
+    if (!existing && !activateOnInsert) capped += 1;
+
     const doc = await Agent.findOneAndUpdate(
       { locationId, ghlUserId: u.id },
       {
         $set: { name, email: u.email || null, role: parseRole(u) },
-        $setOnInsert: { active: true, openTicketCount: 0 }
+        $setOnInsert: { active: activateOnInsert, openTicketCount: 0 }
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
+    if (!existing && activateOnInsert) activeCount += 1;
     synced.push(doc);
   }
-  logger.info('👥 Agents synced', { locationId, count: synced.length, companyIdResolved: !!resolvedCompanyId });
+  logger.info('👥 Agents synced', { locationId, count: synced.length, seatLimit, cappedInactive: capped, companyIdResolved: !!resolvedCompanyId });
 
   // Return diagnostics alongside the agents so the API can explain an empty result.
   return {
     agents: synced,
-    diagnostics: { companyIdResolved: !!resolvedCompanyId, usersFromGhl: users.length, saved: synced.length }
+    diagnostics: { companyIdResolved: !!resolvedCompanyId, usersFromGhl: users.length, saved: synced.length, seatLimit, cappedInactive: capped }
   };
 }
 

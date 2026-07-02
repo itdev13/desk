@@ -43,6 +43,26 @@ function requireAdmin(req, res, next) {
   return next();
 }
 
+/**
+ * Gate a route behind an active subscription. 402 + SUBSCRIPTION_REQUIRED when the workspace isn't
+ * entitled (expired / canceled / never subscribed, when SUBSCRIPTION_REQUIRED=true). Apply to the
+ * data routes — NOT to /api/subscription (the customer must still reach the upgrade page) or auth.
+ * No-ops cleanly if the entitlement check itself errors, so a transient DB blip never locks users out.
+ */
+async function requireEntitled(req, res, next) {
+  try {
+    const subscriptionService = require('../services/subscriptionService');
+    await subscriptionService.ensureEntitled(req.auth.locationId);
+    return next();
+  } catch (err) {
+    if (err.code === 'SUBSCRIPTION_REQUIRED') {
+      return res.status(402).json({ success: false, code: 'SUBSCRIPTION_REQUIRED', error: err.message });
+    }
+    logger.warn('Entitlement check errored — allowing through', { message: err.message });
+    return next();
+  }
+}
+
 /** Mint a session token for a resolved user context. */
 function signSession({ locationId, companyId, userId, name, email, role }) {
   return jwt.sign(
@@ -52,4 +72,4 @@ function signSession({ locationId, companyId, userId, name, email, role }) {
   );
 }
 
-module.exports = { requireAuth, requireAdmin, signSession };
+module.exports = { requireAuth, requireAdmin, requireEntitled, signSession };

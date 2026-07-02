@@ -79,13 +79,18 @@ class HelmDeskApp {
       });
     });
 
+    const { requireAuth, requireEntitled } = require('./middleware/auth');
+    // Entitlement gate for the data routes. Auth first (sets req.auth), then the subscription check.
+    // NOT applied to /api/subscription (customer must reach the upgrade page) or auth/webhooks/oauth.
+    const gate = [requireAuth, requireEntitled];
+
     this.app.use('/oauth', require('./routes/oauth'));
     this.app.use('/api/auth', require('./routes/auth'));
     this.app.use('/api/webhooks', require('./routes/webhooks'));
-    this.app.use('/api/tickets', require('./routes/tickets'));
-    this.app.use('/api/settings', require('./routes/settings'));
-    this.app.use('/api/agents', require('./routes/agents'));
-    this.app.use('/api/dashboard', require('./routes/dashboard'));
+    this.app.use('/api/tickets', gate, require('./routes/tickets'));
+    this.app.use('/api/settings', gate, require('./routes/settings'));
+    this.app.use('/api/agents', gate, require('./routes/agents'));
+    this.app.use('/api/dashboard', gate, require('./routes/dashboard'));
     this.app.use('/api/subscription', require('./routes/subscription'));
     this.app.use('/api/support', require('./routes/support'));
     this.app.use('/portal', require('./routes/portal')); // public, unauthenticated intake
