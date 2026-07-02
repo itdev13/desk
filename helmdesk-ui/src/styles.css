@@ -148,6 +148,11 @@ button { font-family: inherit; cursor: pointer; }
 }
 .plan-lock .ico { flex: none; }
 .plan-lock b { color: var(--ink); }
+.link-btn {
+  background: none; border: none; padding: 0; cursor: pointer; font: inherit;
+  color: var(--accent-dk); font-weight: 700; text-decoration: underline; white-space: nowrap;
+}
+.link-btn:hover { color: var(--ink); }
 
 .main { overflow-y: auto; display: flex; flex-direction: column; min-width: 0; flex: 1; }
 

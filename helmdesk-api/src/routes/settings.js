@@ -57,16 +57,23 @@ router.put('/', requireAdmin, async (req, res) => {
       if (req.body[key] !== undefined) update[key] = req.body[key];
     }
 
-    // White-label (brand + portal) is a top-tier perk. If the plan isn't entitled, block the change
-    // rather than silently dropping it, so the UI can prompt an upgrade.
+    // Plan-gated features: check once, then guard each affected field.
     const touchesWhiteLabel = WHITE_LABEL_FIELDS.some((k) => k in update);
-    if (touchesWhiteLabel) {
-      const { whiteLabel, planName } = await subscriptionService.planFeatures(req.auth.locationId);
-      if (!whiteLabel) {
+    const wantsRoundRobin = update.assignmentMode === 'round_robin';
+    if (touchesWhiteLabel || wantsRoundRobin) {
+      const { whiteLabel, routing, planName } = await subscriptionService.planFeatures(req.auth.locationId);
+      if (touchesWhiteLabel && !whiteLabel) {
         return res.status(402).json({
           success: false,
           code: 'PLAN_UPGRADE_REQUIRED',
           error: `White-label branding and the client portal are available on the Agency plan. Upgrade from ${planName || 'your current plan'} to customize these.`
+        });
+      }
+      if (wantsRoundRobin && !routing) {
+        return res.status(402).json({
+          success: false,
+          code: 'PLAN_UPGRADE_REQUIRED',
+          error: `Round-robin auto-assignment is available on the Team plan and above. Upgrade from ${planName || 'your current plan'} to enable it.`
         });
       }
     }

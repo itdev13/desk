@@ -128,7 +128,7 @@ export default function App() {
         ) : view === 'team' && user?.role === 'admin' ? (
           <Team notify={notify} />
         ) : view === 'settings' && user?.role === 'admin' ? (
-          <Settings workspace={workspace} onSaved={setWorkspace} notify={notify} />
+          <Settings workspace={workspace} onSaved={setWorkspace} notify={notify} onNavPlan={() => setView('plan')} />
         ) : (
           // Non-admins (or unknown view) land on the queue — Settings/Team are admin-only.
           <Queue onOpen={goTicket} user={user} notify={notify} onChange={refreshCounts} viewOverride={queueView} />

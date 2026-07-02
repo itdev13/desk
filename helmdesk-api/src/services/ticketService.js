@@ -68,6 +68,14 @@ function computeSla(workspace, priority, from = new Date()) {
 async function pickAssignee(workspace) {
   if (workspace.assignmentMode === 'unassigned') return { assigneeId: null, assigneeName: null };
 
+  // Round-robin is a Team+ feature. If the plan doesn't allow it (e.g. after a downgrade, or legacy
+  // config), fall back to leaving new tickets unassigned rather than silently using a gated feature.
+  if (workspace.assignmentMode === 'round_robin') {
+    const subscriptionService = require('./subscriptionService');
+    const { routing } = await subscriptionService.planFeatures(workspace.locationId).catch(() => ({ routing: true }));
+    if (!routing) return { assigneeId: null, assigneeName: null };
+  }
+
   if (workspace.assignmentMode === 'specific' && workspace.defaultAssigneeId) {
     const agent = await Agent.findOne({ locationId: workspace.locationId, ghlUserId: workspace.defaultAssigneeId });
     // If the configured default agent was deleted in the CRM, fall through to leaving it unassigned

@@ -52,17 +52,23 @@ export function SlaPreview({ targets }) {
 }
 
 /** Post-setup configuration. Same fields the wizard collected, plus white-label brand + portal. */
-export default function Settings({ onSaved, notify }) {
+export default function Settings({ onSaved, notify, onNavPlan }) {
   const [ws, setWs] = useState(null);
   const [agents, setAgents] = useState([]);
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState('channels');
   const [whiteLabel, setWhiteLabel] = useState(true); // gates the branding tab; assume allowed until known
+  const [routing, setRouting] = useState(true); // gates round-robin; assume allowed until known
+  const [planName, setPlanName] = useState('');
 
   useEffect(() => {
     api.getSettings().then((r) => setWs(r.workspace)).catch((e) => notify(e.message, true));
     api.assignableAgents().then((r) => setAgents(r.agents || [])).catch(() => {});
-    api.subscription().then((s) => setWhiteLabel(s.plan?.whiteLabel !== false)).catch(() => {});
+    api.subscription().then((s) => {
+      setWhiteLabel(s.plan?.whiteLabel !== false);
+      setRouting(s.plan?.routing !== false);
+      setPlanName((s.plan?.name || '').replace(/\s*\(Trial\)\s*$/i, ''));
+    }).catch(() => {});
   }, [notify]);
 
   if (!ws) return (<><div className="topbar"><h1>Settings</h1></div><div className="empty"><div className="spinner" style={{ margin: '0 auto' }} /></div></>);
@@ -195,11 +201,17 @@ export default function Settings({ onSaved, notify }) {
                 value={ws.assignmentMode}
                 onChange={(v) => set({ assignmentMode: v })}
                 options={[
-                  { value: 'round_robin', label: 'Round-robin across active agents' },
+                  { value: 'round_robin', label: 'Round-robin across active agents', disabled: !routing, meta: routing ? undefined : 'Team plan' },
                   { value: 'specific', label: 'Always one agent' },
                   { value: 'unassigned', label: 'Leave unassigned' }
                 ]}
               />
+              {!routing && (
+                <div className="plan-lock" style={{ marginTop: 10, marginBottom: 0 }}>
+                  <Icon name="route" size={16} />
+                  <span>Round-robin auto-assignment is a <b>Team plan</b> feature. On {planName || 'your current plan'}, assign to one agent or leave unassigned. <button type="button" className="link-btn" onClick={() => onNavPlan?.()}>Switch plan →</button></span>
+                </div>
+              )}
             </div>
             {ws.assignmentMode === 'specific' && (
               <div className="field">
@@ -270,7 +282,7 @@ export default function Settings({ onSaved, notify }) {
             {!whiteLabel && (
               <div className="plan-lock">
                 <Icon name="palette" size={16} />
-                <span>White-label branding & the client portal are an <b>Agency plan</b> feature. Upgrade your plan to customize these.</span>
+                <span>White-label branding & the client portal are an <b>Agency plan</b> feature. <button type="button" className="link-btn" onClick={() => onNavPlan?.()}>Switch plan →</button></span>
               </div>
             )}
             <fieldset disabled={!whiteLabel} style={{ border: 'none', padding: 0, margin: 0, opacity: whiteLabel ? 1 : 0.55 }}>

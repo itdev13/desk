@@ -51,6 +51,18 @@ function whiteLabelFor(plan) {
 }
 
 /**
+ * Auto-routing (round-robin) is a multi-agent feature — available once a plan has more than the
+ * base 3 seats (Team & Agency). Starter is single-owner: it can assign to one agent or leave
+ * unassigned, but not round-robin. A catalog plan can force it on with `routing:true`.
+ */
+function routingFor(plan) {
+  const name = (plan?.name || '').replace(/\s*\(Trial\)\s*$/i, '');
+  const catalog = planCatalog();
+  const entry = Object.values(catalog).find((p) => p.name === name);
+  return Number(plan?.seatLimit ?? 3) > 3 || entry?.routing === true;
+}
+
+/**
  * Sensible feature bullets when a catalog tier doesn't specify its own `features` array.
  * Reflects what the tier ACTUALLY grants — white-label only appears on white-label tiers so the
  * card doesn't advertise a feature the plan can't use.
@@ -58,8 +70,9 @@ function whiteLabelFor(plan) {
 function defaultFeatures(p) {
   const seats = (p.seatLimit ?? 3) >= 9999 ? 'Unlimited agents' : `Up to ${p.seatLimit ?? 3} agents`;
   const bullets = [seats, 'Unlimited tickets', 'SLA tracking & alerts', 'Kanban board & dashboard'];
-  // White-label + client portal is the top-tier differentiator; other tiers show routing instead.
-  bullets.push(whiteLabelFor(p) ? 'White-label branding & client portal' : 'Round-robin assignment');
+  // Show only what the tier actually grants, so cards never advertise a gated feature.
+  if (routingFor(p)) bullets.push('Round-robin auto-assignment');
+  if (whiteLabelFor(p)) bullets.push('White-label branding & client portal');
   return bullets;
 }
 
@@ -143,7 +156,7 @@ class SubscriptionService {
     const sub = await Subscription.findOne({ locationId });
     if (!sub) {
       const p = defaultPlan();
-      return { entitled: !isRequired(), status: 'none', plan: { ...p, whiteLabel: whiteLabelFor(p) }, required: isRequired() };
+      return { entitled: !isRequired(), status: 'none', plan: { ...p, whiteLabel: whiteLabelFor(p), routing: routingFor(p) }, required: isRequired() };
     }
 
     const plan = { name: sub.planName, priceUsd: sub.priceUsd, seatLimit: sub.seatLimit };
@@ -151,7 +164,7 @@ class SubscriptionService {
       entitled: isRequired() ? sub.isEntitled() : true,
       required: isRequired(),
       status: sub.status,
-      plan: { ...plan, whiteLabel: whiteLabelFor(plan) },
+      plan: { ...plan, whiteLabel: whiteLabelFor(plan), routing: routingFor(plan) },
       currentPeriodEnd: sub.currentPeriodEnd
     };
   }
@@ -211,7 +224,7 @@ class SubscriptionService {
     const status = await this.getStatus(locationId);
     const seatLimit = Number(status.plan?.seatLimit ?? 3);
     const name = (status.plan?.name || '').replace(/\s*\(Trial\)\s*$/i, '');
-    return { seatLimit, whiteLabel: whiteLabelFor(status.plan), planName: name };
+    return { seatLimit, whiteLabel: whiteLabelFor(status.plan), routing: routingFor(status.plan), planName: name };
   }
 }
 
