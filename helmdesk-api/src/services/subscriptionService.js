@@ -76,6 +76,30 @@ function defaultFeatures(p) {
   return bullets;
 }
 
+/**
+ * Build the plan/upgrade deep-link for a location:
+ *   https://{domain}/v2/location/{locationId}/custom-page-link/{appId}
+ *
+ * The host is the agency's white-label domain (captured at INSTALL as whitelabelDetails.domain) so
+ * the link opens on the agency's OWN domain — falling back to the standard GHL host otherwise.
+ * A MARKETPLACE_UPGRADE_URL env value, if set, overrides everything (escape hatch).
+ */
+async function buildUpgradeUrl(locationId) {
+  if (process.env.MARKETPLACE_UPGRADE_URL) return process.env.MARKETPLACE_UPGRADE_URL;
+  try {
+    const Installation = require('../models/Installation');
+    const inst = await Installation.findOne({ locationId, status: 'active' }).sort({ updatedAt: -1 }).lean();
+    const appId = inst?.appId || process.env.GHL_APP_ID;
+    if (!appId || !locationId) return '';
+    const rawDomain = inst?.whitelabelDetails?.domain || process.env.GHL_DEFAULT_APP_DOMAIN || 'app.gohighlevel.com';
+    // Normalize: strip any scheme/trailing slash the webhook may have included.
+    const host = String(rawDomain).replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+    return `https://${host}/v2/location/${locationId}/custom-page-link/${appId}`;
+  } catch {
+    return '';
+  }
+}
+
 function isRequired() {
   // Default ON. Set SUBSCRIPTION_REQUIRED=false for local testing without a real plan.
   return String(process.env.SUBSCRIPTION_REQUIRED ?? 'true').toLowerCase() !== 'false';
@@ -196,8 +220,8 @@ class SubscriptionService {
     return {
       plans,
       current: { name: current.plan?.name, status: current.status, priceUsd: current.plan?.priceUsd },
-      // Where the "Upgrade" button sends the user (GHL marketplace app / billing page).
-      upgradeUrl: process.env.MARKETPLACE_UPGRADE_URL || ''
+      // Where the "Upgrade" button sends the user — the plan page on the agency's own domain.
+      upgradeUrl: await buildUpgradeUrl(locationId)
     };
   }
 

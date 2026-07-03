@@ -10,6 +10,13 @@ const installationSchema = new mongoose.Schema(
     locationId: { type: String, index: true },
     userId: String,
     companyName: String,
+    // White-label details from the INSTALL webhook. `domain` is the agency's custom app host
+    // (e.g. app.myagency.com); used to build plan/upgrade redirect links on the agency's own domain.
+    isWhitelabelCompany: { type: Boolean, default: false },
+    whitelabelDetails: {
+      domain: { type: String, default: null },
+      logoUrl: { type: String, default: null }
+    },
     planId: String,
     trial: { type: mongoose.Schema.Types.Mixed, default: {} },
     status: { type: String, enum: ['active', 'uninstalled'], default: 'active', index: true },

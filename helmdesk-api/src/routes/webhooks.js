@@ -85,7 +85,17 @@ router.post('/helmdesk', async (req, res) => {
       case 'INSTALL': {
         await Installation.findOneAndUpdate(
           locationId ? { appId, locationId } : { appId, companyId },
-          { appId, companyId, locationId, userId: data.userId, companyName: data.companyName, status: 'active', installedAt: new Date(), rawWebhookData: data },
+          {
+            appId, companyId, locationId, userId: data.userId, companyName: data.companyName,
+            // White-label domain (if the installing agency is white-labeled) → used to build the
+            // plan/upgrade link on their own domain rather than app.gohighlevel.com.
+            isWhitelabelCompany: !!data.isWhitelabelCompany,
+            whitelabelDetails: {
+              domain: data.whitelabelDetails?.domain || null,
+              logoUrl: data.whitelabelDetails?.logoUrl || null
+            },
+            status: 'active', installedAt: new Date(), rawWebhookData: data
+          },
           { upsert: true, new: true }
         );
 
