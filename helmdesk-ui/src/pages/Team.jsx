@@ -48,9 +48,14 @@ export default function Team({ notify, onNavPlan }) {
       <div className="page">
         {hasLimit && (
           <div className={`seat-bar ${atOrOver ? 'is-full' : ''}`}>
-            <div className="seat-bar-text">
-              <b>{activeCount} of {seatLimit}</b> agent seats in use{atOrOver ? ' — limit reached' : ''}.
-              {atOrOver && <> Deactivate someone or <button type="button" className="link-btn" onClick={() => onNavPlan?.()}>upgrade your plan →</button></>}
+            <div className="seat-bar-head">
+              <div className="seat-bar-text">
+                <b>{activeCount} of {seatLimit}</b> agent seats in use{atOrOver ? ' — limit reached' : ''}.
+                {atOrOver && ' Deactivate someone, or move to a bigger plan for more agents.'}
+              </div>
+              <button type="button" className="link-btn" onClick={() => onNavPlan?.()}>
+                {atOrOver ? 'Upgrade plan →' : 'Need more agents? Switch plan →'}
+              </button>
             </div>
             <div className="seat-bar-track"><span style={{ width: `${Math.min(100, (activeCount / seatLimit) * 100)}%` }} /></div>
           </div>

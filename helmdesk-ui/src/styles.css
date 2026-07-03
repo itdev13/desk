@@ -160,6 +160,7 @@ button { font-family: inherit; cursor: pointer; }
   border: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px;
 }
 .seat-bar.is-full { background: var(--accent-soft); border-color: #f0dcc0; }
+.seat-bar-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .seat-bar-text { font-size: 13px; color: var(--ink-3); line-height: 1.45; }
 .seat-bar-text b { color: var(--ink); font-weight: 700; }
 .seat-bar-track { height: 6px; border-radius: 999px; background: var(--line-soft); overflow: hidden; }
