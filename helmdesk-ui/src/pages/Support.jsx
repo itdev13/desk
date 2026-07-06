@@ -8,26 +8,35 @@ import { track } from '../lib/analytics.js';
  * ($2 / 30 min). The paid block only renders when the backend reports it's configured
  * (a billing meter + calendar link are set); otherwise just the contact form shows.
  */
-export default function Support({ notify }) {
+const isValidEmail = (e = '') => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
+
+export default function Support({ notify, user }) {
   const [cfg, setCfg] = useState(null);
-  const [form, setForm] = useState({ subject: '', message: '' });
+  // Email prefills from the signed-in user (blank + editable if they don't have one on file).
+  const [form, setForm] = useState({ subject: '', message: '', email: user?.email || '' });
   const [sending, setSending] = useState(false);
   const [booking, setBooking] = useState(false);
   const [booked, setBooked] = useState(null); // { schedulingUrl } after a successful charge
+  const [sentTo, setSentTo] = useState(null); // email address for the success modal
 
   useEffect(() => {
     api.supportConfig().then((r) => setCfg(r)).catch(() => setCfg({ onboarding: { available: false } }));
   }, []);
 
+  // Keep the field in sync if the user context arrives after mount.
+  useEffect(() => { if (user?.email) setForm((f) => (f.email ? f : { ...f, email: user.email })); }, [user]);
+
   const sendContact = async (e) => {
     e.preventDefault();
     if (!form.subject.trim() || !form.message.trim()) { notify('Add a subject and a message.', true); return; }
+    if (!form.email.trim()) { notify('Please enter the email where we should reply.', true); return; }
+    if (!isValidEmail(form.email)) { notify('That email address looks invalid.', true); return; }
     setSending(true);
     try {
       const r = await api.supportContact(form);
       track('support_contact_sent');
-      notify(r.message || 'Message sent.');
-      setForm({ subject: '', message: '' });
+      setSentTo(r.email || form.email); // open the confirmation modal
+      setForm({ subject: '', message: '', email: form.email }); // keep email for a follow-up
     } catch (err) {
       notify(err.message, true);
     } finally {
@@ -66,16 +75,23 @@ export default function Support({ notify }) {
         {/* Contact form */}
         <div className="card">
           <SectionHeader icon="send" title="Message our team"
-            description="Questions, bugs, or feature requests. We reply by email — usually within one business day." />
+            description="Questions, bugs, or feature requests. We reply by email — usually within an hour." />
           <form onSubmit={sendContact} style={{ marginTop: 16 }}>
             <div className="field">
-              <label>Subject</label>
+              <label>Reply-to email <span className="req">*</span></label>
+              <input type="email" value={form.email} required
+                placeholder="you@company.com"
+                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
+              <span className="hint">We’ll send our reply here. Prefilled from your account — edit if you’d prefer another inbox.</span>
+            </div>
+            <div className="field">
+              <label>Subject <span className="req">*</span></label>
               <input type="text" value={form.subject} maxLength={140}
                 placeholder="e.g. How do I route tickets to a specific agent?"
                 onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} />
             </div>
             <div className="field">
-              <label>Message</label>
+              <label>Message <span className="req">*</span></label>
               <textarea rows={6} value={form.message}
                 placeholder="Tell us what's going on…"
                 onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} />
@@ -126,6 +142,20 @@ export default function Support({ notify }) {
           )}
         </div>
       </div>
+
+      {sentTo && (
+        <div className="modal-overlay" onClick={() => setSentTo(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-icon"><Icon name="check" size={26} /></div>
+            <h3>Message sent</h3>
+            <p>
+              We’ll reply to <b>{sentTo}</b> — usually <b>within an hour</b>.
+              Please keep an eye on that inbox (check spam just in case).
+            </p>
+            <button className="btn btn-accent" onClick={() => setSentTo(null)}>Got it</button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

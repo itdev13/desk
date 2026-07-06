@@ -133,7 +133,7 @@ export default function App() {
         ) : view === 'dashboard' ? (
           <Dashboard />
         ) : view === 'support' ? (
-          <Support notify={notify} />
+          <Support notify={notify} user={user} />
         ) : view === 'plan' ? (
           <Plan notify={notify} />
         ) : view === 'team' && user?.role === 'admin' ? (

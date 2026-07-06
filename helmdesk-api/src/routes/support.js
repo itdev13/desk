@@ -73,7 +73,10 @@ router.post('/contact', async (req, res) => {
     if (!subject || !message) {
       return res.status(400).json({ success: false, error: 'Subject and message are required.' });
     }
-    if (email && !isValidEmail(email)) {
+    if (!email) {
+      return res.status(400).json({ success: false, error: 'A reply-to email address is required.' });
+    }
+    if (!isValidEmail(email)) {
       return res.status(400).json({ success: false, error: 'That email address looks invalid.' });
     }
 
@@ -102,7 +105,7 @@ router.post('/contact', async (req, res) => {
     });
 
     logger.info('Support contact sent', { locationId: req.auth.locationId, subject });
-    res.json({ success: true, message: 'Message sent. Our team will reply by email soon.' });
+    res.json({ success: true, email, message: 'Message sent. Our team will reply by email soon.' });
   } catch (error) {
     logger.error('Support contact failed', { message: error.message });
     res.status(500).json({ success: false, error: 'Could not send your message. Please try again.' });

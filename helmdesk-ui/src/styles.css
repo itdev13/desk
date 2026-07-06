@@ -167,6 +167,31 @@ button { font-family: inherit; cursor: pointer; }
 .seat-bar-track span { display: block; height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.3s; }
 .seat-bar.is-full .seat-bar-track span { background: var(--crit); }
 
+/* Required-field asterisk */
+.req { color: var(--crit); font-weight: 700; }
+
+/* ── Centered confirmation modal ── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200; display: grid; place-items: center;
+  background: rgba(15, 23, 41, 0.45); padding: 20px; animation: modal-fade 0.15s ease;
+}
+.modal-card {
+  background: var(--panel); border-radius: var(--r-lg); padding: 28px 26px; width: 380px;
+  max-width: 92vw; text-align: center; box-shadow: var(--shadow-lg);
+  animation: modal-pop 0.18s cubic-bezier(0.2, 0.8, 0.3, 1.2);
+}
+.modal-icon {
+  width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center;
+  margin: 0 auto 14px; background: var(--good-bg); color: var(--good);
+}
+.modal-card h3 { margin: 0 0 8px; font-size: 18px; }
+.modal-card p { margin: 0 0 20px; font-size: 13.5px; color: var(--ink-3); line-height: 1.55; }
+.modal-card p b { color: var(--ink); }
+.modal-card .btn { width: 100%; justify-content: center; }
+@keyframes modal-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modal-pop { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .modal-overlay, .modal-card { animation: none; } }
+
 .main { overflow-y: auto; display: flex; flex-direction: column; min-width: 0; flex: 1; }
 
 @media (max-width: 720px) {
