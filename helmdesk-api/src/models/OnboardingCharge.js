@@ -19,13 +19,15 @@ const onboardingChargeSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ['pending', 'charged', 'failed'],
+      // 'tested' = internal-testing company; flow completed but no real charge was made.
+      enum: ['pending', 'charged', 'failed', 'tested'],
       default: 'pending',
       index: true
     },
     ghlChargeId: String,
     failureReason: String,
     insufficientFunds: { type: Boolean, default: false },
+    internalTesting: { type: Boolean, default: false },
 
     // Set once charged so the UI can reveal the scheduling link.
     schedulingUrl: String

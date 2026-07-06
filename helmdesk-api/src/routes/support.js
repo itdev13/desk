@@ -137,7 +137,7 @@ router.post('/onboarding-call', async (req, res) => {
       status: 'pending'
     });
 
-    const { chargeId } = await ghlService.chargeWallet({
+    const { chargeId, internalTesting } = await ghlService.chargeWallet({
       companyId,
       locationId: req.auth.locationId,
       meterId: ONBOARDING_METER_ID,
@@ -148,7 +148,8 @@ router.post('/onboarding-call', async (req, res) => {
       description: `HelmDesk onboarding call — ${ONBOARDING_MINS} min`
     });
 
-    charge.status = 'charged';
+    charge.status = internalTesting ? 'tested' : 'charged';
+    charge.internalTesting = !!internalTesting;
     charge.ghlChargeId = chargeId;
     charge.schedulingUrl = SCHEDULING_URL;
     await charge.save();

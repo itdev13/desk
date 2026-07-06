@@ -399,6 +399,19 @@ class GHLService {
    * Returns { chargeId }. Throws with err.insufficientFunds / err.walletScope on a funds failure.
    */
   async chargeWallet({ companyId, locationId, meterId, amountUsd, units = 1, eventId, description, fixedPrice = false }) {
+    // Internal-testing bypass: companies in the AppConfig `internalTestingCompanyIds` list skip the
+    // real wallet charge so the flow can be tested without funding a wallet. Returns a fake chargeId
+    // and flags the result so the caller can mark it as a test (not a real) charge.
+    try {
+      const AppConfig = require('../models/AppConfig');
+      if (companyId && await AppConfig.hasValue('internalTestingCompanyIds', companyId)) {
+        logger.info('Internal testing company — skipping wallet charge', { companyId, locationId, meterId });
+        return { chargeId: `internal_test_${eventId || Date.now()}`, internalTesting: true, raw: { paymentIgnored: true } };
+      }
+    } catch (cfgErr) {
+      logger.warn('internalTestingCompanyIds lookup failed — proceeding with real charge', { message: cfgErr.message });
+    }
+
     const accessToken = await this.getValidToken(locationId);
     const payload = {
       companyId,
