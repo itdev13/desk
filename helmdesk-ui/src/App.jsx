@@ -3,6 +3,7 @@ import { api, setToken } from './lib/api.js';
 import { Spinner, Icon, Toast } from './components/ui.jsx';
 import { LogoMark } from './components/Logo.jsx';
 import { useAutoRefresh } from './lib/useAutoRefresh.js';
+import { initAnalytics, track, trackPageView } from './lib/analytics.js';
 import SetupWizard from './pages/SetupWizard.jsx';
 import Queue from './pages/Queue.jsx';
 import Board from './pages/Board.jsx';
@@ -55,6 +56,8 @@ export default function App() {
       setToken(res.token);
       setWorkspace(res.workspace);
       setUser(res.user);
+      initAnalytics(res.analytics || {}); // start clickstream capture if the server has it enabled
+      track('app_open', { role: res.user?.role, setupComplete: !!res.workspace?.setupComplete });
 
       api.subscription().then(setSub).catch(() => {});
 
@@ -85,14 +88,22 @@ export default function App() {
   // Keep the sidebar counts (Open / Overdue) live while in the app — poll + focus refresh.
   useAutoRefresh(refreshCounts, { enabled: phase === 'app' });
 
+  // Track navigation: a page_view whenever the active view (or ticket detail) changes.
+  useEffect(() => {
+    if (phase !== 'app') return;
+    if (openTicketId) trackPageView('ticket_detail');
+    else trackPageView(view === 'queue' && queueView === 'overdue' ? 'overdue' : view);
+  }, [phase, view, queueView, openTicketId]);
+
   const finishSetup = (ws) => {
     setWorkspace(ws);
     setPhase('app');
     refreshCounts();
+    track('setup_complete');
     notify('Setup complete — HelmDesk is live.');
   };
 
-  const goTicket = (id) => setOpenTicketId(id);
+  const goTicket = (id) => { track('ticket_open', { id }); setOpenTicketId(id); };
   const closeTicket = () => { setOpenTicketId(null); refreshCounts(); };
 
   if (phase === 'loading') return <Spinner />;

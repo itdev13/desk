@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { Avatar, Switch, Icon } from '../components/ui.jsx';
+import { track } from '../lib/analytics.js';
 
 /** Team roster — sync agents from GHL, toggle who's active in the round-robin. */
 export default function Team({ notify, onNavPlan }) {
@@ -19,6 +20,7 @@ export default function Team({ notify, onNavPlan }) {
     setSyncing(true);
     try {
       const r = await api.syncAgents();
+      track('team_sync', { count: r.count, capped: r.diagnostics?.cappedInactive || 0 });
       setAgents(r.agents || []);
       const capped = r.diagnostics?.cappedInactive || 0;
       notify(capped
@@ -34,7 +36,8 @@ export default function Team({ notify, onNavPlan }) {
 
   const toggle = async (a, active) => {
     setAgents((list) => list.map((x) => (x.ghlUserId === a.ghlUserId ? { ...x, active } : x)));
-    try { await api.updateAgent(a.ghlUserId, { active }); } catch (err) { notify(err.message, true); load(); }
+    try { await api.updateAgent(a.ghlUserId, { active }); track('agent_toggle', { active }); }
+    catch (err) { track('agent_toggle_blocked', { code: err.code }); notify(err.message, true); load(); }
   };
 
   return (

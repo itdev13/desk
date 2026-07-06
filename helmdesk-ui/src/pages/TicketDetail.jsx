@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../lib/api.js';
 import { ago, slaDisplay, STATUS_LABEL, PRIORITY_LABEL, labelChannel, isCustomProviderChannel } from '../lib/format.js';
 import { Icon, PriorityPill, Avatar, Select } from '../components/ui.jsx';
+import { track } from '../lib/analytics.js';
 
 /**
  * The ticket workspace: isolated conversation thread (customer messages, agent replies, internal
@@ -44,9 +45,11 @@ export default function TicketDetail({ id, onBack, user, notify, onChange }) {
     try {
       if (mode === 'reply') {
         await api.reply(id, { body });
+        track('reply_sent', { id });
         notify('Reply sent');
       } else {
         await api.note(id, { body });
+        track('note_added', { id });
         notify('Note added');
       }
       setBody('');
@@ -62,6 +65,7 @@ export default function TicketDetail({ id, onBack, user, notify, onChange }) {
   const patch = async (fn, label) => {
     try {
       await fn();
+      track('ticket_update', { id, label });
       notify(label);
       await load();
       onChange?.(); // status/priority/assignee change → refresh sidebar counts immediately

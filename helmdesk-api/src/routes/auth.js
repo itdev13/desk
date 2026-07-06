@@ -113,6 +113,7 @@ router.post('/verify', async (req, res) => {
     });
 
     const sessionToken = signSession({ locationId, companyId, userId, name, email, role });
+    const analyticsService = require('../services/analyticsService');
     res.json({
       success: true,
       token: sessionToken,
@@ -122,7 +123,9 @@ router.post('/verify', async (req, res) => {
         setupComplete: workspace?.setupComplete || false,
         brand: workspace?.brand || { name: 'HelmDesk', primaryColor: '#E0A24A' }
       },
-      user: { userId, name, email, role }
+      user: { userId, name, email, role },
+      // Tells the UI whether to send clickstream events (respects ANALYTICS_ENABLED + excluded ids).
+      analytics: analyticsService.clientConfig(locationId)
     });
   } catch (error) {
     logger.error('auth/verify error', { message: error.message });

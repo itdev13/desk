@@ -14,6 +14,9 @@ const SCHEDULING_URL = process.env.ONBOARDING_CALENDAR_URL || '';
 const ONBOARDING_PRICE_USD = Number(process.env.ONBOARDING_CALL_PRICE_USD || 2);
 const ONBOARDING_MINS = Number(process.env.ONBOARDING_CALL_MINS || 30);
 const ONBOARDING_METER_ID = process.env.GHL_ONBOARDING_METER_ID || '';
+// The GHL meter is fixed-price by default (price set on the meter). Set GHL_ONBOARDING_METER_FIXED_PRICE=false
+// only if you created a CUSTOM-price meter and want the app to send the per-unit price instead.
+const ONBOARDING_METER_FIXED = String(process.env.GHL_ONBOARDING_METER_FIXED_PRICE ?? 'true').toLowerCase() !== 'false';
 
 // Lazily-built mailer. Missing SMTP config is non-fatal — the form just returns a clear error.
 let transporter = null;
@@ -140,6 +143,7 @@ router.post('/onboarding-call', async (req, res) => {
       meterId: ONBOARDING_METER_ID,
       amountUsd: ONBOARDING_PRICE_USD,
       units: 1,
+      fixedPrice: ONBOARDING_METER_FIXED, // fixed-price meter → don't send a custom price
       eventId: charge._id.toString(),
       description: `HelmDesk onboarding call — ${ONBOARDING_MINS} min`
     });

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { Icon, SectionHeader } from '../components/ui.jsx';
+import { track } from '../lib/analytics.js';
 
 /**
  * Support tab: a contact form (emailed to our inbox) plus an optional paid onboarding call
@@ -24,6 +25,7 @@ export default function Support({ notify }) {
     setSending(true);
     try {
       const r = await api.supportContact(form);
+      track('support_contact_sent');
       notify(r.message || 'Message sent.');
       setForm({ subject: '', message: '' });
     } catch (err) {
@@ -35,11 +37,14 @@ export default function Support({ notify }) {
 
   const book = async () => {
     setBooking(true);
+    track('onboarding_call_click');
     try {
       const r = await api.bookOnboardingCall();
+      track('onboarding_call_charged', { amountUsd: r.amountUsd });
       setBooked({ schedulingUrl: r.schedulingUrl });
       notify(r.message || 'Charged. Pick a time.');
     } catch (err) {
+      track('onboarding_call_failed', { code: err.code });
       notify(err.message, true);
     } finally {
       setBooking(false);

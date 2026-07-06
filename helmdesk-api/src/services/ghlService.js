@@ -390,24 +390,33 @@ class GHLService {
    * per-use API cost. Requires GHL_APP_ID and a meter created in the marketplace dashboard
    * (GHL_ONBOARDING_METER_ID). Idempotent per `eventId`.
    *
+   * Two meter kinds in GHL:
+   *   - FIXED-price meter: the price is baked into the meter. We must send ONLY `units` — passing a
+   *     `price` is rejected ("Custom price is not allowed for fixed price meters").
+   *   - CUSTOM-price meter: the caller sets the per-unit price. We send `price`.
+   * Pass `fixedPrice: true` (or leave amountUsd unset) to charge a fixed-price meter.
+   *
    * Returns { chargeId }. Throws with err.insufficientFunds / err.walletScope on a funds failure.
    */
-  async chargeWallet({ companyId, locationId, meterId, amountUsd, units = 1, eventId, description }) {
+  async chargeWallet({ companyId, locationId, meterId, amountUsd, units = 1, eventId, description, fixedPrice = false }) {
     const accessToken = await this.getValidToken(locationId);
-    const price = Number((amountUsd / units).toFixed(4));
+    const payload = {
+      companyId,
+      meterId,
+      units,
+      appId: process.env.GHL_APP_ID,
+      eventId,
+      locationId,
+      description
+    };
+    // Only include a custom per-unit price for custom-price meters. Fixed-price meters reject it.
+    if (!fixedPrice && amountUsd != null) {
+      payload.price = Number((amountUsd / units).toFixed(4));
+    }
     try {
       const { data } = await axios.post(
         `${this.baseURL}/marketplace/billing/charges`,
-        {
-          companyId,
-          meterId,
-          units,
-          price,
-          appId: process.env.GHL_APP_ID,
-          eventId,
-          locationId,
-          description
-        },
+        payload,
         { headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json', Version: this.version } }
       );
       const chargeId = data.chargeId || data.id || data._id;

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { api, portalUrl } from '../lib/api.js';
 import { CHANNELS } from '../lib/format.js';
 import { Icon, Switch, Select, TagInput, SectionHeader } from '../components/ui.jsx';
+import { track } from '../lib/analytics.js';
 
 /** Render a minutes value as a friendly duration, e.g. 60 → "1h", 1440 → "1d", 90 → "1h 30m". */
 export function durationLabel(mins) {
@@ -119,8 +120,10 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
       });
       setWs(res.workspace);
       onSaved?.(res.workspace);
+      track('settings_saved', { tab });
       notify('Settings saved');
     } catch (err) {
+      track('settings_save_blocked', { tab, code: err.code });
       notify(err.message, true);
     } finally {
       setSaving(false);

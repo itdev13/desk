@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { Icon } from '../components/ui.jsx';
+import { track } from '../lib/analytics.js';
 
 /**
  * Pricing / plan page. Shows every tier as a card with the current plan flagged. Upgrades are a
@@ -24,7 +25,8 @@ export default function Plan({ notify }) {
   const currentIdx = plans.findIndex((p) => p.isCurrent);
   const upgradeUrl = data?.upgradeUrl;
 
-  const onUpgrade = () => {
+  const onUpgrade = (targetPlan) => {
+    track('plan_upgrade_click', { to: targetPlan?.name, from: data?.current?.name, hadUrl: !!upgradeUrl });
     if (upgradeUrl) window.open(upgradeUrl, '_blank', 'noopener');
     else notify?.('Contact us to change your plan — upgrades are managed in your marketplace account.', false);
   };
@@ -64,9 +66,9 @@ export default function Plan({ notify }) {
                     <Icon name="check" size={15} /> Current plan
                   </button>
                 ) : isUpgrade ? (
-                  <button className="btn btn-accent" onClick={onUpgrade}>Upgrade to {p.name}</button>
+                  <button className="btn btn-accent" onClick={() => onUpgrade(p)}>Upgrade to {p.name}</button>
                 ) : (
-                  <button className="btn btn-ghost" onClick={onUpgrade}>Switch to {p.name}</button>
+                  <button className="btn btn-ghost" onClick={() => onUpgrade(p)}>Switch to {p.name}</button>
                 )}
               </div>
             );
