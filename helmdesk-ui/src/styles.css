@@ -148,6 +148,15 @@ button { font-family: inherit; cursor: pointer; }
 }
 .plan-lock .ico { flex: none; }
 .plan-lock b { color: var(--ink); }
+
+/* ── Enrolment gate (no active subscription) ── */
+.enroll-wrap { min-height: 100vh; background: var(--paper); display: grid; place-items: start center; padding: 48px 20px; overflow-y: auto; }
+.enroll-inner { width: 100%; max-width: 960px; }
+.enroll-head { text-align: center; margin-bottom: 32px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.enroll-head h1 { margin: 12px 0 0; font-size: 26px; letter-spacing: -0.02em; }
+.enroll-head p { margin: 0; max-width: 560px; color: var(--slate); font-size: 14px; line-height: 1.55; }
+.enroll-grid { margin-top: 4px; }
+.enroll-foot { text-align: center; margin-top: 26px; font-size: 13px; color: var(--slate); display: flex; gap: 8px; justify-content: center; align-items: center; }
 .link-btn {
   background: none; border: none; padding: 0; cursor: pointer; font: inherit;
   color: var(--accent-dk); font-weight: 700; text-decoration: underline; white-space: nowrap;

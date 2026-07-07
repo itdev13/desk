@@ -14,6 +14,7 @@ import Settings from './pages/Settings.jsx';
 import Team from './pages/Team.jsx';
 import Support from './pages/Support.jsx';
 import Plan from './pages/Plan.jsx';
+import EnrollGate from './pages/EnrollGate.jsx';
 
 /**
  * App root. Resolves the GHL session (SSO blob or ?locationId dev fallback), then either runs the
@@ -60,10 +61,15 @@ export default function App() {
       initAnalytics(res.analytics || {}); // start clickstream capture if the server has it enabled
       track('app_open', { role: res.user?.role, setupComplete: !!res.workspace?.setupComplete });
 
-      api.subscription().then(setSub).catch(() => {});
+      // Resolve entitlement before routing: no active plan → the enrol gate, not the app.
+      let subStatus = null;
+      try { subStatus = await api.subscription(); setSub(subStatus); } catch { /* ignore */ }
 
-      if (!res.workspace.setupComplete) setPhase('wizard');
-      else {
+      if (subStatus && subStatus.required && !subStatus.entitled) {
+        setPhase('enroll');
+      } else if (!res.workspace.setupComplete) {
+        setPhase('wizard');
+      } else {
         setPhase('app');
         refreshCounts();
       }
@@ -110,6 +116,7 @@ export default function App() {
   if (phase === 'loading') return <Spinner />;
   if (phase === 'error') return <ConnectScreen title="Something went wrong" message={errorMsg} retry={bootstrap} />;
   if (phase === 'connect') return <ConnectScreen title="Connect HelmDesk" message="Install HelmDesk from the marketplace to get started." cta />;
+  if (phase === 'enroll') return <EnrollGate brand={workspace?.brand} notify={notify} onRetry={bootstrap} />;
   if (phase === 'wizard') return <SetupWizard workspace={workspace} onDone={finishSetup} notify={notify} />;
 
   // ── Main console ──

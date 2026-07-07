@@ -160,6 +160,23 @@ router.post('/helmdesk', async (req, res) => {
         logger.info('🔄 App version updated', { appId, version: data.version });
         break;
 
+      // A SaaS plan was created/updated in the app's configurator → sync it into the catalog so the
+      // pricing/enrol page and planId→tier mapping stay current without touching PLANS_JSON.
+      case 'SaasPlanCreate':
+      case 'SaasPlanUpdate': {
+        const plan = await subscriptionService.upsertPlanFromWebhook(data);
+        logger.info('🧾 SaaS plan synced', { planId: data.planId, title: data.title, level: data.planLevel, priceUsd: plan?.priceUsd });
+        break;
+      }
+      case 'SaasPlanDelete': {
+        if (data.planId && database.isConnected()) {
+          const PlanCatalog = require('../models/PlanCatalog');
+          await PlanCatalog.findOneAndUpdate({ planId: data.planId }, { $set: { active: false } });
+          logger.info('🗑️ SaaS plan deactivated', { planId: data.planId });
+        }
+        break;
+      }
+
       case 'PLAN_CHANGE': {
         const newPlanId = data.newPlanId;
         const oldPlanId = data.currentPlanId || data.oldPlanId || data.previousPlanId || null;
