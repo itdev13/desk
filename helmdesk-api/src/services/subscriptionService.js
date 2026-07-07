@@ -88,15 +88,11 @@ async function buildUpgradeUrl(locationId) {
   if (process.env.MARKETPLACE_UPGRADE_URL) return process.env.MARKETPLACE_UPGRADE_URL;
   try {
     const Installation = require('../models/Installation');
-    const PlanCatalog = require('../models/PlanCatalog');
     const inst = await Installation.findOne({ locationId, status: 'active' }).sort({ updatedAt: -1 }).lean();
     const appId = inst?.appId || process.env.GHL_APP_ID;
     if (!appId || !locationId) return '';
 
-    // versionId comes from the SaasPlanCreate webhook (stored on the catalog); fall back to env.
-    const anyPlan = await PlanCatalog.findOne({ appId, versionId: { $ne: null } }).sort({ updatedAt: -1 }).lean();
-    const versionId = anyPlan?.versionId || process.env.GHL_APP_VERSION_ID || '';
-
+    const versionId = process.env.GHL_APP_VERSION_ID || '';
     const rawDomain = inst?.whitelabelDetails?.domain || process.env.GHL_DEFAULT_APP_DOMAIN || 'app.gohighlevel.com';
     const host = String(rawDomain).replace(/^https?:\/\//i, '').replace(/\/+$/, '');
     // The SaaS plan/enrol page for this app in the sub-account:
@@ -106,19 +102,6 @@ async function buildUpgradeUrl(locationId) {
   } catch {
     return '';
   }
-}
-
-/** Map a GHL planLevel (1=basic, 2=pro, 3+=enterprise) to a seat limit when PLANS_JSON has none. */
-function seatLimitForLevel(level = 1) {
-  const n = Number(level) || 1;
-  if (n >= 3) return 9999; // top tier → unlimited (also grants white-label)
-  if (n === 2) return 10;
-  return 3;
-}
-
-/** Feature bullets for a catalog plan, derived from its price/level (saasProducts are GHL-internal). */
-function featuresFromProducts(d) {
-  return defaultFeatures({ seatLimit: seatLimitForLevel(d.planLevel), name: d.title });
 }
 
 function isRequired() {
@@ -139,43 +122,6 @@ class SubscriptionService {
 
   planForId(planId) {
     return planForId(planId);
-  }
-
-  /**
-   * Upsert a plan into the catalog from a `SaasPlanCreate` webhook. Picks the primary price from
-   * the payload's `prices[]` (amount is in cents), maps saasProducts → feature bullets, and keeps
-   * the versionId so we can build the enrol/upgrade deep-link.
-   */
-  async upsertPlanFromWebhook(data = {}) {
-    if (!database.isConnected() || !data.planId) return null;
-    const PlanCatalog = require('../models/PlanCatalog');
-
-    // Choose the primary price: first active one, else the first. Amounts are in cents.
-    const prices = Array.isArray(data.prices) ? data.prices : [];
-    const primary = prices.find((p) => p.active) || prices[0] || {};
-    const priceUsd = Number.isFinite(primary.amount) ? primary.amount / 100 : 0;
-
-    return PlanCatalog.findOneAndUpdate(
-      { planId: data.planId },
-      {
-        planId: data.planId,
-        appId: data.appId || null,
-        companyId: data.companyId || null,
-        versionId: data.versionId || null,
-        title: data.title || 'Plan',
-        description: data.description || '',
-        priceUsd,
-        currency: primary.currency || 'USD',
-        billingInterval: primary.billingInterval || 'monthly',
-        planLevel: Number(data.planLevel) || 1,
-        trialPeriodDays: Number(data.trialPeriod) || 0,
-        saasProducts: Array.isArray(data.saasProducts) ? data.saasProducts : [],
-        addOns: Array.isArray(data.addOns) ? data.addOns : [],
-        active: true,
-        raw: data
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
   }
 
   /** Activate / renew / change a subscription — called from INSTALL and PLAN_CHANGE webhooks. */
@@ -261,26 +207,8 @@ class SubscriptionService {
     const currentName = (current.plan?.name || '').replace(/\s*\(Trial\)\s*$/i, '');
     const envCatalog = planCatalog(); // planId → { name, priceUsd, seatLimit, features }
 
-    // Prefer the DB catalog (synced from SaasPlanCreate); fall back to PLANS_JSON, then default plan.
-    let tiers = [];
-    if (database.isConnected()) {
-      const PlanCatalog = require('../models/PlanCatalog');
-      const docs = await PlanCatalog.find({ active: true }).sort({ planLevel: 1, priceUsd: 1 }).lean();
-      tiers = docs.map((d) => {
-        // If PLANS_JSON also defines this planId, use its seatLimit/features/name for enforcement parity.
-        const env = envCatalog[d.planId] || {};
-        return {
-          planId: d.planId,
-          name: env.name || d.title,
-          priceUsd: env.priceUsd ?? d.priceUsd,
-          seatLimit: env.seatLimit ?? seatLimitForLevel(d.planLevel),
-          features: Array.isArray(env.features) ? env.features : featuresFromProducts(d)
-        };
-      });
-    }
-    if (tiers.length === 0) {
-      tiers = Object.entries(envCatalog).map(([planId, p]) => ({ planId, ...p }));
-    }
+    // Plans come from PLANS_JSON (the app's configured tiers); the single default plan is the fallback.
+    let tiers = Object.entries(envCatalog).map(([planId, p]) => ({ planId, ...p }));
     if (tiers.length === 0) tiers = [{ planId: null, ...defaultPlan() }];
     tiers.sort((a, b) => (a.priceUsd || 0) - (b.priceUsd || 0));
 
