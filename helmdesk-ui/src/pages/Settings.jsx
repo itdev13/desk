@@ -185,6 +185,14 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
                 <div><div className="t-label">Auto-reply on new tickets</div><div className="t-desc">Acknowledge the customer automatically.</div></div>
                 <Switch checked={ws.autoReplyEnabled} onChange={(v) => set({ autoReplyEnabled: v })} />
               </div>
+              {ws.autoReplyEnabled && (
+                <div className="field" style={{ marginTop: 14 }}>
+                  <label>Auto-reply message</label>
+                  <textarea value={ws.autoReplyMessage} onChange={(e) => set({ autoReplyMessage: e.target.value })}
+                    placeholder="Thanks for reaching out — we've received your message and will get back to you shortly." />
+                  <span className="hint">Sent automatically to the customer when a new ticket is created.</span>
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 18 }}>
@@ -207,12 +215,6 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
                 <span className="hint">Press Enter to add each keyword. These win over everything — no ticket is created.</span>
               </div>
             </div>
-            {ws.autoReplyEnabled && (
-              <div className="field" style={{ marginTop: 14 }}>
-                <label>Auto-reply message</label>
-                <textarea value={ws.autoReplyMessage} onChange={(e) => set({ autoReplyMessage: e.target.value })} />
-              </div>
-            )}
           </div>
         )}
 
