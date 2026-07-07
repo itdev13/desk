@@ -6,6 +6,7 @@ import { useAutoRefresh } from './lib/useAutoRefresh.js';
 import { initAnalytics, track, trackPageView } from './lib/analytics.js';
 import SetupWizard from './pages/SetupWizard.jsx';
 import Queue from './pages/Queue.jsx';
+import Inbox from './pages/Inbox.jsx';
 import Board from './pages/Board.jsx';
 import TicketDetail from './pages/TicketDetail.jsx';
 import Dashboard from './pages/Dashboard.jsx';
@@ -24,7 +25,7 @@ export default function App() {
   const [workspace, setWorkspace] = useState(null);
   const [user, setUser] = useState(null);
   const [sub, setSub] = useState(null);
-  const [view, setView] = useState('queue'); // queue | board | dashboard | team | settings
+  const [view, setView] = useState('inbox'); // inbox | queue | board | dashboard | team | settings
   const [queueView, setQueueView] = useState('open'); // which filter the Queue should show
   const [openTicketId, setOpenTicketId] = useState(null);
   const [counts, setCounts] = useState({});
@@ -124,7 +125,9 @@ export default function App() {
         onNav={(v, qv) => { setOpenTicketId(null); setView(v); if (qv) setQueueView(qv); }}
       />
       <div className="main">
-        {openTicketId ? (
+        {view === 'inbox' && !openTicketId ? (
+          <Inbox user={user} notify={notify} onChange={refreshCounts} />
+        ) : openTicketId ? (
           <TicketDetail id={openTicketId} onBack={closeTicket} user={user} notify={notify} onChange={refreshCounts} />
         ) : view === 'queue' ? (
           <Queue onOpen={goTicket} user={user} notify={notify} onChange={refreshCounts} viewOverride={queueView} />
@@ -153,7 +156,8 @@ export default function App() {
 function TopNav({ workspace, sub, view, queueView, counts, isAdmin, onNav }) {
   const brand = workspace?.brand || { name: 'HelmDesk' };
   const tabs = [
-    { key: 'queue', label: 'Queue', icon: 'inbox', count: counts.open },
+    { key: 'inbox', label: 'Inbox', icon: 'inbox', count: counts.open },
+    { key: 'queue', label: 'Queue', icon: 'filter' },
     { key: 'board', label: 'Board', icon: 'board' },
     { key: 'dashboard', label: 'Dashboard', icon: 'chart' }
   ];
