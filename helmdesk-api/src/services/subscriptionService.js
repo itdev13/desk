@@ -69,7 +69,7 @@ function routingFor(plan) {
  */
 function defaultFeatures(p) {
   const seats = (p.seatLimit ?? 3) >= 9999 ? 'Unlimited agents' : `Up to ${p.seatLimit ?? 3} agents`;
-  const bullets = [seats, 'Unlimited tickets', 'SLA tracking & alerts', 'Kanban board & dashboard'];
+  const bullets = [seats, 'Unlimited tickets', 'SLA tracking & overdue flags', 'Kanban board & dashboard'];
   // Show only what the tier actually grants, so cards never advertise a gated feature.
   if (routingFor(p)) bullets.push('Round-robin auto-assignment');
   if (whiteLabelFor(p)) bullets.push('White-label branding & client portal');
