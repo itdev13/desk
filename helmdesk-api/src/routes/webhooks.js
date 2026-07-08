@@ -222,6 +222,26 @@ router.post('/helmdesk', async (req, res) => {
         break;
       }
 
+      // Recurring payment status changes from GHL's dunning system. newStatus ∈ COMPLETE | FAILED.
+      // FAILED → mark the subscription past_due (blocks the app via the entitlement gate) so a lapsed
+      // payer hits the enrol screen; COMPLETE → restore access. Payload mirrors the platform's dunning
+      // shape: { appId, locationId, companyId, userId, previousStatus, newStatus }.
+      case 'APP_PAYMENT_STATUS': {
+        const newStatus = String(data.newStatus || '').toUpperCase();
+        const target = newStatus === 'FAILED' ? 'past_due' : newStatus === 'COMPLETE' ? 'active' : null;
+        if (target && (locationId || companyId)) {
+          await subscriptionService.setStatus({ locationId, companyId }, target, data);
+          await recordSubscriptionTx({
+            event: target === 'past_due' ? 'cancellation' : 'reactivation',
+            locationId, companyId, appId, webhookType: type, rawData: data
+          });
+          logger.info('💳 Payment status changed', { locationId, companyId, newStatus, subStatus: target });
+        } else {
+          logger.warn('APP_PAYMENT_STATUS with unmapped newStatus', { newStatus, locationId, companyId });
+        }
+        break;
+      }
+
       default:
         logger.info('ℹ️ Unhandled lifecycle webhook', { type });
     }

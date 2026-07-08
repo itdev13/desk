@@ -95,10 +95,11 @@ async function buildUpgradeUrl(locationId) {
     const versionId = process.env.GHL_APP_VERSION_ID || '';
     const rawDomain = inst?.whitelabelDetails?.domain || process.env.GHL_DEFAULT_APP_DOMAIN || 'app.gohighlevel.com';
     const host = String(rawDomain).replace(/^https?:\/\//i, '').replace(/\/+$/, '');
-    // The SaaS plan/enrol page for this app in the sub-account:
-    //   https://{host}/v2/location/{locationId}/integration/{appId}/versions/{versionId}
+    // The SaaS plan/enrol page for this app in the sub-account. `view=subAccount` scopes it to the
+    // location (not the agency) so the plan picker opens in the right context:
+    //   https://{host}/v2/location/{locationId}/integration/{appId}/versions/{versionId}?view=subAccount
     const base = `https://${host}/v2/location/${locationId}/integration/${appId}`;
-    return versionId ? `${base}/versions/${versionId}` : base;
+    return `${versionId ? `${base}/versions/${versionId}` : base}?view=subAccount`;
   } catch {
     return '';
   }
