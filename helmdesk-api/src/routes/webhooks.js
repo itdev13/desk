@@ -87,6 +87,7 @@ router.post('/helmdesk', async (req, res) => {
           locationId ? { appId, locationId } : { appId, companyId },
           {
             appId, companyId, locationId, userId: data.userId, companyName: data.companyName,
+            planId: data.planId, trial: data.trial || {},
             // White-label domain (if the installing agency is white-labeled) → used to build the
             // plan/upgrade link on their own domain rather than app.gohighlevel.com.
             isWhitelabelCompany: !!data.isWhitelabelCompany,
