@@ -34,6 +34,10 @@ export default function Team({ notify, onNavPlan }) {
   const hasLimit = seatLimit != null && seatLimit < 9999;
   const atOrOver = hasLimit && activeCount >= seatLimit;
 
+  // Display order: assignable (active) first, then excluded, then deleted — each group A→Z by name.
+  const rank = (a) => (a.deleted ? 2 : a.active ? 0 : 1);
+  const sortedAgents = [...agents].sort((a, b) => rank(a) - rank(b) || (a.name || '').localeCompare(b.name || ''));
+
   const toggle = async (a, active) => {
     setAgents((list) => list.map((x) => (x.ghlUserId === a.ghlUserId ? { ...x, active } : x)));
     try { await api.updateAgent(a.ghlUserId, { active }); track('agent_toggle', { active }); }
@@ -67,7 +71,7 @@ export default function Team({ notify, onNavPlan }) {
           <div className="card" style={{ padding: 0 }}>
             {agents.length === 0 ? (
               <div className="empty"><strong>No agents yet</strong><p>Sync your team to start assigning tickets.</p></div>
-            ) : agents.map((a) => (
+            ) : sortedAgents.map((a) => (
               <div key={a.ghlUserId} className="toggle-row" style={{ padding: '14px 20px', opacity: a.deleted ? 0.6 : 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <Avatar name={a.name} />
