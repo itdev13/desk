@@ -172,6 +172,12 @@ button { font-family: inherit; cursor: pointer; }
 }
 .link-btn:hover { color: var(--ink); }
 
+/* "Select all / Clear all" affordance for the channel grid */
+.opt-selectall { display: flex; justify-content: flex-end; margin-top: 14px; }
+.section-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.section-head-row .section-head { flex: 1; }
+.section-head-row .link-btn { flex: none; margin-top: 2px; }
+
 /* ── Team seat-usage bar ── */
 .seat-bar {
   padding: 14px 16px; border-radius: 10px; background: var(--panel);

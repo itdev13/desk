@@ -109,9 +109,22 @@ export default function SetupWizard({ workspace, onDone, notify }) {
           <div className="wizard-body">
             {step === 0 && (
               <>
-                <h2>Which channels are support?</h2>
+                <h2>Which channels do you support?</h2>
                 <p className="lead">Only messages on the channels you pick become tickets. Everything else stays in your inbox untouched.</p>
-                <div className="opt-grid" style={{ marginTop: 20 }}>
+                {(() => {
+                  const allOn = CHANNELS.every((c) => form.supportChannels.includes(c.key)) && form.acceptConversationProviders;
+                  return (
+                    <div className="opt-selectall">
+                      <button type="button" className="link-btn" onClick={() => {
+                        if (allOn) set({ supportChannels: [], acceptConversationProviders: false });
+                        else set({ supportChannels: CHANNELS.map((c) => c.key), acceptConversationProviders: true });
+                      }}>
+                        {allOn ? 'Clear all' : 'Select all'}
+                      </button>
+                    </div>
+                  );
+                })()}
+                <div className="opt-grid" style={{ marginTop: 12 }}>
                   {CHANNELS.map((c) => {
                     const on = form.supportChannels.includes(c.key);
                     return (

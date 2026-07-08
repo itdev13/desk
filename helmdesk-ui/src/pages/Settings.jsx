@@ -152,8 +152,21 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
 
         {tab === 'channels' && (
           <div className="card">
-            <SectionHeader icon="filter" title="Support channels"
-              description="Only messages on the channels you pick become tickets — everything else stays in your inbox untouched." />
+            <div className="section-head-row">
+              <SectionHeader icon="filter" title="Support channels"
+                description="Only messages on the channels you pick become tickets — everything else stays in your inbox untouched." />
+              {(() => {
+                const allOn = CHANNELS.every((c) => ws.supportChannels.includes(c.key)) && ws.acceptConversationProviders;
+                return (
+                  <button type="button" className="link-btn" onClick={() => {
+                    if (allOn) set({ supportChannels: [], acceptConversationProviders: false });
+                    else set({ supportChannels: CHANNELS.map((c) => c.key), acceptConversationProviders: true });
+                  }}>
+                    {allOn ? 'Clear all' : 'Select all'}
+                  </button>
+                );
+              })()}
+            </div>
             <div className="opt-grid">
               {CHANNELS.map((c) => {
                 const on = ws.supportChannels.includes(c.key);
