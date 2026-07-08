@@ -33,6 +33,7 @@ export default function SetupWizard({ workspace, onDone, notify }) {
     autoCloseResolvedDays: 7,
     reopenWindowDays: 0,
     autoReplyEnabled: true,
+    autoReplyMessage: "Thanks for reaching out — we've received your message and a team member will get back to you shortly.",
     ticketNumberPrefix: 'HD-',
     portalEnabled: false
   });
@@ -64,6 +65,7 @@ export default function SetupWizard({ workspace, onDone, notify }) {
           autoCloseResolvedDays: w.autoCloseResolvedDays ?? f.autoCloseResolvedDays,
           reopenWindowDays: w.reopenWindowDays ?? f.reopenWindowDays,
           autoReplyEnabled: w.autoReplyEnabled ?? f.autoReplyEnabled,
+          autoReplyMessage: w.autoReplyMessage || f.autoReplyMessage,
           ticketNumberPrefix: w.ticketNumberPrefix || f.ticketNumberPrefix,
           portalEnabled: w.portalEnabled ?? f.portalEnabled
         }));
@@ -173,6 +175,15 @@ export default function SetupWizard({ workspace, onDone, notify }) {
                     </div>
                     <Switch checked={form.autoReplyEnabled} onChange={(v) => set({ autoReplyEnabled: v })} />
                   </div>
+                  {form.autoReplyEnabled && (
+                    <div className="field" style={{ marginTop: 14 }}>
+                      <label>Auto-reply message</label>
+                      <textarea value={form.autoReplyMessage}
+                        onChange={(e) => set({ autoReplyMessage: e.target.value })}
+                        placeholder="Thanks for reaching out — we've received your message and will get back to you shortly." />
+                      <span className="hint">Sent automatically to the customer when a new ticket is created.</span>
+                    </div>
+                  )}
                 </div>
               </>
             )}
