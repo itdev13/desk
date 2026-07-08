@@ -366,6 +366,15 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
             ]}
           />
         )}
+
+        {/* Data-retention policy — shown on every tab so admins know what happens if they uninstall. */}
+        <div className="retention-note">
+          <Icon name="clock" size={15} />
+          <span>
+            <b>Data retention:</b> if you uninstall HelmDesk, your tickets, agents, and settings are kept for
+            <b> 7 days</b> so a reinstall restores everything. After 7 days they’re permanently deleted.
+          </span>
+        </div>
       </div>
     </>
   );

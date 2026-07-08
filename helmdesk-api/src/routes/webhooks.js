@@ -50,6 +50,18 @@ router.post('/helmdesk', async (req, res) => {
   // GHL delivers ALL events to this single webhook URL, dispatched by `type`. Message events
   // (InboundMessage / OutboundMessage) and User roster events carry no `appId`, so handle them
   // here before the appId guard below.
+  //
+  // IMPORTANT: these are account-level events GHL fires for the whole location regardless of
+  // whether OUR app is installed. Only process them if the location has an ACTIVE install — else
+  // we'd keep creating tickets/agents for a workspace that has uninstalled us.
+  if (type === 'InboundMessage' || type === 'OutboundMessage' ||
+      type === 'UserCreate' || type === 'UserUpdate' || type === 'UserDelete') {
+    if (data.locationId && !(await isLocationActive(data.locationId))) {
+      logger.info('⏭️  Ignoring event for non-installed location', { type, locationId: data.locationId });
+      return res.status(200).json({ success: true, ignored: 'not_installed' });
+    }
+  }
+
   if (type === 'InboundMessage' || type === 'OutboundMessage') {
     try {
       const result = type === 'InboundMessage' ? await processInbound(data) : await processOutbound(data);
@@ -231,6 +243,17 @@ router.post('/helmdesk', async (req, res) => {
  * Payload (per GHL docs): { type:'InboundMessage', locationId, contactId, conversationId,
  *   messageType, direction:'inbound', body, dateAdded, messageId, userId?, subject?, ... }
  * ════════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Is our app currently installed on this location? GHL sends account-level events (messages, user
+ * changes) to every app's webhook regardless of install state, so we gate on an ACTIVE Installation
+ * to avoid processing events for locations that have uninstalled us. Cheap indexed lookup.
+ */
+async function isLocationActive(locationId) {
+  const inst = await Installation.findOne({ locationId, status: 'active' }).select('_id').lean();
+  return !!inst;
+}
+
 /**
  * Process an InboundMessage payload → ticket. Shared by the dedicated /inbound route AND the
  * unified /helmdesk dispatcher (GHL delivers all events to one URL). Returns a result object.

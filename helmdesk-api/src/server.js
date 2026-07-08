@@ -8,6 +8,7 @@ const fs = require('fs');
 const logger = require('./utils/logger');
 const database = require('./config/database');
 const slaMonitor = require('./jobs/slaMonitor');
+const uninstallCleanup = require('./jobs/uninstallCleanup');
 
 /**
  * HelmDesk API
@@ -122,6 +123,9 @@ class HelmDeskApp {
     await database.connect();
     if (String(process.env.SLA_MONITOR ?? 'true').toLowerCase() !== 'false') {
       slaMonitor.start();
+    }
+    if (String(process.env.UNINSTALL_CLEANUP ?? 'true').toLowerCase() !== 'false') {
+      uninstallCleanup.start();
     }
     this.app.listen(this.port, () => {
       logger.info('='.repeat(48));

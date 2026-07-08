@@ -149,6 +149,15 @@ button { font-family: inherit; cursor: pointer; }
 .plan-lock .ico { flex: none; }
 .plan-lock b { color: var(--ink); }
 
+/* Data-retention footer note in Settings — quiet, informational. */
+.retention-note {
+  display: flex; align-items: flex-start; gap: 9px; margin-top: 8px; padding: 12px 14px;
+  border-radius: 10px; background: var(--line-soft); color: var(--slate);
+  font-size: 12.5px; line-height: 1.5;
+}
+.retention-note .ico { flex: none; margin-top: 1px; color: var(--slate-2); }
+.retention-note b { color: var(--ink-3); font-weight: 700; }
+
 /* ── Enrolment gate (no active subscription) ── */
 .enroll-wrap { min-height: 100vh; background: var(--paper); display: grid; place-items: start center; padding: 48px 20px; overflow-y: auto; }
 .enroll-inner { width: 100%; max-width: 960px; }
