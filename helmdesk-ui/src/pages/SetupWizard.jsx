@@ -25,8 +25,10 @@ export default function SetupWizard({ workspace, onDone, notify }) {
   const [planName, setPlanName] = useState('');
 
   const [form, setForm] = useState({
-    supportChannels: ['Email', 'Live_Chat'],
-    acceptConversationProviders: false,
+    // Default: every channel on, so a new workspace captures tickets from everywhere out of the box.
+    // The user unticks what they don't want. (On reinstall this is overridden by saved settings.)
+    supportChannels: CHANNELS.map((c) => c.key),
+    acceptConversationProviders: true,
     ignoreAutomatedReplies: true,
     ignoreShortMessages: false,
     assignmentMode: 'round_robin',
