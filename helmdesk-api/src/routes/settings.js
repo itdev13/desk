@@ -100,6 +100,20 @@ router.post('/complete-setup', requireAdmin, async (req, res) => {
     for (const key of ALLOWED) {
       if (req.body[key] !== undefined) update[key] = req.body[key];
     }
+
+    // Plan gating for the wizard: rather than blocking onboarding with a 402, silently coerce
+    // gated choices to the plan-allowed fallback. Round-robin (Team+) → unassigned; white-label
+    // (Agency) branding/portal → dropped. The UI also hides these, so this is just a safety net.
+    const { whiteLabel, routing } = await subscriptionService.planFeatures(req.auth.locationId);
+    if (update.assignmentMode === 'round_robin' && !routing) {
+      update.assignmentMode = 'unassigned';
+      logger.info('complete-setup: round_robin not allowed on plan → unassigned', { locationId: req.auth.locationId });
+    }
+    if (!whiteLabel) {
+      delete update.brand;
+      delete update.portalEnabled;
+    }
+
     const current = await Workspace.findOne({ locationId: req.auth.locationId });
     ensurePortalSlug(update, current, req.auth.locationId);
     // The user who completes setup is the owner/admin. This is the reliable signal — their SSO

@@ -21,6 +21,8 @@ export default function SetupWizard({ workspace, onDone, notify }) {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [agents, setAgents] = useState([]);
+  const [routing, setRouting] = useState(true);   // round-robin allowed? (Team+)
+  const [planName, setPlanName] = useState('');
 
   const [form, setForm] = useState({
     supportChannels: ['Email', 'Live_Chat'],
@@ -46,6 +48,14 @@ export default function SetupWizard({ workspace, onDone, notify }) {
       .then((r) => setAgents(r.agents || []))
       .catch(() => api.agents().then((r) => setAgents(r.agents || [])).catch(() => {}))
       .finally(() => setAgentsLoaded(true));
+
+    // Plan gating: if round-robin isn't allowed on this plan, disable it and default to unassigned.
+    api.subscription().then((s) => {
+      const allowed = s.plan?.routing !== false;
+      setRouting(allowed);
+      setPlanName((s.plan?.name || '').replace(/\s*\(Trial\)\s*$/i, ''));
+      if (!allowed) setForm((f) => (f.assignmentMode === 'round_robin' ? { ...f, assignmentMode: 'unassigned' } : f));
+    }).catch(() => {});
 
 
     // Pre-fill from saved settings so a re-run of the wizard (e.g. after reinstall) shows the
@@ -194,16 +204,25 @@ export default function SetupWizard({ workspace, onDone, notify }) {
                 <p className="lead">Pick how new tickets get an owner. You can change this any time in Settings.</p>
                 <div className="opt-grid" style={{ gridTemplateColumns: '1fr', marginTop: 16 }}>
                   {[
-                    { key: 'round_robin', label: 'Round-robin', desc: 'Rotate evenly across your active agents.' },
+                    { key: 'round_robin', label: 'Round-robin', desc: 'Rotate evenly across your active agents.', locked: !routing },
                     { key: 'specific', label: 'Always one agent', desc: 'Send everything to a single owner.' },
                     { key: 'unassigned', label: 'Leave unassigned', desc: 'Agents pick tickets up from the queue.' }
                   ].map((o) => (
-                    <button key={o.key} className={`opt ${form.assignmentMode === o.key ? 'on' : ''}`} style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }} onClick={() => set({ assignmentMode: o.key })}>
-                      <span>{o.label}</span>
+                    <button key={o.key} disabled={o.locked}
+                      className={`opt ${form.assignmentMode === o.key ? 'on' : ''} ${o.locked ? 'is-locked' : ''}`}
+                      style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}
+                      onClick={() => !o.locked && set({ assignmentMode: o.key })}>
+                      <span>{o.label}{o.locked && <span className="opt-tag">Team plan</span>}</span>
                       <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--slate)' }}>{o.desc}</span>
                     </button>
                   ))}
                 </div>
+                {!routing && (
+                  <div className="plan-lock" style={{ marginTop: 12, marginBottom: 0 }}>
+                    <Icon name="route" size={16} />
+                    <span>Round-robin auto-assignment is a <b>Team plan</b> feature. On {planName || 'your plan'}, assign to one agent or leave unassigned — you can upgrade later in Settings.</span>
+                  </div>
+                )}
                 {form.assignmentMode === 'specific' && (
                   <div className="field" style={{ marginTop: 14 }}>
                     <label>Assign all tickets to</label>

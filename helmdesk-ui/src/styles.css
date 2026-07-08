@@ -496,18 +496,24 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .opt.on { border-color: var(--accent); background: var(--accent-soft); }
 .opt .check { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--line); display: grid; place-items: center; flex: none; color: #fff; }
 .opt.on .check { background: var(--accent); border-color: var(--accent); }
+.opt.is-locked { opacity: 0.55; cursor: not-allowed; }
+.opt.is-locked:hover { border-color: var(--line); }
+.opt-tag { margin-left: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent-dk); background: var(--accent-soft); padding: 1px 7px; border-radius: 999px; }
 
 /* ── Wizard ── */
-.wizard-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 32px; background: radial-gradient(1200px 600px at 50% -10%, #fff, var(--paper)); }
+.wizard-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 32px; background: radial-gradient(1200px 600px at 50% -10%, #fff, var(--paper)); overflow-y: auto; }
 .wizard { width: 100%; max-width: 620px; }
-.wizard-card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow-lg); overflow: hidden; }
+/* No overflow:hidden — it would clip dropdown menus (e.g. the assignee Select) that extend past
+   the card. Inner elements round their own corners instead. */
+.wizard-card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow-lg); }
+.wizard-head { border-radius: 18px 18px 0 0; }
 .wizard-head { padding: 26px 30px 0; }
 .steps { display: flex; gap: 6px; margin: 18px 0 0; }
 .step-dot { flex: 1; height: 4px; border-radius: 999px; background: var(--line); }
 .step-dot.done { background: var(--accent); }
 .step-dot.now { background: var(--accent-dk); }
 .wizard-body { padding: 24px 30px; }
-.wizard-foot { padding: 18px 30px; border-top: 1px solid var(--line-soft); display: flex; justify-content: space-between; align-items: center; background: #fafbfd; }
+.wizard-foot { padding: 18px 30px; border-top: 1px solid var(--line-soft); display: flex; justify-content: space-between; align-items: center; background: #fafbfd; border-radius: 0 0 18px 18px; }
 .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent-dk); font-weight: 600; }
 .wizard h2 { font-size: 22px; margin: 10px 0 4px; letter-spacing: -0.01em; }
 .wizard .lead { color: var(--slate); font-size: 14px; margin: 0; }
