@@ -241,7 +241,9 @@ export default function SetupWizard({ workspace, onDone, notify }) {
                       value={form.defaultAssigneeId || ''}
                       onChange={(v) => set({ defaultAssigneeId: v || null })}
                       placeholder="Select an agent…"
-                      options={agents.map((a) => ({ value: a.ghlUserId, label: a.name }))}
+                      /* Only agents within the seat limit (active, not deleted) can be the owner —
+                         inactive/over-limit agents won't receive tickets. */
+                      options={agents.filter((a) => a.active && !a.deleted).map((a) => ({ value: a.ghlUserId, label: a.name }))}
                     />
                     {agentsLoaded && agents.length === 0 && (
                       <span className="hint" style={{ color: 'var(--warn)' }}>

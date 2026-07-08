@@ -94,7 +94,11 @@ export default function Inbox({ user, notify, onChange }) {
           {loadingList ? (
             <div className="empty"><div className="spinner" style={{ margin: '24px auto' }} /></div>
           ) : tickets.length === 0 ? (
-            <div className="empty" style={{ padding: 32 }}><strong>Nothing here</strong><p>No tickets in this view.</p></div>
+            <div className="inbox-list-empty">
+              <span className="dot-pulse" />
+              <strong>No tickets in {tab === 'all' ? 'any view' : `“${TABS.find((t) => t.key === tab)?.label}”`}</strong>
+              <p>{tab === 'open' ? 'Nothing needs attention right now.' : 'Nothing matches this filter yet.'}</p>
+            </div>
           ) : tickets.map((t) => {
             const sla = slaDisplay(t);
             return (
@@ -122,7 +126,37 @@ export default function Inbox({ user, notify, onChange }) {
       {/* ── Center + Right: the selected ticket ── */}
       {selectedId
         ? <TicketPanes key={selectedId} id={selectedId} isAdmin={isAdmin} notify={notify} onChanged={onTicketChanged} />
-        : <div className="inbox-empty-main"><div className="big">📮</div><strong>Select a ticket</strong><p>Pick a conversation on the left to view and reply.</p></div>}
+        : <InboxEmptyMain hasTickets={tickets.length > 0} loading={loadingList} />}
+    </div>
+  );
+}
+
+/**
+ * Center-pane empty state. Context-aware: when there are tickets but none selected → "pick one";
+ * when the workspace has no tickets at all → a calmer "you're all set, tickets land here" message.
+ */
+function InboxEmptyMain({ hasTickets, loading }) {
+  if (loading) return <div className="inbox-empty-main" />;
+  return (
+    <div className="inbox-empty-main">
+      <svg className="inbox-empty-art" width="120" height="120" viewBox="0 0 120 120" fill="none" aria-hidden="true">
+        <circle cx="60" cy="60" r="52" fill="var(--accent-soft)" />
+        <rect x="30" y="44" width="60" height="40" rx="7" fill="#fff" stroke="var(--accent)" strokeWidth="2.5" />
+        <path d="M32 50l28 20 28-20" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="90" cy="44" r="11" fill="var(--accent)" />
+        <path d="M85.5 44l3 3 6-6.5" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      </svg>
+      {hasTickets ? (
+        <>
+          <strong>Select a ticket</strong>
+          <p>Pick a conversation on the left to read the thread and reply.</p>
+        </>
+      ) : (
+        <>
+          <strong>You’re all set</strong>
+          <p>No tickets yet. When a customer messages you on a support channel, it appears here automatically — ready to assign and reply.</p>
+        </>
+      )}
     </div>
   );
 }
