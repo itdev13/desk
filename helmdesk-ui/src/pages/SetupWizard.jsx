@@ -51,20 +51,27 @@ export default function SetupWizard({ workspace, onDone, notify }) {
       .catch(() => api.agents().then((r) => setAgents(r.agents || [])).catch(() => {}))
       .finally(() => setAgentsLoaded(true));
 
-    // Plan gating: if round-robin isn't allowed on this plan, disable it and default to unassigned.
+    // Plan gating + default: round-robin on plans that allow it (Team+), "leave unassigned" on
+    // Starter. Only adjust the DEFAULT (round_robin) — never stomp a value a reinstall pre-filled.
     api.subscription().then((s) => {
       const allowed = s.plan?.routing !== false;
       setRouting(allowed);
       setPlanName((s.plan?.name || '').replace(/\s*\(Trial\)\s*$/i, ''));
-      if (!allowed) setForm((f) => (f.assignmentMode === 'round_robin' ? { ...f, assignmentMode: 'unassigned' } : f));
+      if (!allowed) {
+        setForm((f) => (f.assignmentMode === 'round_robin' ? { ...f, assignmentMode: 'unassigned' } : f));
+      }
     }).catch(() => {});
 
 
     // Pre-fill from saved settings so a re-run of the wizard (e.g. after reinstall) shows the
-    // agency's previous choices to confirm/tweak, rather than resetting to defaults.
+    // agency's previous choices to confirm/tweak. Only do this when the workspace was previously
+    // configured (setupComplete) — otherwise a fresh workspace's schema defaults (e.g.
+    // acceptConversationProviders:false, supportChannels:[]) would clobber our first-install
+    // "select all" defaults.
     api.getSettings()
       .then((r) => {
         const w = r.workspace || {};
+        if (!w.setupComplete) return; // true first install → keep the select-all defaults
         setForm((f) => ({
           ...f,
           supportChannels: w.supportChannels?.length ? w.supportChannels : f.supportChannels,
@@ -211,7 +218,7 @@ export default function SetupWizard({ workspace, onDone, notify }) {
                     { key: 'unassigned', label: 'Leave unassigned', desc: 'Agents pick tickets up from the queue.' }
                   ].map((o) => (
                     <button key={o.key} disabled={o.locked}
-                      className={`opt ${form.assignmentMode === o.key ? 'on' : ''} ${o.locked ? 'is-locked' : ''}`}
+                      className={`opt ${form.assignmentMode === o.key && !o.locked ? 'on' : ''} ${o.locked ? 'is-locked' : ''}`}
                       style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}
                       onClick={() => !o.locked && set({ assignmentMode: o.key })}>
                       <span>{o.label}{o.locked && <span className="opt-tag">Team plan</span>}</span>
