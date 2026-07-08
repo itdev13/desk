@@ -22,12 +22,26 @@ export function slaSentence(t) {
   return { label, priority: t.priority, first: fr || '—', resolve: rz || '—' };
 }
 
-/** Live preview strip: one readable line per priority, updates as the targets are edited. */
-export function SlaPreview({ targets }) {
+/**
+ * Live preview strip: one readable line per priority, updates as the targets are edited.
+ * `collapsible` renders it behind an ⓘ toggle (collapsed by default) — used in the wizard where
+ * space is tight; Settings shows it fully expanded.
+ */
+export function SlaPreview({ targets, collapsible = false }) {
+  const [open, setOpen] = useState(!collapsible);
   return (
     <div className="sla-preview">
-      <div className="sla-preview-title">In plain English</div>
-      <ul className="sla-preview-list">
+      {collapsible ? (
+        <button type="button" className="sla-preview-toggle" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+          <span className="info-dot">i</span>
+          <span>What these targets mean, in plain English</span>
+          <Icon name="chevron" size={15} />
+        </button>
+      ) : (
+        <div className="sla-preview-title">In plain English</div>
+      )}
+      {open && (<>
+      <ul className="sla-preview-list" style={collapsible ? { marginTop: 12 } : undefined}>
         {targets.map((t) => {
           const s = slaSentence(t);
           return (
@@ -48,6 +62,7 @@ export function SlaPreview({ targets }) {
           <li>A breached ticket turns <b>red</b>, surfaces under the <b>Overdue</b> filter, and drops out of your <b>In-SLA %</b>. It's a visibility flag only — nothing is auto-closed or reassigned.</li>
         </ul>
       </div>
+      </>)}
     </div>
   );
 }

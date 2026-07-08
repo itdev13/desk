@@ -22,6 +22,7 @@ export default function SetupWizard({ workspace, onDone, notify }) {
   const [saving, setSaving] = useState(false);
   const [agents, setAgents] = useState([]);
   const [routing, setRouting] = useState(true);   // round-robin allowed? (Team+)
+  const [whiteLabel, setWhiteLabel] = useState(true); // brand + portal allowed? (Agency)
   const [planName, setPlanName] = useState('');
 
   const [form, setForm] = useState({
@@ -56,6 +57,7 @@ export default function SetupWizard({ workspace, onDone, notify }) {
     api.subscription().then((s) => {
       const allowed = s.plan?.routing !== false;
       setRouting(allowed);
+      setWhiteLabel(s.plan?.whiteLabel !== false);
       setPlanName((s.plan?.name || '').replace(/\s*\(Trial\)\s*$/i, ''));
       if (!allowed) {
         setForm((f) => (f.assignmentMode === 'round_robin' ? { ...f, assignmentMode: 'unassigned' } : f));
@@ -307,13 +309,17 @@ export default function SetupWizard({ workspace, onDone, notify }) {
                     <input type="text" value={form.ticketNumberPrefix} onChange={(e) => set({ ticketNumberPrefix: e.target.value })} />
                   </div>
                 </div>
-                <SlaPreview targets={form.slaTargets} />
-                <div className="toggle-row" style={{ marginTop: 10 }}>
+                <SlaPreview targets={form.slaTargets} collapsible />
+                <div className="toggle-row" style={{ marginTop: 10, opacity: whiteLabel ? 1 : 0.55 }}>
                   <div>
-                    <div className="t-label">Enable client portal intake</div>
+                    <div className="t-label">
+                      Enable client portal intake
+                      {!whiteLabel && <span className="opt-tag" style={{ marginLeft: 8 }}>Agency plan</span>}
+                    </div>
                     <div className="t-desc">Let customers submit tickets from a branded web form.</div>
                   </div>
-                  <Switch checked={form.portalEnabled} onChange={(v) => set({ portalEnabled: v })} />
+                  <Switch checked={whiteLabel && form.portalEnabled} disabled={!whiteLabel}
+                    onChange={(v) => whiteLabel && set({ portalEnabled: v })} />
                 </div>
               </>
             )}
