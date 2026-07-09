@@ -21,7 +21,7 @@ export default function EnrollGate({ brand, notify, onRetry }) {
 
   const enroll = (plan) => {
     track('enroll_click', { plan: plan?.name });
-    const url = data?.upgradeUrl;
+    const url = data?.enrolUrl || data?.upgradeUrl;
     if (url) window.open(url, '_blank', 'noopener');
     else notify?.('Please subscribe from your marketplace account to activate HelmDesk.', false);
   };

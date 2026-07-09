@@ -152,9 +152,12 @@ router.post('/helmdesk', async (req, res) => {
       }
 
       case 'UNINSTALL': {
+        // GHL sends a reason on payment-driven uninstalls (e.g. 'PAYMENT_FAILURE') vs a manual one.
+        const uninstallReason = data.reason || data.uninstallReason || data.cancelReason || null;
+        const isPaymentFailure = /payment/i.test(String(uninstallReason || ''));
         await Installation.findOneAndUpdate(
           locationId ? { appId, locationId } : { appId, companyId },
-          { status: 'uninstalled', uninstalledAt: new Date() }
+          { status: 'uninstalled', uninstalledAt: new Date(), uninstallReason }
         );
         await subscriptionService.setStatus({ locationId, companyId }, 'canceled', data);
         await OAuthToken.deleteMany(locationId ? { locationId } : { companyId });
@@ -165,7 +168,7 @@ router.post('/helmdesk', async (req, res) => {
           await Workspace.updateOne({ locationId }, { $set: { setupComplete: false } });
         }
         await recordSubscriptionTx({ event: 'cancellation', locationId, companyId, appId, webhookType: type, rawData: data });
-        logger.info('🗑️ Uninstalled — tokens removed, config kept (wizard will re-run on reinstall)', { locationId, companyId });
+        logger.info('🗑️ Uninstalled — tokens removed, config kept (wizard will re-run on reinstall)', { locationId, companyId, uninstallReason, isPaymentFailure });
         break;
       }
 
@@ -228,6 +231,8 @@ router.post('/helmdesk', async (req, res) => {
       // shape: { appId, locationId, companyId, userId, previousStatus, newStatus }.
       case 'APP_PAYMENT_STATUS': {
         const newStatus = String(data.newStatus || '').toUpperCase();
+        const previousStatus = data.previousStatus || null;
+        const reason = data.reason || data.failureReason || null;
         const target = newStatus === 'FAILED' ? 'past_due' : newStatus === 'COMPLETE' ? 'active' : null;
         if (target && (locationId || companyId)) {
           await subscriptionService.setStatus({ locationId, companyId }, target, data);
@@ -235,7 +240,7 @@ router.post('/helmdesk', async (req, res) => {
             event: target === 'past_due' ? 'cancellation' : 'reactivation',
             locationId, companyId, appId, webhookType: type, rawData: data
           });
-          logger.info('💳 Payment status changed', { locationId, companyId, newStatus, subStatus: target });
+          logger.info('💳 Payment status changed', { locationId, companyId, previousStatus, newStatus, subStatus: target, reason });
         } else {
           logger.warn('APP_PAYMENT_STATUS with unmapped newStatus', { newStatus, locationId, companyId });
         }

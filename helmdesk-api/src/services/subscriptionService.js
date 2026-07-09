@@ -84,7 +84,7 @@ function defaultFeatures(p) {
  * the link opens on the agency's OWN domain — falling back to the standard GHL host otherwise.
  * A MARKETPLACE_UPGRADE_URL env value, if set, overrides everything (escape hatch).
  */
-async function buildUpgradeUrl(locationId) {
+async function buildUpgradeUrl(locationId, mode = 'enrol') {
   if (process.env.MARKETPLACE_UPGRADE_URL) return process.env.MARKETPLACE_UPGRADE_URL;
   try {
     const Installation = require('../models/Installation');
@@ -95,10 +95,16 @@ async function buildUpgradeUrl(locationId) {
     const versionId = process.env.GHL_APP_VERSION_ID || '';
     const rawDomain = inst?.whitelabelDetails?.domain || process.env.GHL_DEFAULT_APP_DOMAIN || 'app.gohighlevel.com';
     const host = String(rawDomain).replace(/^https?:\/\//i, '').replace(/\/+$/, '');
-    // The SaaS plan/enrol page for this app in the sub-account. `view=subAccount` scopes it to the
-    // location (not the agency) so the plan picker opens in the right context:
-    //   https://{host}/v2/location/{locationId}/integration/{appId}/versions/{versionId}?view=subAccount
     const base = `https://${host}/v2/location/${locationId}/integration/${appId}`;
+
+    // Two different GHL destinations:
+    //  - 'upgrade' (already subscribed → change tier): the upgrade/downgrade picker
+    //      .../integration/{appId}/upgrade-plans?app_from=installedApps
+    //  - 'enrol' (no plan yet → first subscribe): the version enrol page scoped to the sub-account
+    //      .../integration/{appId}/versions/{versionId}?view=subAccount
+    if (mode === 'upgrade') {
+      return `${base}/upgrade-plans?app_from=installedApps`;
+    }
     return `${versionId ? `${base}/versions/${versionId}` : base}?view=subAccount`;
   } catch {
     return '';
@@ -222,10 +228,16 @@ class SubscriptionService {
       isCurrent: p.name === currentName
     }));
 
+    const [enrolUrl, upgradeUrl] = await Promise.all([
+      buildUpgradeUrl(locationId, 'enrol'),
+      buildUpgradeUrl(locationId, 'upgrade')
+    ]);
     return {
       plans,
       current: { name: current.plan?.name, status: current.status, priceUsd: current.plan?.priceUsd },
-      upgradeUrl: await buildUpgradeUrl(locationId)
+      // upgradeUrl = change tier (already subscribed); enrolUrl = first-time subscribe.
+      upgradeUrl,
+      enrolUrl
     };
   }
 

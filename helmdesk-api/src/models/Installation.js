@@ -22,6 +22,10 @@ const installationSchema = new mongoose.Schema(
     status: { type: String, enum: ['active', 'uninstalled'], default: 'active', index: true },
     installedAt: Date,
     uninstalledAt: Date,
+    // Why the app was uninstalled — GHL sends a reason (e.g. 'PAYMENT_FAILURE') on payment-driven
+    // uninstalls vs a manual one. Useful for churn analysis and to distinguish "they quit" from
+    // "their card failed".
+    uninstallReason: { type: String, default: null },
     rawWebhookData: mongoose.Schema.Types.Mixed
   },
   { timestamps: true }
