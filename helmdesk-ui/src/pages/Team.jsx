@@ -9,12 +9,21 @@ export default function Team({ notify, onNavPlan }) {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [seatLimit, setSeatLimit] = useState(null); // null = unknown/unlimited
+  const [upgradeUrl, setUpgradeUrl] = useState(''); // GHL upgrade/downgrade deep-link
 
   const load = () => api.agents().then((r) => setAgents(r.agents || [])).finally(() => setLoading(false));
   useEffect(() => {
     load();
     api.subscription().then((s) => setSeatLimit(s.plan?.seatLimit ?? null)).catch(() => {});
+    api.plans().then((r) => setUpgradeUrl(r.upgradeUrl || '')).catch(() => {});
   }, []);
+
+  // Open the GHL upgrade/downgrade page directly; fall back to the in-app Plan page if the URL
+  // isn't available yet.
+  const goUpgrade = () => {
+    if (upgradeUrl) { track('plan_upgrade_click', { from: 'team' }); window.open(upgradeUrl, '_blank', 'noopener'); }
+    else onNavPlan?.();
+  };
 
   const sync = async () => {
     setSyncing(true);
@@ -60,7 +69,7 @@ export default function Team({ notify, onNavPlan }) {
                 <b>{activeCount} of {seatLimit}</b> agent seats in use{atOrOver ? ' — limit reached' : ''}.
                 {atOrOver && ' Deactivate someone, or move to a bigger plan for more agents.'}
               </div>
-              <button type="button" className="link-btn" onClick={() => onNavPlan?.()}>
+              <button type="button" className="link-btn" onClick={goUpgrade}>
                 {atOrOver ? 'Upgrade plan →' : 'Need more agents? Switch plan →'}
               </button>
             </div>
