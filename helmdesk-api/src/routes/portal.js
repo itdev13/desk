@@ -205,9 +205,15 @@ router.post('/:slug/submit', intakeLimiter, async (req, res) => {
       else if (!fld.maps) custom.push({ label: fld.label, value: val });
     }
 
-    const { name, email, phone, subject, message } = core;
-    if (!subject && !message) return res.status(400).json({ success: false, error: 'Please describe your request.' });
+    const { name, email, phone } = core;
     if (!email && !phone) return res.status(400).json({ success: false, error: 'Please provide an email or phone so we can reply.' });
+
+    // Derive subject/message when the agency's custom form omits those fields, so the form never
+    // dead-ends: fall back to the first custom answer, then a generic label.
+    const custBlock = custom.map((c) => `${c.label}: ${c.value}`).join('\n');
+    let { subject, message } = core;
+    if (!subject) subject = custom[0]?.value?.slice(0, 80) || 'Support request';
+    if (!message) message = custBlock || subject;
 
     // Upsert the contact in GHL so the ticket links to a real person.
     let contact = { id: null, name: name || email || phone };
@@ -223,16 +229,18 @@ router.post('/:slug/submit', intakeLimiter, async (req, res) => {
       logger.warn('portal contact upsert failed (continuing without contactId)', { message: e.message });
     }
 
-    // Fold custom answers into the opening message so the agent sees them in context.
-    const customBlock = custom.length ? '\n\n— Form details —\n' + custom.map((c) => `${c.label}: ${c.value}`).join('\n') : '';
+    // Fold custom answers into the opening message so the agent sees them in context — but only if
+    // the message came from a real message field (if we already derived it from the custom answers,
+    // they're in there and we'd be duplicating).
+    const appendCustom = core.message && custom.length ? '\n\n— Form details —\n' + custBlock : '';
     const ticket = await ticketService.createTicket(ws, {
-      subject: subject || (message || '').slice(0, 80),
+      subject,
       contactId: contact.id,
       contactName: contact.name,
       contactEmail: email || null,
       channel: 'portal',
       source: 'portal',
-      firstMessage: (message || subject || '') + customBlock,
+      firstMessage: message + appendCustom,
       customFields: custom
     });
 
