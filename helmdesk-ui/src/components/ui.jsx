@@ -14,9 +14,11 @@ export function Truncate({ children, className = '' }) {
     const el = ref.current;
     if (el) setClipped(el.scrollWidth > el.clientWidth + 1);
   }, [children]);
+  // Outer wrapper carries the tooltip (no overflow clip); inner span does the ellipsis. Keeping
+  // them separate means the ellipsis' overflow:hidden can't clip the tooltip pseudo-element.
   return (
-    <span ref={ref} className={`trunc ${className}`} data-tip={clipped ? text : undefined}>
-      {children}
+    <span className={`trunc-wrap ${className}`} data-tip={clipped ? text : undefined} title={clipped ? text : undefined}>
+      <span ref={ref} className="trunc-inner">{children}</span>
     </span>
   );
 }
