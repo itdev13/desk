@@ -88,9 +88,18 @@ export default function Inbox({ user, notify, onChange }) {
       {rightOpen && <div className="inbox-resizer" style={{ right: rightW }} onMouseDown={startDrag('right')}
         onDoubleClick={resetWidths} title="Drag to resize · double-click to reset" />}
 
-      {/* Restore tabs for collapsed panes — circular arrow pointing the way the panel expands. */}
-      {!leftOpen && <button className="inbox-toggle-circle restore-left" onClick={toggleLeft} title="Show ticket list"><Icon name="chevron" size={15} /></button>}
-      {!rightOpen && <button className="inbox-toggle-circle restore-right" onClick={toggleRight} title="Show details"><Icon name="chevron" size={15} /></button>}
+      {/* Always-present edge toggles. The circle sits on each pane's seam; the arrow flips to show
+          whether clicking collapses (points outward) or expands (points inward) that pane. */}
+      <button className={`inbox-toggle-circle edge-left ${leftOpen ? 'is-open' : ''}`}
+        style={{ left: leftOpen ? leftW : 0 }} onClick={toggleLeft}
+        title={leftOpen ? 'Hide ticket list' : 'Show ticket list'}>
+        <Icon name="chevron" size={15} />
+      </button>
+      <button className={`inbox-toggle-circle edge-right ${rightOpen ? 'is-open' : ''}`}
+        style={{ right: rightOpen ? rightW : 0 }} onClick={toggleRight}
+        title={rightOpen ? 'Hide details' : 'Show details'}>
+        <Icon name="chevron" size={15} />
+      </button>
 
       {/* ── Left: list ── */}
       {leftOpen && (
@@ -103,7 +112,6 @@ export default function Inbox({ user, notify, onChange }) {
                 {counts[t.key] != null && <span className="inbox-tab-n">{counts[t.key]}</span>}
               </button>
             ))}
-            <button className="inbox-toggle-circle collapse-left" onClick={toggleLeft} title="Hide ticket list"><Icon name="chevron" size={15} /></button>
           </div>
           <div className="inbox-search">
             <Icon name="search" size={14} />
@@ -288,7 +296,6 @@ function TicketPanes({ id, isAdmin, notify, onChanged, rightOpen = true, toggleR
       {/* Right: details */}
       {rightOpen && (
       <aside className="inbox-detail">
-        <button className="inbox-toggle-circle collapse-right" onClick={toggleRight} title="Hide details"><Icon name="chevron" size={15} /></button>
         <div className="side-card">
           <h4>Contact</h4>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>

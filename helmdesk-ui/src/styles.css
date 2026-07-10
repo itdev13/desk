@@ -702,30 +702,26 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 
 .inbox-detail { position: relative; }
 
-/* Circular arrow toggle — collapse (in a pane header) or restore (on the collapsed edge). The
-   chevron points the direction the panel will move, so it reads clearly. */
+/* Always-present circular edge toggle. Sits on each pane's seam, vertically centered; the arrow
+   flips to show whether a click collapses (points outward) or expands (points inward) the pane. */
 .inbox-toggle-circle {
-  display: grid; place-items: center; width: 26px; height: 26px; flex: none;
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 36;
+  display: grid; place-items: center; width: 26px; height: 26px;
   border: 1px solid var(--line); background: var(--panel); color: var(--slate);
   border-radius: 50%; cursor: pointer; box-shadow: var(--shadow);
   transition: border-color 0.12s, color 0.12s, background 0.12s;
 }
 .inbox-toggle-circle:hover { border-color: var(--accent); color: var(--accent-dk); background: var(--accent-soft); }
 .inbox-toggle-circle .ico { transition: transform 0.12s; }
-
-/* In-header collapse buttons */
-.collapse-left { margin-left: auto; }
-.collapse-left .ico { transform: rotate(180deg); }   /* ‹ push list left */
-.inbox-detail .collapse-right { position: absolute; top: 12px; right: 14px; z-index: 2; }
-/* .collapse-right chevron stays › (push details right) */
-
-/* Restore buttons — sit just inside the collapsed edge, vertically centered. */
-.restore-left, .restore-right {
-  position: absolute; top: 50%; transform: translateY(-50%); z-index: 35;
-}
-.restore-left { left: 8px; }               /* › expand list rightward (default chevron) */
-.restore-right { right: 8px; }
-.restore-right .ico { transform: rotate(180deg); } /* ‹ expand details leftward */
+/* Nudge each circle to straddle its seam. */
+.edge-left { margin-left: -13px; }
+.edge-right { margin-right: -13px; }
+/* Collapsed edge circle sits flush at the screen edge instead of off-screen. */
+.edge-left:not(.is-open) { margin-left: 8px; }
+.edge-right:not(.is-open) { margin-right: 8px; }
+/* Arrow direction: open → point toward the edge (collapse); collapsed → point inward (expand). */
+.edge-left.is-open .ico { transform: rotate(180deg); }   /* ‹ collapse list */
+.edge-right:not(.is-open) .ico { transform: rotate(180deg); } /* ‹ expand details */
 
 /* Left: ticket list */
 .inbox-list { display: flex; flex-direction: column; border-right: 1px solid var(--line); background: var(--panel); }
