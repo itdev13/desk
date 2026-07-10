@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  * { leftW, rightW, startDrag(side), resetWidths }.
  */
 const KEY = 'helmdesk.inbox.panes.v1';
-const DEFAULTS = { leftW: 340, rightW: 300 };
+const DEFAULTS = { leftW: 340, rightW: 300, leftOpen: true, rightOpen: true };
 const MIN = 240, MAX = 560;
 
 function load() {
@@ -17,12 +17,12 @@ function load() {
 const clamp = (v) => Math.max(MIN, Math.min(MAX, v));
 
 export function useResizablePanes() {
-  const [{ leftW, rightW }, setState] = useState(load);
+  const [{ leftW, rightW, leftOpen, rightOpen }, setState] = useState(load);
   const drag = useRef(null); // { side, startX, startW }
 
   useEffect(() => {
-    try { localStorage.setItem(KEY, JSON.stringify({ leftW, rightW })); } catch { /* ignore */ }
-  }, [leftW, rightW]);
+    try { localStorage.setItem(KEY, JSON.stringify({ leftW, rightW, leftOpen, rightOpen })); } catch { /* ignore */ }
+  }, [leftW, rightW, leftOpen, rightOpen]);
 
   const onMove = useCallback((e) => {
     const d = drag.current;
@@ -53,6 +53,12 @@ export function useResizablePanes() {
   useEffect(() => () => onUp(), [onUp]); // cleanup on unmount
 
   const resetWidths = useCallback(() => setState({ ...DEFAULTS }), []);
+  const toggleLeft = useCallback(() => setState((s) => ({ ...s, leftOpen: !s.leftOpen })), []);
+  const toggleRight = useCallback(() => setState((s) => ({ ...s, rightOpen: !s.rightOpen })), []);
 
-  return { leftW, rightW, startDrag, resetWidths };
+  // Effective widths: 0 when collapsed (grid column disappears).
+  const effLeft = leftOpen ? leftW : 0;
+  const effRight = rightOpen ? rightW : 0;
+
+  return { leftW: effLeft, rightW: effRight, leftOpen, rightOpen, startDrag, resetWidths, toggleLeft, toggleRight };
 }

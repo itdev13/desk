@@ -31,6 +31,12 @@ router.get('/:slug.json', async (req, res) => {
 router.get('/:slug', async (req, res) => {
   const ws = await Workspace.findOne({ portalSlug: req.params.slug, portalEnabled: true });
   if (!ws) return res.status(404).send(renderPortalNotFound());
+  // The global helmet CSP uses script-src 'self', which blocks this page's INLINE <script> (the
+  // one that intercepts submit and POSTs). That silently made the form fall back to a native GET.
+  // This is a self-contained public page, so relax its CSP to allow its own inline script + styles.
+  res.set('Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; " +
+    "connect-src 'self'; img-src 'self' data:; base-uri 'self'; form-action 'self'");
   res.send(renderPortalForm(ws));
 });
 
@@ -76,7 +82,7 @@ function renderPortalForm(ws) {
 <body><div class="wrap"><div class="card">
   <div class="head"><div class="badge">${brandName[0] ? brandName[0].toUpperCase() : 'S'}</div><h1>${brandName}</h1></div>
   <p class="sub">Submit a request and our team will get back to you.</p>
-  <form id="f">
+  <form id="f" method="post" action="/portal/${slug}/submit">
     <div class="row">
       <div><label>Name</label><input name="name" autocomplete="name"></div>
       <div><label>Email</label><input name="email" type="email" autocomplete="email"></div>

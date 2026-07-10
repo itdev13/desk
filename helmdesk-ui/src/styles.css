@@ -672,6 +672,26 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 }
 .inbox-resizer:hover::after, .inbox-resizer:active::after { background: var(--accent); width: 3px; left: 2px; }
 
+/* Collapse button inside a pane header; restore tab shown when a pane is hidden. */
+.inbox-collapse {
+  display: inline-grid; place-items: center; width: 24px; height: 24px; flex: none; margin-left: auto;
+  border: none; background: none; color: var(--slate); cursor: pointer; border-radius: 6px;
+}
+.inbox-collapse:hover { background: var(--line-soft); color: var(--ink); }
+.inbox-collapse .ico { transform: rotate(180deg); } /* chevron points toward the edge it collapses to */
+.inbox-detail .right-collapse { position: absolute; top: 14px; right: 14px; margin: 0; z-index: 2; }
+.inbox-detail .right-collapse .ico { transform: none; }
+.inbox-detail { position: relative; }
+.inbox-restore {
+  position: absolute; top: 12px; z-index: 35; width: 22px; height: 44px; display: grid; place-items: center;
+  background: var(--panel); border: 1px solid var(--line); color: var(--slate); cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.inbox-restore:hover { color: var(--accent-dk); border-color: var(--accent); }
+.inbox-restore.left { left: 0; border-left: none; border-radius: 0 9px 9px 0; }
+.inbox-restore.right { right: 0; border-right: none; border-radius: 9px 0 0 9px; }
+.inbox-restore.right .ico { transform: rotate(180deg); }
+
 /* Left: ticket list */
 .inbox-list { display: flex; flex-direction: column; border-right: 1px solid var(--line); background: var(--panel); }
 .inbox-list-head { padding: 12px 14px; border-bottom: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 10px; }

@@ -72,16 +72,23 @@ export default function Inbox({ user, notify, onChange }) {
 
   const onTicketChanged = () => { loadList({ silent: true }); onChange?.(); };
 
-  const { leftW, rightW, startDrag, resetWidths } = useResizablePanes();
+  const { leftW, rightW, leftOpen, rightOpen, startDrag, resetWidths, toggleLeft, toggleRight } = useResizablePanes();
 
   return (
     <div className="inbox" style={{ gridTemplateColumns: `${leftW}px minmax(0,1fr) ${rightW}px` }}>
-      {/* Drag handles on the pane boundaries — drag to resize, double-click to reset to defaults. */}
-      <div className="inbox-resizer" style={{ left: leftW }} onMouseDown={startDrag('left')}
-        onDoubleClick={resetWidths} title="Drag to resize · double-click to reset" />
-      <div className="inbox-resizer" style={{ right: rightW }} onMouseDown={startDrag('right')}
-        onDoubleClick={resetWidths} title="Drag to resize · double-click to reset" />
+      {/* Drag handles on the pane boundaries — drag to resize, double-click to reset. Hidden when
+          the adjacent pane is collapsed. */}
+      {leftOpen && <div className="inbox-resizer" style={{ left: leftW }} onMouseDown={startDrag('left')}
+        onDoubleClick={resetWidths} title="Drag to resize · double-click to reset" />}
+      {rightOpen && <div className="inbox-resizer" style={{ right: rightW }} onMouseDown={startDrag('right')}
+        onDoubleClick={resetWidths} title="Drag to resize · double-click to reset" />}
+
+      {/* Restore tabs for collapsed panes */}
+      {!leftOpen && <button className="inbox-restore left" onClick={toggleLeft} title="Show ticket list"><Icon name="chevron" size={16} /></button>}
+      {!rightOpen && <button className="inbox-restore right" onClick={toggleRight} title="Show details"><Icon name="chevron" size={16} /></button>}
+
       {/* ── Left: list ── */}
+      {leftOpen && (
       <aside className="inbox-list">
         <div className="inbox-list-head">
           <div className="inbox-tabs">
@@ -91,6 +98,7 @@ export default function Inbox({ user, notify, onChange }) {
                 {counts[t.key] != null && <span className="inbox-tab-n">{counts[t.key]}</span>}
               </button>
             ))}
+            <button className="inbox-collapse" onClick={toggleLeft} title="Hide ticket list"><Icon name="chevron" size={15} /></button>
           </div>
           <div className="inbox-search">
             <Icon name="search" size={14} />
@@ -130,10 +138,12 @@ export default function Inbox({ user, notify, onChange }) {
           })}
         </div>
       </aside>
+      )}
 
       {/* ── Center + Right: the selected ticket ── */}
       {selectedId
-        ? <TicketPanes key={selectedId} id={selectedId} isAdmin={isAdmin} notify={notify} onChanged={onTicketChanged} />
+        ? <TicketPanes key={selectedId} id={selectedId} isAdmin={isAdmin} notify={notify} onChanged={onTicketChanged}
+            rightOpen={rightOpen} toggleRight={toggleRight} />
         : <InboxEmptyMain hasTickets={tickets.length > 0} loading={loadingList} />}
     </div>
   );
@@ -170,7 +180,7 @@ function InboxEmptyMain({ hasTickets, loading }) {
 }
 
 /** Center thread + composer and the right details pane for one ticket. */
-function TicketPanes({ id, isAdmin, notify, onChanged }) {
+function TicketPanes({ id, isAdmin, notify, onChanged, rightOpen = true, toggleRight }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [agents, setAgents] = useState([]);
@@ -271,7 +281,9 @@ function TicketPanes({ id, isAdmin, notify, onChanged }) {
       </section>
 
       {/* Right: details */}
+      {rightOpen && (
       <aside className="inbox-detail">
+        <button className="inbox-collapse right-collapse" onClick={toggleRight} title="Hide details"><Icon name="chevron" size={15} /></button>
         <div className="side-card">
           <h4>Contact</h4>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
@@ -334,6 +346,7 @@ function TicketPanes({ id, isAdmin, notify, onChanged }) {
           </button>
         )}
       </aside>
+      )}
     </>
   );
 }
