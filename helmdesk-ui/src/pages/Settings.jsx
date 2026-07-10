@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, portalUrl } from '../lib/api.js';
 import { CHANNELS } from '../lib/format.js';
-import { Icon, Switch, Select, TagInput, SectionHeader } from '../components/ui.jsx';
+import { Icon, Switch, Select, TagInput, SectionHeader, ColorField } from '../components/ui.jsx';
 import { track } from '../lib/analytics.js';
 
 /** Render a minutes value as a friendly duration, e.g. 60 → "1h", 1440 → "1d", 90 → "1h 30m". */
@@ -344,7 +344,10 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
             <fieldset disabled={!whiteLabel} style={{ border: 'none', padding: 0, margin: 0, opacity: whiteLabel ? 1 : 0.55 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <div className="field" style={{ margin: 0 }}><label>Brand name</label><input type="text" value={ws.brand?.name || ''} onChange={(e) => set({ brand: { ...ws.brand, name: e.target.value } })} /></div>
-              <div className="field" style={{ margin: 0 }}><label>Primary color</label><input type="text" value={ws.brand?.primaryColor || ''} onChange={(e) => set({ brand: { ...ws.brand, primaryColor: e.target.value } })} placeholder="#E0A24A" /></div>
+              <div className="field" style={{ margin: 0 }}>
+                <label>Primary color</label>
+                <ColorField value={ws.brand?.primaryColor || ''} onChange={(v) => set({ brand: { ...ws.brand, primaryColor: v } })} />
+              </div>
             </div>
             <div className="toggle-row" style={{ marginTop: 14 }}>
               <div><div className="t-label">Client portal intake</div><div className="t-desc">Let customers submit tickets from a branded web form.</div></div>

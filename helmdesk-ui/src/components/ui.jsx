@@ -23,6 +23,36 @@ export function Truncate({ children, className = '' }) {
   );
 }
 
+/**
+ * Color input: a clickable swatch (opens the OS color palette via native <input type=color>) +
+ * a hex text field, kept in sync. A row of quick preset swatches sits below for one-click brand
+ * colors. Emits an uppercased #RRGGBB via onChange(value).
+ */
+const COLOR_PRESETS = ['#E0A24A', '#0F1729', '#3B6FB0', '#2F9E6B', '#D64545', '#8E5DB0', '#C0612F', '#111827'];
+export function ColorField({ value = '', onChange, placeholder = '#E0A24A' }) {
+  const hex = (value || '').trim();
+  const valid = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(hex);
+  const swatch = valid ? hex : placeholder;
+  const set = (v) => onChange(v.toUpperCase());
+  return (
+    <div className="colorfield">
+      <div className="colorfield-row">
+        <label className="colorfield-swatch" style={{ background: swatch }} title="Pick a color">
+          <input type="color" value={valid ? hex : placeholder} onChange={(e) => set(e.target.value)} />
+        </label>
+        <input type="text" className="colorfield-hex" value={hex} placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)} maxLength={7} spellCheck={false} />
+      </div>
+      <div className="colorfield-presets">
+        {COLOR_PRESETS.map((c) => (
+          <button key={c} type="button" className={`colorfield-preset ${hex.toUpperCase() === c ? 'sel' : ''}`}
+            style={{ background: c }} title={c} onClick={() => set(c)} aria-label={`Use ${c}`} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /** Minimal inline icon set (stroke-based, currentColor). */
 export function Icon({ name, size = 17 }) {
   const p = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' };
