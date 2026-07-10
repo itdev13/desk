@@ -638,10 +638,22 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 /* ══ Inbox: 3-pane ticket workspace (list │ thread │ details) ══ */
 .inbox {
   flex: 1; min-height: 0; display: grid;
-  grid-template-columns: 340px 1fr 300px;
+  grid-template-columns: 340px minmax(0, 1fr) 300px; /* overridden inline by the resizer */
   background: var(--paper);
+  position: relative;
 }
 .inbox > * { min-height: 0; min-width: 0; }
+
+/* Draggable pane boundary. Sits on the seam between panes; widens its hit area invisibly. */
+.inbox-resizer {
+  position: absolute; top: 0; bottom: 0; width: 7px; margin-left: -3px; z-index: 30;
+  cursor: col-resize; background: transparent;
+}
+.inbox-resizer::after {
+  content: ''; position: absolute; top: 0; bottom: 0; left: 3px; width: 1px; background: var(--line);
+  transition: background 0.12s, width 0.12s, left 0.12s;
+}
+.inbox-resizer:hover::after, .inbox-resizer:active::after { background: var(--accent); width: 3px; left: 2px; }
 
 /* Left: ticket list */
 .inbox-list { display: flex; flex-direction: column; border-right: 1px solid var(--line); background: var(--panel); }
@@ -716,7 +728,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 @media (prefers-reduced-motion: reduce) { .dot-pulse { animation: none; } }
 
 @media (max-width: 1100px) {
-  .inbox { grid-template-columns: 300px 1fr; }
+  .inbox { grid-template-columns: 300px 1fr !important; }
+  .inbox-resizer { display: none; }
   .inbox-detail { display: none; }
   .inbox-empty-main { grid-column: 2 / 3; }
 }

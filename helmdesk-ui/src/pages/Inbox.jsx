@@ -4,6 +4,7 @@ import { ago, slaDisplay, STATUS_LABEL, PRIORITY_LABEL, labelChannel, isCustomPr
 import { Icon, PriorityPill, Avatar, Select } from '../components/ui.jsx';
 import { useAutoRefresh, useDebounce } from '../lib/useAutoRefresh.js';
 import { track } from '../lib/analytics.js';
+import { useResizablePanes } from '../lib/useResizable.js';
 
 /**
  * Inbox — a 3-pane ticket workspace (list │ conversation │ details), for working tickets without
@@ -71,8 +72,15 @@ export default function Inbox({ user, notify, onChange }) {
 
   const onTicketChanged = () => { loadList({ silent: true }); onChange?.(); };
 
+  const { leftW, rightW, startDrag, resetWidths } = useResizablePanes();
+
   return (
-    <div className="inbox">
+    <div className="inbox" style={{ gridTemplateColumns: `${leftW}px minmax(0,1fr) ${rightW}px` }}>
+      {/* Drag handles on the pane boundaries — drag to resize, double-click to reset to defaults. */}
+      <div className="inbox-resizer" style={{ left: leftW }} onMouseDown={startDrag('left')}
+        onDoubleClick={resetWidths} title="Drag to resize · double-click to reset" />
+      <div className="inbox-resizer" style={{ right: rightW }} onMouseDown={startDrag('right')}
+        onDoubleClick={resetWidths} title="Drag to resize · double-click to reset" />
       {/* ── Left: list ── */}
       <aside className="inbox-list">
         <div className="inbox-list-head">
