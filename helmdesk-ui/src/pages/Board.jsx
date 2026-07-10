@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { api } from '../lib/api.js';
 import { ago, slaDisplay } from '../lib/format.js';
 import { PriorityPill, Avatar } from '../components/ui.jsx';
@@ -14,6 +14,8 @@ export default function Board({ onOpen }) {
   const [columns, setColumns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dragId, setDragId] = useState(null);
+  const [overCol, setOverCol] = useState(null); // column currently hovered while dragging
+  const draggedRef = useRef(false); // true when a real drag happened, to suppress the trailing click
 
   const load = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -30,15 +32,31 @@ export default function Board({ onOpen }) {
   useAutoRefresh(useCallback(() => { if (!dragId) load({ silent: true }); }, [load, dragId]));
 
   const drop = async (status) => {
-    if (!dragId) return;
     const id = dragId;
+    setOverCol(null);
     setDragId(null);
-    // Optimistic move.
+    if (!id) return;
+
+    // Find the card and its current column; no-op if dropped in the same column.
+    let from = null, card = null;
+    for (const [col, list] of Object.entries(board)) {
+      const found = (list || []).find((t) => t._id === id);
+      if (found) { from = col; card = found; break; }
+    }
+    if (!card || from === status) return;
+
+    // Optimistic move: update UI immediately so the card visibly jumps to the new column,
+    // then confirm with the API in the background (revert on failure).
+    setBoard((b) => ({
+      ...b,
+      [from]: (b[from] || []).filter((t) => t._id !== id),
+      [status]: [{ ...card, status }, ...(b[status] || [])]
+    }));
     try {
       await api.setStatus(id, status);
-      load();
+      load({ silent: true });
     } catch {
-      load();
+      load(); // revert to server truth
     }
   };
 
@@ -53,8 +71,9 @@ export default function Board({ onOpen }) {
             {columns.map((status) => (
               <div
                 key={status}
-                className="col"
-                onDragOver={(e) => e.preventDefault()}
+                className={`col ${overCol === status && dragId ? 'drag-over' : ''}`}
+                onDragOver={(e) => { e.preventDefault(); if (overCol !== status) setOverCol(status); }}
+                onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setOverCol((c) => (c === status ? null : c)); }}
                 onDrop={() => drop(status)}
               >
                 <div className="col-head">
@@ -67,10 +86,11 @@ export default function Board({ onOpen }) {
                     return (
                       <div
                         key={t._id}
-                        className="kcard"
+                        className={`kcard ${dragId === t._id ? 'dragging' : ''}`}
                         draggable
-                        onDragStart={() => setDragId(t._id)}
-                        onClick={() => onOpen(t._id)}
+                        onDragStart={(e) => { draggedRef.current = true; setDragId(t._id); e.dataTransfer.effectAllowed = 'move'; }}
+                        onDragEnd={() => { setDragId(null); setOverCol(null); setTimeout(() => { draggedRef.current = false; }, 0); }}
+                        onClick={() => { if (!draggedRef.current) onOpen(t._id); }}
                       >
                         <div className="kref">{t.ref}</div>
                         <div className="ksub">{t.subject}</div>
