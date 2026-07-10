@@ -351,6 +351,8 @@ button { font-family: inherit; cursor: pointer; }
 .hd-select-trigger.open { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .hd-select.is-disabled { opacity: 0.55; pointer-events: none; }
 .hd-select-ph { color: var(--slate); }
+/* Truncate a long value to one line with … (full text on hover via title attr) */
+.hd-select-val, .hd-select-ph { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hd-select-caret { color: var(--slate); flex: none; transition: transform 0.15s; }
 .hd-select-caret.up { transform: rotate(180deg); }
 
@@ -365,6 +367,7 @@ button { font-family: inherit; cursor: pointer; }
   padding: 8px 10px; border-radius: 7px; font-size: 14px; color: var(--ink); cursor: pointer;
 }
 .hd-select-opt > span:first-child { flex: 1; }
+.hd-select-opt-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hd-select-opt .hd-select-meta { font-size: 12px; color: var(--slate); font-family: var(--mono); }
 .hd-select-opt.active { background: var(--paper); }
 .hd-select-opt.sel { color: var(--accent-dk); font-weight: 600; }

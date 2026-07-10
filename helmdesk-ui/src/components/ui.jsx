@@ -114,7 +114,7 @@ export function Select({ value, onChange, options = [], placeholder = 'Select…
     <div className={`hd-select ${disabled ? 'is-disabled' : ''}`} ref={ref}>
       <button type="button" className={`hd-select-trigger ${open ? 'open' : ''}`} disabled={disabled}
         onClick={() => setOpen((v) => !v)} onKeyDown={onKey} aria-haspopup="listbox" aria-expanded={open}>
-        <span className={selected ? 'hd-select-val' : 'hd-select-ph'}>{selected ? selected.label : placeholder}</span>
+        <span className={selected ? 'hd-select-val' : 'hd-select-ph'} title={selected ? selected.label : undefined}>{selected ? selected.label : placeholder}</span>
         <svg className={`hd-select-caret ${open ? 'up' : ''}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
       </button>
       {open && (
@@ -124,7 +124,7 @@ export function Select({ value, onChange, options = [], placeholder = 'Select…
             <li key={o.value ?? `opt-${i}`} role="option" aria-selected={o.value === value}
               className={`hd-select-opt ${o.value === value ? 'sel' : ''} ${i === active ? 'active' : ''} ${o.disabled ? 'disabled' : ''}`}
               onMouseEnter={() => setActive(i)} onClick={() => pick(o)}>
-              <span>{o.label}</span>
+              <span className="hd-select-opt-label" title={o.label}>{o.label}</span>
               {o.meta && <span className="hd-select-meta">{o.meta}</span>}
               {o.value === value && <Icon name="check" size={14} />}
             </li>
