@@ -126,9 +126,7 @@ function renderPortalForm(ws) {
   .done.show{display:block;animation:fade .2s ease}
   .done-icon{width:56px;height:56px;border-radius:50%;background:#e4f4ec;color:#14492f;display:grid;place-items:center;margin:0 auto 16px}
   .done h2{margin:0 0 6px;font-size:20px}
-  .done p{margin:0 auto 18px;max-width:340px;color:#5a687f;font-size:14px}
-  .linkbtn{background:none;border:none;color:var(--accent);font-weight:700;font-size:14px;cursor:pointer;padding:6px;width:auto;margin:0}
-  .linkbtn:hover{text-decoration:underline}
+  .done p{margin:0 auto;max-width:340px;color:#5a687f;font-size:14px}
   @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
   .foot{text-align:center;color:#9aa6ba;font-size:12px;margin-top:18px}
 </style></head>
@@ -145,14 +143,12 @@ function renderPortalForm(ws) {
     <div class="done-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
     <h2 id="done-title">Request received</h2>
     <p id="done-msg">We’ve got your request and will be in touch shortly.</p>
-    <button type="button" class="linkbtn" id="again">Submit another request</button>
   </div>
   <div class="foot">Powered by ${brandName}</div>
 </div></div>
 <script>
   const f=document.getElementById('f'),btn=document.getElementById('btn'),err=document.getElementById('err');
-  const done=document.getElementById('done'),doneMsg=document.getElementById('done-msg'),again=document.getElementById('again');
-  again.addEventListener('click',()=>{done.classList.remove('show');f.style.display='';err.style.display='none';});
+  const done=document.getElementById('done'),doneMsg=document.getElementById('done-msg');
   function collect(){
     const fd=new FormData(f), d={};
     for(const [k,v] of fd.entries()){
