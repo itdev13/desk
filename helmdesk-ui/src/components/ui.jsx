@@ -1,6 +1,26 @@
 import React from 'react';
 import { PRIORITY_LABEL, STATUS_LABEL, avatarColor, initials } from '../lib/format.js';
 
+/**
+ * Single-line text that truncates with … and shows a custom styled tooltip with the full text on
+ * hover — but ONLY when the text is actually clipped (so short labels get no tooltip). Instant,
+ * dark, on-brand (see `.tt` in styles.css). Use anywhere a long value must fit a narrow box.
+ */
+export function Truncate({ children, className = '' }) {
+  const ref = React.useRef(null);
+  const [clipped, setClipped] = React.useState(false);
+  const text = typeof children === 'string' ? children : '';
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (el) setClipped(el.scrollWidth > el.clientWidth + 1);
+  }, [children]);
+  return (
+    <span ref={ref} className={`trunc ${className}`} data-tip={clipped ? text : undefined}>
+      {children}
+    </span>
+  );
+}
+
 /** Minimal inline icon set (stroke-based, currentColor). */
 export function Icon({ name, size = 17 }) {
   const p = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' };
@@ -114,7 +134,9 @@ export function Select({ value, onChange, options = [], placeholder = 'Select…
     <div className={`hd-select ${disabled ? 'is-disabled' : ''}`} ref={ref}>
       <button type="button" className={`hd-select-trigger ${open ? 'open' : ''}`} disabled={disabled}
         onClick={() => setOpen((v) => !v)} onKeyDown={onKey} aria-haspopup="listbox" aria-expanded={open}>
-        <span className={selected ? 'hd-select-val' : 'hd-select-ph'} title={selected ? selected.label : undefined}>{selected ? selected.label : placeholder}</span>
+        {selected
+          ? <Truncate className="hd-select-val">{selected.label}</Truncate>
+          : <span className="hd-select-ph">{placeholder}</span>}
         <svg className={`hd-select-caret ${open ? 'up' : ''}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
       </button>
       {open && (
@@ -124,7 +146,7 @@ export function Select({ value, onChange, options = [], placeholder = 'Select…
             <li key={o.value ?? `opt-${i}`} role="option" aria-selected={o.value === value}
               className={`hd-select-opt ${o.value === value ? 'sel' : ''} ${i === active ? 'active' : ''} ${o.disabled ? 'disabled' : ''}`}
               onMouseEnter={() => setActive(i)} onClick={() => pick(o)}>
-              <span className="hd-select-opt-label" title={o.label}>{o.label}</span>
+              <Truncate className="hd-select-opt-label">{o.label}</Truncate>
               {o.meta && <span className="hd-select-meta">{o.meta}</span>}
               {o.value === value && <Icon name="check" size={14} />}
             </li>
