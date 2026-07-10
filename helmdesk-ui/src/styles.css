@@ -61,6 +61,10 @@ button { font-family: inherit; cursor: pointer; }
   flex: none;
 }
 .topnav-brand { display: flex; align-items: center; gap: 10px; flex: none; }
+.ws-badge {
+  width: 30px; height: 30px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  font-weight: 800; font-size: 15px; background: var(--accent); color: var(--ink);
+}
 .topnav-brand .ws-name { font-size: 14px; color: var(--ink); font-weight: 800; line-height: 1.1; }
 .topnav-brand .ws-name small { display: block; color: var(--slate); font-weight: 500; font-size: 11px; }
 
@@ -696,24 +700,32 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 }
 .inbox-resizer:hover::after, .inbox-resizer:active::after { background: var(--accent); width: 3px; left: 2px; }
 
-/* Collapse button inside a pane header; restore tab shown when a pane is hidden. */
-.inbox-collapse {
-  display: inline-grid; place-items: center; width: 26px; height: 26px; flex: none; margin-left: auto;
-  border: 1px solid var(--line); background: var(--panel); color: var(--slate); cursor: pointer; border-radius: 7px;
+.inbox-detail { position: relative; }
+
+/* Circular arrow toggle — collapse (in a pane header) or restore (on the collapsed edge). The
+   chevron points the direction the panel will move, so it reads clearly. */
+.inbox-toggle-circle {
+  display: grid; place-items: center; width: 26px; height: 26px; flex: none;
+  border: 1px solid var(--line); background: var(--panel); color: var(--slate);
+  border-radius: 50%; cursor: pointer; box-shadow: var(--shadow);
   transition: border-color 0.12s, color 0.12s, background 0.12s;
 }
-.inbox-collapse:hover { border-color: var(--accent); color: var(--accent-dk); background: var(--accent-soft); }
-.inbox-detail .right-collapse { position: absolute; top: 14px; right: 14px; margin: 0; z-index: 2; }
-.inbox-detail { position: relative; }
-/* Restore tab — a pill button on the collapsed edge to bring a pane back. */
-.inbox-restore {
-  position: absolute; top: 14px; z-index: 35; width: 30px; height: 30px; display: grid; place-items: center;
-  background: var(--panel); border: 1px solid var(--line); color: var(--slate); cursor: pointer;
-  box-shadow: var(--shadow); border-radius: 8px; transition: border-color 0.12s, color 0.12s, background 0.12s;
+.inbox-toggle-circle:hover { border-color: var(--accent); color: var(--accent-dk); background: var(--accent-soft); }
+.inbox-toggle-circle .ico { transition: transform 0.12s; }
+
+/* In-header collapse buttons */
+.collapse-left { margin-left: auto; }
+.collapse-left .ico { transform: rotate(180deg); }   /* ‹ push list left */
+.inbox-detail .collapse-right { position: absolute; top: 12px; right: 14px; z-index: 2; }
+/* .collapse-right chevron stays › (push details right) */
+
+/* Restore buttons — sit just inside the collapsed edge, vertically centered. */
+.restore-left, .restore-right {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 35;
 }
-.inbox-restore:hover { color: var(--accent-dk); border-color: var(--accent); background: var(--accent-soft); }
-.inbox-restore.left { left: 12px; }
-.inbox-restore.right { right: 12px; }
+.restore-left { left: 8px; }               /* › expand list rightward (default chevron) */
+.restore-right { right: 8px; }
+.restore-right .ico { transform: rotate(180deg); } /* ‹ expand details leftward */
 
 /* Left: ticket list */
 .inbox-list { display: flex; flex-direction: column; border-right: 1px solid var(--line); background: var(--panel); }

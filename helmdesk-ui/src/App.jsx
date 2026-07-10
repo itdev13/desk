@@ -4,6 +4,7 @@ import { Spinner, Icon, Toast } from './components/ui.jsx';
 import { LogoMark } from './components/Logo.jsx';
 import { useAutoRefresh } from './lib/useAutoRefresh.js';
 import { initAnalytics, track, trackPageView } from './lib/analytics.js';
+import { contrastText } from './lib/format.js';
 import SetupWizard from './pages/SetupWizard.jsx';
 import Queue from './pages/Queue.jsx';
 import Inbox from './pages/Inbox.jsx';
@@ -178,7 +179,7 @@ function TopNav({ workspace, sub, view, queueView, counts, isAdmin, onNav }) {
       <div className="topnav-brand">
         {(!brand.name || brand.name === 'HelmDesk')
           ? <LogoMark size={30} />
-          : <div className="ws-badge" style={brand.primaryColor ? { background: brand.primaryColor } : undefined}>{brand.name[0].toUpperCase()}</div>}
+          : <div className="ws-badge" style={brand.primaryColor ? { background: brand.primaryColor, color: contrastText(brand.primaryColor) } : undefined}>{brand.name[0].toUpperCase()}</div>}
         <div className="ws-name">
           {brand.name || 'HelmDesk'}
           <small>{workspace?.locationName || 'Workspace'}</small>

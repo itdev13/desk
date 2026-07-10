@@ -78,8 +78,22 @@ function renderField(f) {
   return `<label>${label}${reqMark}</label><input type="${inputType}" name="${name}" ${req} ${maxAttr} ${ph} autocomplete="${ac}">`;
 }
 
+/** Pick readable text (near-black or white) for a given background hex, via WCAG luminance. */
+function contrastText(hex) {
+  const h = String(hex || '').replace('#', '');
+  const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+  if (full.length !== 6) return '#0f1729';
+  const r = parseInt(full.slice(0, 2), 16) / 255;
+  const g = parseInt(full.slice(2, 4), 16) / 255;
+  const b = parseInt(full.slice(4, 6), 16) / 255;
+  const lin = (c) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  return L > 0.5 ? '#0f1729' : '#ffffff'; // dark text on light bg, white text on dark bg
+}
+
 function renderPortalForm(ws) {
   const accent = esc(ws.brand?.primaryColor || '#E0A24A');
+  const onAccent = contrastText(ws.brand?.primaryColor || '#E0A24A');
   const brandName = esc(ws.brand?.name || 'Support');
   const slug = esc(ws.portalSlug);
   const fields = (ws.portalFields && ws.portalFields.length) ? ws.portalFields : Workspace.PORTAL_DEFAULT_FIELDS;
@@ -87,13 +101,13 @@ function renderPortalForm(ws) {
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${brandName} — Submit a request</title>
 <style>
-  :root{--accent:${accent}}
+  :root{--accent:${accent};--on-accent:${onAccent}}
   *{box-sizing:border-box}
   body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#f5f7fa;color:#0f1729;line-height:1.55}
   .wrap{max-width:560px;margin:0 auto;padding:40px 20px}
   .card{background:#fff;border:1px solid #dde3ec;border-radius:16px;padding:32px;box-shadow:0 8px 30px -22px rgba(15,23,41,.4)}
   .head{display:flex;align-items:center;gap:12px;margin-bottom:6px}
-  .badge{width:40px;height:40px;border-radius:10px;background:var(--accent);color:#0f1729;display:grid;place-items:center;font-weight:800;font-size:20px}
+  .badge{width:44px;height:44px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-weight:800;font-size:20px}
   h1{font-size:22px;margin:0}
   p.sub{color:#5a687f;margin:4px 0 24px;font-size:14px}
   label{display:block;font-size:13px;font-weight:600;color:#2a3447;margin:14px 0 6px}
@@ -104,7 +118,7 @@ function renderPortalForm(ws) {
   .opts{display:flex;flex-direction:column;gap:8px}
   .opts .opt{display:flex;align-items:center;gap:8px;font-weight:400;font-size:14px;color:#0f1729;margin:0;cursor:pointer}
   .opts .opt input{width:auto;margin:0}
-  button{margin-top:22px;width:100%;background:var(--accent);color:#0f1729;border:none;border-radius:8px;padding:13px;font-size:15px;font-weight:700;cursor:pointer}
+  button{margin-top:22px;width:100%;background:var(--accent);color:var(--on-accent);border:none;border-radius:8px;padding:13px;font-size:15px;font-weight:700;cursor:pointer}
   button:disabled{opacity:.6;cursor:not-allowed}
   .hp{position:absolute;left:-9999px}
   .ok,.err{margin-top:16px;padding:14px;border-radius:8px;font-size:14px;display:none}

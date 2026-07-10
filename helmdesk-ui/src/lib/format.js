@@ -115,3 +115,14 @@ export function fmtMins(mins) {
   if (mins < 60) return `${mins}m`;
   return `${(mins / 60).toFixed(1)}h`;
 }
+
+/** Readable text color (near-black or white) for a background hex — WCAG luminance. */
+export function contrastText(hex) {
+  const h = String(hex || '').replace('#', '');
+  const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+  if (full.length !== 6) return '#0f1729';
+  const v = (i) => parseInt(full.slice(i, i + 2), 16) / 255;
+  const lin = (c) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const L = 0.2126 * lin(v(0)) + 0.7152 * lin(v(2)) + 0.0722 * lin(v(4));
+  return L > 0.5 ? '#0f1729' : '#ffffff';
+}
