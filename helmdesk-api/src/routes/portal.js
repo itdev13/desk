@@ -223,7 +223,13 @@ router.post('/:slug/submit', intakeLimiter, async (req, res) => {
     }
 
     const { name, email, phone } = core;
-    if (!email && !phone) return res.status(400).json({ success: false, error: 'Please provide an email or phone so we can reply.' });
+    // No hard-coded contact rule: the agency's per-field `required` settings are the source of truth
+    // (enforced in the loop above). If they leave email/phone optional, a ticket is created without
+    // a reply-to — their choice. We just need SOME content to make a ticket, which we derive below.
+
+    // Guard against a totally empty submission (no core value and no custom answers) → junk ticket.
+    const anyContent = Object.values(core).some(Boolean) || custom.length > 0;
+    if (!anyContent) return res.status(400).json({ success: false, error: 'Please fill in the form before submitting.' });
 
     // Derive subject/message when the agency's custom form omits those fields, so the form never
     // dead-ends: fall back to the first custom answer, then a generic label.
