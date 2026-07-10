@@ -29,6 +29,8 @@ const ticketSchema = new mongoose.Schema(
     conversationId: { type: String, index: true },
     contactName: { type: String, default: null }, // cached for list display only
     contactEmail: { type: String, default: null },
+    // Answers to the agency's custom portal-form questions (label→value), shown in the details pane.
+    customFields: { type: [{ _id: false, label: String, value: String }], default: [] },
     channel: { type: String, default: null }, // SMS, Email, WhatsApp, FB, IG, Live_Chat, Call, portal
     // The GHL conversation provider this message came through (custom integrations / providers).
     // Captured from the inbound webhook; surfaced as a channel facet on the dashboard.

@@ -206,6 +206,15 @@ export default function TicketDetail({ id, onBack, user, notify, onChange }) {
               <div className="kv"><span className="k">Messages</span><span>{ticket.messageCount}</span></div>
             </div>
 
+            {ticket.customFields?.length > 0 && (
+              <div className="side-card">
+                <h4>Form details</h4>
+                {ticket.customFields.map((c, i) => (
+                  <div className="kv kv-stack" key={i}><span className="k">{c.label}</span><span className="v">{c.value}</span></div>
+                ))}
+              </div>
+            )}
+
             {ticket.status !== 'resolved' && ticket.status !== 'closed' && (
               <button className="btn btn-primary" onClick={() => patch(() => api.setStatus(id, 'resolved'), 'Marked resolved')}>
                 <Icon name="check" size={15} /> Mark resolved

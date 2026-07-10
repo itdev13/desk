@@ -106,7 +106,26 @@ const workspaceSchema = new mongoose.Schema(
 
     // Public portal intake.
     portalEnabled: { type: Boolean, default: false },
-    portalSlug: { type: String, default: null, index: true } // unique-ish public id for the intake form
+    portalSlug: { type: String, default: null, index: true }, // unique-ish public id for the intake form
+
+    // Custom portal form builder. Ordered list of fields the agency configures. A field either
+    // maps to a CORE ticket/contact attribute (`maps`: name|email|phone|subject|message) or is a
+    // custom question (`maps: null`) whose answer is stored on the ticket + shown to the agent.
+    // If empty, the portal falls back to the default built-in fields (see PORTAL_DEFAULT_FIELDS).
+    portalFields: {
+      type: [{
+        _id: false,
+        key: { type: String, required: true }, // stable id, e.g. 'email' or 'custom_1699…'
+        type: { type: String, enum: ['text', 'textarea', 'select', 'radio', 'checkbox'], default: 'text' },
+        label: { type: String, default: 'Field' },
+        placeholder: { type: String, default: '' },
+        required: { type: Boolean, default: false },
+        maxLength: { type: Number, default: null }, // for text/textarea
+        options: { type: [String], default: [] },   // for select/radio/checkbox
+        maps: { type: String, default: null }        // name|email|phone|subject|message|null(custom)
+      }],
+      default: undefined
+    }
   },
   { timestamps: true }
 );
@@ -117,4 +136,18 @@ workspaceSchema.methods.slaFor = function slaFor(priority) {
   return found || this.slaTargets.find((t) => t.priority === 'normal') || { firstResponseMins: 480, resolveMins: 1440 };
 };
 
-module.exports = mongoose.model('Workspace', workspaceSchema);
+/**
+ * Default portal form = the original built-in fields. Used to seed a new workspace and as the
+ * fallback when `portalFields` is empty. Core fields map to ticket/contact attributes.
+ */
+const PORTAL_DEFAULT_FIELDS = [
+  { key: 'name', type: 'text', label: 'Name', required: false, maxLength: 120, options: [], maps: 'name' },
+  { key: 'email', type: 'text', label: 'Email', required: false, maxLength: 160, options: [], maps: 'email' },
+  { key: 'phone', type: 'text', label: 'Phone (optional)', required: false, maxLength: 40, options: [], maps: 'phone' },
+  { key: 'subject', type: 'text', label: 'Subject', required: true, maxLength: 160, options: [], maps: 'subject' },
+  { key: 'message', type: 'textarea', label: 'How can we help?', required: true, maxLength: 4000, options: [], maps: 'message' }
+];
+
+const M = mongoose.model('Workspace', workspaceSchema);
+M.PORTAL_DEFAULT_FIELDS = PORTAL_DEFAULT_FIELDS;
+module.exports = M;

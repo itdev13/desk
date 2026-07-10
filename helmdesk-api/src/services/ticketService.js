@@ -318,6 +318,7 @@ async function createTicket(workspace, opts) {
     firstMessage = null,
     ghlMessageId = null,
     createdByAgent = null, // { id, name } for manual creation
+    customFields = [], // [{ label, value }] answers to custom portal questions
     at = new Date()
   } = opts;
 
@@ -349,6 +350,7 @@ async function createTicket(workspace, opts) {
     conversationId,
     contactName,
     contactEmail,
+    customFields: Array.isArray(customFields) ? customFields : [],
     channel,
     conversationProviderId,
     source,

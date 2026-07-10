@@ -74,8 +74,13 @@ export default function Inbox({ user, notify, onChange }) {
 
   const { leftW, rightW, leftOpen, rightOpen, startDrag, resetWidths, toggleLeft, toggleRight } = useResizablePanes();
 
+  // Grid columns must match the panes actually rendered — a collapsed pane's <aside> is removed,
+  // so we omit its track entirely (otherwise the center would land in a 0px column and shrink).
+  const gridCols = [leftOpen ? `${leftW}px` : null, 'minmax(0,1fr)', rightOpen ? `${rightW}px` : null]
+    .filter(Boolean).join(' ');
+
   return (
-    <div className="inbox" style={{ gridTemplateColumns: `${leftW}px minmax(0,1fr) ${rightW}px` }}>
+    <div className="inbox" style={{ gridTemplateColumns: gridCols }}>
       {/* Drag handles on the pane boundaries — drag to resize, double-click to reset. Hidden when
           the adjacent pane is collapsed. */}
       {leftOpen && <div className="inbox-resizer" style={{ left: leftW }} onMouseDown={startDrag('left')}
@@ -84,8 +89,8 @@ export default function Inbox({ user, notify, onChange }) {
         onDoubleClick={resetWidths} title="Drag to resize · double-click to reset" />}
 
       {/* Restore tabs for collapsed panes */}
-      {!leftOpen && <button className="inbox-restore left" onClick={toggleLeft} title="Show ticket list"><Icon name="chevron" size={16} /></button>}
-      {!rightOpen && <button className="inbox-restore right" onClick={toggleRight} title="Show details"><Icon name="chevron" size={16} /></button>}
+      {!leftOpen && <button className="inbox-restore left" onClick={toggleLeft} title="Show ticket list"><Icon name="panel-left" size={16} /></button>}
+      {!rightOpen && <button className="inbox-restore right" onClick={toggleRight} title="Show details"><Icon name="panel-right" size={16} /></button>}
 
       {/* ── Left: list ── */}
       {leftOpen && (
@@ -98,7 +103,7 @@ export default function Inbox({ user, notify, onChange }) {
                 {counts[t.key] != null && <span className="inbox-tab-n">{counts[t.key]}</span>}
               </button>
             ))}
-            <button className="inbox-collapse" onClick={toggleLeft} title="Hide ticket list"><Icon name="chevron" size={15} /></button>
+            <button className="inbox-collapse" onClick={toggleLeft} title="Hide ticket list"><Icon name="panel-left" size={15} /></button>
           </div>
           <div className="inbox-search">
             <Icon name="search" size={14} />
@@ -283,7 +288,7 @@ function TicketPanes({ id, isAdmin, notify, onChanged, rightOpen = true, toggleR
       {/* Right: details */}
       {rightOpen && (
       <aside className="inbox-detail">
-        <button className="inbox-collapse right-collapse" onClick={toggleRight} title="Hide details"><Icon name="chevron" size={15} /></button>
+        <button className="inbox-collapse right-collapse" onClick={toggleRight} title="Hide details"><Icon name="panel-right" size={15} /></button>
         <div className="side-card">
           <h4>Contact</h4>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
@@ -332,6 +337,15 @@ function TicketPanes({ id, isAdmin, notify, onChanged, rightOpen = true, toggleR
             </div>
           )}
         </div>
+
+        {ticket.customFields?.length > 0 && (
+          <div className="side-card">
+            <h4>Form details</h4>
+            {ticket.customFields.map((c, i) => (
+              <div className="kv kv-stack" key={i}><span className="k">{c.label}</span><span className="v">{c.value}</span></div>
+            ))}
+          </div>
+        )}
 
         <div className="side-card">
           <h4>SLA</h4>

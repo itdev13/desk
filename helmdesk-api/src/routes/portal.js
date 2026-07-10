@@ -50,10 +50,39 @@ function renderPortalNotFound() {
   <body><div><h2>This support form isn't available.</h2></div></body></html>`;
 }
 
+/** Render one form field to HTML from its config. `name` is the field key; choice options escaped. */
+function renderField(f) {
+  const name = esc(f.key);
+  const label = esc(f.label || 'Field');
+  const req = f.required ? 'required' : '';
+  const reqMark = f.required ? ' <span style="color:#d64545">*</span>' : '';
+  const maxAttr = f.maxLength ? `maxlength="${f.maxLength}"` : '';
+  const ph = f.placeholder ? `placeholder="${esc(f.placeholder)}"` : '';
+  if (f.type === 'textarea') {
+    return `<label>${label}${reqMark}</label><textarea name="${name}" ${req} ${maxAttr} ${ph}></textarea>`;
+  }
+  if (f.type === 'select') {
+    const opts = (f.options || []).map((o) => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
+    return `<label>${label}${reqMark}</label><select name="${name}" ${req}><option value="">Select…</option>${opts}</select>`;
+  }
+  if (f.type === 'radio' || f.type === 'checkbox') {
+    const inputType = f.type;
+    const opts = (f.options || []).map((o, i) =>
+      `<label class="opt"><input type="${inputType}" name="${name}" value="${esc(o)}" ${f.required && inputType === 'radio' && i === 0 ? '' : ''}> ${esc(o)}</label>`
+    ).join('');
+    return `<label>${label}${reqMark}</label><div class="opts" data-required="${f.required ? 1 : 0}" data-type="${inputType}" data-name="${name}">${opts}</div>`;
+  }
+  // default: single-line text (email/phone get the right input type for keyboards + validation)
+  const inputType = f.maps === 'email' ? 'email' : f.maps === 'phone' ? 'tel' : 'text';
+  const ac = f.maps === 'email' ? 'email' : f.maps === 'phone' ? 'tel' : f.maps === 'name' ? 'name' : 'off';
+  return `<label>${label}${reqMark}</label><input type="${inputType}" name="${name}" ${req} ${maxAttr} ${ph} autocomplete="${ac}">`;
+}
+
 function renderPortalForm(ws) {
   const accent = esc(ws.brand?.primaryColor || '#E0A24A');
   const brandName = esc(ws.brand?.name || 'Support');
   const slug = esc(ws.portalSlug);
+  const fields = (ws.portalFields && ws.portalFields.length) ? ws.portalFields : Workspace.PORTAL_DEFAULT_FIELDS;
   return `<!DOCTYPE html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${brandName} — Submit a request</title>
@@ -68,10 +97,13 @@ function renderPortalForm(ws) {
   h1{font-size:22px;margin:0}
   p.sub{color:#5a687f;margin:4px 0 24px;font-size:14px}
   label{display:block;font-size:13px;font-weight:600;color:#2a3447;margin:14px 0 6px}
-  input,textarea{width:100%;border:1px solid #dde3ec;border-radius:8px;padding:11px 12px;font-size:15px;font-family:inherit;color:#0f1729}
-  input:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px ${accent}33}
+  input,textarea,select{width:100%;border:1px solid #dde3ec;border-radius:8px;padding:11px 12px;font-size:15px;font-family:inherit;color:#0f1729;background:#fff}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px ${accent}33}
   textarea{min-height:120px;resize:vertical}
   .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .opts{display:flex;flex-direction:column;gap:8px}
+  .opts .opt{display:flex;align-items:center;gap:8px;font-weight:400;font-size:14px;color:#0f1729;margin:0;cursor:pointer}
+  .opts .opt input{width:auto;margin:0}
   button{margin-top:22px;width:100%;background:var(--accent);color:#0f1729;border:none;border-radius:8px;padding:13px;font-size:15px;font-weight:700;cursor:pointer}
   button:disabled{opacity:.6;cursor:not-allowed}
   .hp{position:absolute;left:-9999px}
@@ -83,13 +115,7 @@ function renderPortalForm(ws) {
   <div class="head"><div class="badge">${brandName[0] ? brandName[0].toUpperCase() : 'S'}</div><h1>${brandName}</h1></div>
   <p class="sub">Submit a request and our team will get back to you.</p>
   <form id="f" method="post" action="/portal/${slug}/submit">
-    <div class="row">
-      <div><label>Name</label><input name="name" autocomplete="name"></div>
-      <div><label>Email</label><input name="email" type="email" autocomplete="email"></div>
-    </div>
-    <label>Phone (optional)</label><input name="phone" type="tel" autocomplete="tel">
-    <label>Subject</label><input name="subject" required>
-    <label>How can we help?</label><textarea name="message" required></textarea>
+    ${fields.map((f) => renderField(f)).join('\n    ')}
     <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
     <button type="submit" id="btn">Submit request</button>
     <div class="ok" id="ok"></div>
@@ -99,11 +125,28 @@ function renderPortalForm(ws) {
 </div></div>
 <script>
   const f=document.getElementById('f'),btn=document.getElementById('btn'),ok=document.getElementById('ok'),err=document.getElementById('err');
+  function collect(){
+    const fd=new FormData(f), d={};
+    for(const [k,v] of fd.entries()){
+      if(d[k]===undefined){d[k]=v;}
+      else if(Array.isArray(d[k])){d[k].push(v);} // checkbox group → array
+      else{d[k]=[d[k],v];}
+    }
+    return d;
+  }
+  function validateChoiceGroups(){
+    // Native 'required' doesn't cover checkbox/radio groups; enforce here.
+    for(const g of f.querySelectorAll('.opts[data-required="1"]')){
+      if(!g.querySelector('input:checked')){return g.getAttribute('data-name');}
+    }
+    return null;
+  }
   f.addEventListener('submit',async(e)=>{
     e.preventDefault();ok.style.display='none';err.style.display='none';
-    const d=Object.fromEntries(new FormData(f).entries());
+    const missing=validateChoiceGroups();
+    if(missing){err.textContent='Please complete all required fields.';err.style.display='block';return;}
+    const d=collect();
     if(d.website){return;} // honeypot: bots fill this hidden field
-    if(!d.email&&!d.phone){err.textContent='Please provide an email or phone so we can reply.';err.style.display='block';return;}
     btn.disabled=true;btn.textContent='Submitting…';
     try{
       const r=await fetch('/portal/${slug}/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});
@@ -127,9 +170,28 @@ router.post('/:slug/submit', intakeLimiter, async (req, res) => {
     const ws = await Workspace.findOne({ portalSlug: req.params.slug, portalEnabled: true });
     if (!ws) return res.status(404).json({ success: false, error: 'Portal not found' });
 
-    const { name, email, phone, subject, message, website } = req.body;
     // Honeypot: real users never fill the hidden `website` field; bots do. Silently 200 to not tip them off.
-    if (website) return res.json({ success: true });
+    if (req.body.website) return res.json({ success: true });
+
+    // Interpret the submitted body via the workspace's configured fields (falling back to defaults).
+    const fields = (ws.portalFields && ws.portalFields.length) ? ws.portalFields : Workspace.PORTAL_DEFAULT_FIELDS;
+    const core = { name: '', email: '', phone: '', subject: '', message: '' };
+    const custom = []; // { label, value } for non-core questions, shown to the agent
+
+    for (const fld of fields) {
+      let val = req.body[fld.key];
+      if (Array.isArray(val)) val = val.filter(Boolean).join(', ');
+      val = (val == null ? '' : String(val)).trim();
+      // Required-field enforcement (server-side, authoritative).
+      if (fld.required && !val) {
+        return res.status(400).json({ success: false, error: `“${fld.label}” is required.` });
+      }
+      if (!val) continue;
+      if (fld.maps && core[fld.maps] !== undefined) core[fld.maps] = val;
+      else if (!fld.maps) custom.push({ label: fld.label, value: val });
+    }
+
+    const { name, email, phone, subject, message } = core;
     if (!subject && !message) return res.status(400).json({ success: false, error: 'Please describe your request.' });
     if (!email && !phone) return res.status(400).json({ success: false, error: 'Please provide an email or phone so we can reply.' });
 
@@ -147,6 +209,8 @@ router.post('/:slug/submit', intakeLimiter, async (req, res) => {
       logger.warn('portal contact upsert failed (continuing without contactId)', { message: e.message });
     }
 
+    // Fold custom answers into the opening message so the agent sees them in context.
+    const customBlock = custom.length ? '\n\n— Form details —\n' + custom.map((c) => `${c.label}: ${c.value}`).join('\n') : '';
     const ticket = await ticketService.createTicket(ws, {
       subject: subject || (message || '').slice(0, 80),
       contactId: contact.id,
@@ -154,7 +218,8 @@ router.post('/:slug/submit', intakeLimiter, async (req, res) => {
       contactEmail: email || null,
       channel: 'portal',
       source: 'portal',
-      firstMessage: message || subject
+      firstMessage: (message || subject || '') + customBlock,
+      customFields: custom
     });
 
     res.json({ success: true, ref: ticket.ref, message: 'Your request has been submitted. We will be in touch shortly.' });

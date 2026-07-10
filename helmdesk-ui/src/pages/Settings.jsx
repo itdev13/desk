@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { api, portalUrl } from '../lib/api.js';
 import { CHANNELS } from '../lib/format.js';
 import { Icon, Switch, Select, TagInput, SectionHeader, ColorField } from '../components/ui.jsx';
+import PortalFormBuilder from '../components/PortalFormBuilder.jsx';
 import { track } from '../lib/analytics.js';
 
 /** Render a minutes value as a friendly duration, e.g. 60 → "1h", 1440 → "1d", 90 → "1h 30m". */
@@ -131,7 +132,8 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
         autoReplyMessage: ws.autoReplyMessage,
         ticketNumberPrefix: ws.ticketNumberPrefix,
         brand: ws.brand,
-        portalEnabled: ws.portalEnabled
+        portalEnabled: ws.portalEnabled,
+        portalFields: ws.portalFields
       });
       setWs(res.workspace);
       onSaved?.(res.workspace);
@@ -358,6 +360,12 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
                 <label>Public intake URL</label>
                 <input type="text" readOnly value={portalUrl(ws.portalSlug)} onFocus={(e) => e.target.select()} />
                 <span className="hint">Share or embed this on the client's site.</span>
+              </div>
+            )}
+            {ws.portalEnabled && (
+              <div style={{ marginTop: 18 }}>
+                <label style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink-soft)', display: 'block', marginBottom: 8 }}>Intake form fields</label>
+                <PortalFormBuilder value={ws.portalFields} onChange={(pf) => set({ portalFields: pf })} />
               </div>
             )}
             </fieldset>

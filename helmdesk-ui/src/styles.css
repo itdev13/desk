@@ -609,6 +609,30 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .kv { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; font-size: 13px; border-bottom: 1px solid var(--line-soft); }
 .kv:last-child { border-bottom: none; }
 .kv .k { color: var(--slate); }
+/* Stacked key/value for long custom-form answers (label above, value wraps). */
+.kv.kv-stack { flex-direction: column; align-items: flex-start; gap: 3px; }
+.kv.kv-stack .k { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em; }
+.kv.kv-stack .v { color: var(--ink); white-space: pre-wrap; word-break: break-word; }
+
+/* ── Portal form builder ── */
+.pfb { display: flex; flex-direction: column; gap: 12px; }
+.pfb-help { font-size: 12.5px; color: var(--slate); line-height: 1.5; }
+.pfb-field { display: flex; gap: 10px; align-items: flex-start; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+.pfb-move { display: flex; flex-direction: column; gap: 4px; flex: none; }
+.pfb-move button { width: 24px; height: 22px; display: grid; place-items: center; border: 1px solid var(--line); background: var(--panel); border-radius: 6px; cursor: pointer; color: var(--slate); }
+.pfb-move button:first-child .ico { transform: rotate(-90deg); }
+.pfb-move button:last-child .ico { transform: rotate(90deg); }
+.pfb-move button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-dk); }
+.pfb-move button:disabled { opacity: 0.35; cursor: not-allowed; }
+.pfb-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.pfb-row { display: flex; gap: 10px; align-items: flex-end; }
+.pfb-row-2 { align-items: center; }
+.pfb-req { display: flex; align-items: center; gap: 8px; flex: none; padding-bottom: 2px; }
+.pfb-req-label { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
+.pfb-del { flex: none; width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid var(--line); background: var(--panel); border-radius: 8px; cursor: pointer; color: var(--slate); }
+.pfb-del:hover { border-color: var(--crit); color: var(--crit); background: var(--crit-bg); }
+.pfb-add { align-self: flex-start; }
+@media (max-width: 720px) { .pfb-row { flex-direction: column; align-items: stretch; } }
 
 /* ── Misc ── */
 .empty { text-align: center; padding: 60px 20px; color: var(--slate); }
@@ -674,23 +698,22 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 
 /* Collapse button inside a pane header; restore tab shown when a pane is hidden. */
 .inbox-collapse {
-  display: inline-grid; place-items: center; width: 24px; height: 24px; flex: none; margin-left: auto;
-  border: none; background: none; color: var(--slate); cursor: pointer; border-radius: 6px;
+  display: inline-grid; place-items: center; width: 26px; height: 26px; flex: none; margin-left: auto;
+  border: 1px solid var(--line); background: var(--panel); color: var(--slate); cursor: pointer; border-radius: 7px;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
 }
-.inbox-collapse:hover { background: var(--line-soft); color: var(--ink); }
-.inbox-collapse .ico { transform: rotate(180deg); } /* chevron points toward the edge it collapses to */
+.inbox-collapse:hover { border-color: var(--accent); color: var(--accent-dk); background: var(--accent-soft); }
 .inbox-detail .right-collapse { position: absolute; top: 14px; right: 14px; margin: 0; z-index: 2; }
-.inbox-detail .right-collapse .ico { transform: none; }
 .inbox-detail { position: relative; }
+/* Restore tab — a pill button on the collapsed edge to bring a pane back. */
 .inbox-restore {
-  position: absolute; top: 12px; z-index: 35; width: 22px; height: 44px; display: grid; place-items: center;
+  position: absolute; top: 14px; z-index: 35; width: 30px; height: 30px; display: grid; place-items: center;
   background: var(--panel); border: 1px solid var(--line); color: var(--slate); cursor: pointer;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow); border-radius: 8px; transition: border-color 0.12s, color 0.12s, background 0.12s;
 }
-.inbox-restore:hover { color: var(--accent-dk); border-color: var(--accent); }
-.inbox-restore.left { left: 0; border-left: none; border-radius: 0 9px 9px 0; }
-.inbox-restore.right { right: 0; border-right: none; border-radius: 9px 0 0 9px; }
-.inbox-restore.right .ico { transform: rotate(180deg); }
+.inbox-restore:hover { color: var(--accent-dk); border-color: var(--accent); background: var(--accent-soft); }
+.inbox-restore.left { left: 12px; }
+.inbox-restore.right { right: 12px; }
 
 /* Left: ticket list */
 .inbox-list { display: flex; flex-direction: column; border-right: 1px solid var(--line); background: var(--panel); }

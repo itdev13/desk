@@ -6,7 +6,7 @@ const subscriptionService = require('../services/subscriptionService');
 const logger = require('../utils/logger');
 
 // Fields that require the white-label (top) tier. Non-entitled plans can't change these.
-const WHITE_LABEL_FIELDS = ['brand', 'portalEnabled'];
+const WHITE_LABEL_FIELDS = ['brand', 'portalEnabled', 'portalFields'];
 
 router.use(requireAuth);
 
@@ -28,8 +28,30 @@ const ALLOWED = [
   'ticketNumberPrefix',
   'rules',
   'brand',
-  'portalEnabled'
+  'portalEnabled',
+  'portalFields'
 ];
+
+/** Sanitize the portal form-builder field list before saving (bound sizes, clean options). */
+function sanitizePortalFields(fields) {
+  if (!Array.isArray(fields)) return undefined;
+  const TYPES = ['text', 'textarea', 'select', 'radio', 'checkbox'];
+  const MAPS = ['name', 'email', 'phone', 'subject', 'message'];
+  return fields.slice(0, 40).map((f, i) => {
+    const type = TYPES.includes(f.type) ? f.type : 'text';
+    const isChoice = ['select', 'radio', 'checkbox'].includes(type);
+    return {
+      key: String(f.key || `field_${i}`).slice(0, 60),
+      type,
+      label: String(f.label || 'Field').slice(0, 120),
+      placeholder: String(f.placeholder || '').slice(0, 160),
+      required: !!f.required,
+      maxLength: f.maxLength ? Math.min(Math.max(parseInt(f.maxLength, 10) || 0, 1), 10000) : null,
+      options: isChoice ? (Array.isArray(f.options) ? f.options.map((o) => String(o).slice(0, 120)).filter(Boolean).slice(0, 30) : []) : [],
+      maps: MAPS.includes(f.maps) ? f.maps : null
+    };
+  });
+}
 
 /**
  * Mint a stable public portal slug the first time intake is enabled. Derived from the locationId
@@ -56,6 +78,7 @@ router.put('/', requireAdmin, async (req, res) => {
     for (const key of ALLOWED) {
       if (req.body[key] !== undefined) update[key] = req.body[key];
     }
+    if ('portalFields' in update) update.portalFields = sanitizePortalFields(update.portalFields);
 
     // Plan-gated features: check once, then guard each affected field.
     const touchesWhiteLabel = WHITE_LABEL_FIELDS.some((k) => k in update);
