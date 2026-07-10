@@ -121,8 +121,15 @@ function renderPortalForm(ws) {
   button{margin-top:22px;width:100%;background:var(--accent);color:var(--on-accent);border:none;border-radius:8px;padding:13px;font-size:15px;font-weight:700;cursor:pointer}
   button:disabled{opacity:.6;cursor:not-allowed}
   .hp{position:absolute;left:-9999px}
-  .ok,.err{margin-top:16px;padding:14px;border-radius:8px;font-size:14px;display:none}
-  .ok{background:#e4f4ec;color:#14492f}.err{background:#fbe6e6;color:#991b1b}
+  .err{margin-top:16px;padding:14px;border-radius:8px;font-size:14px;display:none;background:#fbe6e6;color:#991b1b}
+  .done{display:none;text-align:center;padding:24px 8px 8px}
+  .done.show{display:block;animation:fade .2s ease}
+  .done-icon{width:56px;height:56px;border-radius:50%;background:#e4f4ec;color:#14492f;display:grid;place-items:center;margin:0 auto 16px}
+  .done h2{margin:0 0 6px;font-size:20px}
+  .done p{margin:0 auto 18px;max-width:340px;color:#5a687f;font-size:14px}
+  .linkbtn{background:none;border:none;color:var(--accent);font-weight:700;font-size:14px;cursor:pointer;padding:6px;width:auto;margin:0}
+  .linkbtn:hover{text-decoration:underline}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
   .foot{text-align:center;color:#9aa6ba;font-size:12px;margin-top:18px}
 </style></head>
 <body><div class="wrap"><div class="card">
@@ -132,13 +139,20 @@ function renderPortalForm(ws) {
     ${fields.map((f) => renderField(f)).join('\n    ')}
     <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
     <button type="submit" id="btn">Submit request</button>
-    <div class="ok" id="ok"></div>
     <div class="err" id="err"></div>
   </form>
+  <div class="done" id="done">
+    <div class="done-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+    <h2 id="done-title">Request received</h2>
+    <p id="done-msg">We’ve got your request and will be in touch shortly.</p>
+    <button type="button" class="linkbtn" id="again">Submit another request</button>
+  </div>
   <div class="foot">Powered by ${brandName}</div>
 </div></div>
 <script>
-  const f=document.getElementById('f'),btn=document.getElementById('btn'),ok=document.getElementById('ok'),err=document.getElementById('err');
+  const f=document.getElementById('f'),btn=document.getElementById('btn'),err=document.getElementById('err');
+  const done=document.getElementById('done'),doneMsg=document.getElementById('done-msg'),again=document.getElementById('again');
+  again.addEventListener('click',()=>{done.classList.remove('show');f.style.display='';err.style.display='none';});
   function collect(){
     const fd=new FormData(f), d={};
     for(const [k,v] of fd.entries()){
@@ -156,7 +170,7 @@ function renderPortalForm(ws) {
     return null;
   }
   f.addEventListener('submit',async(e)=>{
-    e.preventDefault();ok.style.display='none';err.style.display='none';
+    e.preventDefault();err.style.display='none';
     const missing=validateChoiceGroups();
     if(missing){err.textContent='Please complete all required fields.';err.style.display='block';return;}
     const d=collect();
@@ -166,7 +180,10 @@ function renderPortalForm(ws) {
       const r=await fetch('/portal/${slug}/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});
       const j=await r.json();
       if(!r.ok||j.success===false)throw new Error(j.error||'Something went wrong');
-      f.reset();ok.textContent=(j.ref?('Request '+j.ref+' received. '):'')+'We will be in touch shortly.';ok.style.display='block';
+      // Success → swap the form out for a clean confirmation panel.
+      f.reset();f.style.display='none';
+      doneMsg.textContent=(j.ref?('Your request '+j.ref+' has been received. '):'Your request has been received. ')+'We’ll be in touch shortly.';
+      done.classList.add('show');
     }catch(ex){err.textContent=ex.message;err.style.display='block';}
     finally{btn.disabled=false;btn.textContent='Submit request';}
   });
