@@ -780,7 +780,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .side-field .hd-select { flex: 1; max-width: 165px; }
 
 .inbox-empty-main {
-  grid-column: 2 / 4; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  grid-column: 2 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center;
   text-align: center; color: var(--slate); gap: 4px; background: var(--paper); padding: 40px;
 }
 .inbox-empty-art { margin-bottom: 14px; }
@@ -799,7 +799,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   .inbox { grid-template-columns: 300px 1fr !important; }
   .inbox-resizer { display: none; }
   .inbox-detail { display: none; }
-  .inbox-empty-main { grid-column: 2 / 3; }
+  .inbox-empty-main { grid-column: 2 / -1; }
 }
 @media (max-width: 720px) {
   .inbox { grid-template-columns: 1fr; }

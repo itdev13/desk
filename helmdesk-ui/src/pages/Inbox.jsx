@@ -74,9 +74,11 @@ export default function Inbox({ user, notify, onChange }) {
 
   const { leftW, rightW, leftOpen, rightOpen, startDrag, resetWidths, toggleLeft, toggleRight } = useResizablePanes();
 
-  // Grid columns must match the panes actually rendered — a collapsed pane's <aside> is removed,
-  // so we omit its track entirely (otherwise the center would land in a 0px column and shrink).
-  const gridCols = [leftOpen ? `${leftW}px` : null, 'minmax(0,1fr)', rightOpen ? `${rightW}px` : null]
+  // Grid columns must match the panes actually rendered. The details column only exists when a
+  // ticket is selected (empty state spans the remaining space); a collapsed pane's track is omitted
+  // so the center fills the gap instead of shrinking into a 0px column.
+  const showRight = rightOpen && !!selectedId;
+  const gridCols = [leftOpen ? `${leftW}px` : null, 'minmax(0,1fr)', showRight ? `${rightW}px` : null]
     .filter(Boolean).join(' ');
 
   return (
@@ -85,7 +87,7 @@ export default function Inbox({ user, notify, onChange }) {
           the adjacent pane is collapsed. */}
       {leftOpen && <div className="inbox-resizer" style={{ left: leftW }} onMouseDown={startDrag('left')}
         onDoubleClick={resetWidths} title="Drag to resize · double-click to reset" />}
-      {rightOpen && <div className="inbox-resizer" style={{ right: rightW }} onMouseDown={startDrag('right')}
+      {rightOpen && selectedId && <div className="inbox-resizer" style={{ right: rightW }} onMouseDown={startDrag('right')}
         onDoubleClick={resetWidths} title="Drag to resize · double-click to reset" />}
 
       {/* Always-present edge toggles. The circle sits on each pane's seam; the arrow flips to show
@@ -95,11 +97,15 @@ export default function Inbox({ user, notify, onChange }) {
         title={leftOpen ? 'Hide ticket list' : 'Show ticket list'}>
         <Icon name="chevron" size={15} />
       </button>
-      <button className={`inbox-toggle-circle edge-right ${rightOpen ? 'is-open' : ''}`}
-        style={{ right: rightOpen ? rightW : 0 }} onClick={toggleRight}
-        title={rightOpen ? 'Hide details' : 'Show details'}>
-        <Icon name="chevron" size={15} />
-      </button>
+      {/* The details toggle only makes sense when a ticket is selected — no details pane on the
+          empty state, so don't show a toggle pointing at nothing. */}
+      {selectedId && (
+        <button className={`inbox-toggle-circle edge-right ${rightOpen ? 'is-open' : ''}`}
+          style={{ right: rightOpen ? rightW : 0 }} onClick={toggleRight}
+          title={rightOpen ? 'Hide details' : 'Show details'}>
+          <Icon name="chevron" size={15} />
+        </button>
+      )}
 
       {/* ── Left: list ── */}
       {leftOpen && (
