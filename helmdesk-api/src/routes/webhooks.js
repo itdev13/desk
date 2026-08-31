@@ -12,6 +12,11 @@ const ghlService = require('../services/ghlService');
 const database = require('../config/database');
 const logger = require('../utils/logger');
 const ThrottleQueue = require('../utils/throttleQueue');
+const { webhookSignatureGuard } = require('../utils/webhookSignature');
+
+// Verify GHL's Ed25519 X-GHL-Signature on every webhook (log-only by default; set
+// WEBHOOK_VERIFY_ENFORCE=true to reject unverified once logs confirm signatures pass).
+router.use(webhookSignatureGuard);
 
 const tokenGenQueue = new ThrottleQueue({ name: 'proactive-token-gen', delayMs: 350 });
 
