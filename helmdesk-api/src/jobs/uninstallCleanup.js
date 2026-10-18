@@ -49,6 +49,9 @@ async function purgeLocation(locationId, companyId) {
   // Finally drop the Installation record itself (it's served its purpose as the grace anchor).
   await Installation.deleteMany({ locationId, status: 'uninstalled' });
 
+  // NOTE: TrialLedger is intentionally NOT purged here. It's the permanent record that this location
+  // already used its free trial, so a reinstall doesn't grant a second one. Never add it above.
+
   const summary = {
     tickets: tickets.deletedCount, comments: comments.deletedCount, events: events.deletedCount,
     agents: agents.deletedCount, analytics: analytics.deletedCount, charges: charges.deletedCount,

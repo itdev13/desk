@@ -182,12 +182,31 @@ class SubscriptionService {
     let periodEnd;
     let isTrial = false;
     let trialEndsAt = null;
-    if (!resolvedStatus && trial?.onTrial) {
-      resolvedStatus = 'trialing';
-      isTrial = true;
-      const start = trial.trialStartDate ? new Date(trial.trialStartDate) : now;
-      trialEndsAt = new Date(start.getTime() + (Number(trial.trialDuration) || 0) * 24 * 60 * 60 * 1000);
-      periodEnd = trialEndsAt;
+
+    // Trial grant is APP-CONTROLLED via our persistent TrialLedger (GHL's `trial` field is unreliable —
+    // it often arrives empty even on a true first install). Only on a real INSTALL (no explicit status
+    // passed — PLAN_CHANGE passes status:'active'): if this location has NEVER been granted a trial, we
+    // grant our own 3-day trial and record it in the ledger so it can't be claimed again (survives
+    // uninstall/reinstall). `trial` param is ignored by design.
+    if (!resolvedStatus && locationId) {
+      const TrialLedger = require('../models/TrialLedger');
+      const TRIAL_DAYS = Number(process.env.TRIAL_DAYS || 3);
+      const priorTrial = await TrialLedger.findOne({ locationId });
+      if (!priorTrial) {
+        resolvedStatus = 'trialing';
+        isTrial = true;
+        trialEndsAt = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+        periodEnd = trialEndsAt;
+        // Record the grant permanently. upsert guards against a race on double INSTALL webhooks.
+        await TrialLedger.updateOne(
+          { locationId },
+          { $setOnInsert: { locationId, companyId: companyId || null, firstTrialGrantedAt: now, trialDurationDays: TRIAL_DAYS, planIdAtTrial: planId || null } },
+          { upsert: true }
+        ).catch((e) => logger.warn('trial ledger write failed (non-fatal)', { locationId, message: e.message }));
+        logger.info('🎁 Trial granted (app-controlled, first install for location)', { locationId, planId, trialEndsAt });
+      } else {
+        logger.info('⏭️ No trial — location already used its trial', { locationId, firstTrialGrantedAt: priorTrial.firstTrialGrantedAt });
+      }
     }
     if (!resolvedStatus) resolvedStatus = 'active';
 
