@@ -12,6 +12,10 @@ const agentSchema = new mongoose.Schema(
     email: { type: String, default: null },
     role: { type: String, enum: ['admin', 'agent'], default: 'agent' },
     active: { type: Boolean, default: true }, // include in round-robin / assignable
+    // Can this user open/use the HelmDesk app at all. Default ON; an admin can turn it off to block a
+    // user (they'll see a "no access" screen on launch). Admins always have access regardless (enforced
+    // in auth), so this only effectively gates non-admin agents.
+    accessEnabled: { type: Boolean, default: true },
     openTicketCount: { type: Number, default: 0 }, // denormalized for load display
 
     // Soft-delete: when the GHL user is deleted (UserDelete webhook) we keep the row so existing

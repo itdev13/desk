@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api.js';
 import { CHANNELS } from '../lib/format.js';
 import { Icon, Switch, Select } from '../components/ui.jsx';
-import { durationLabel, SlaPreview } from './Settings.jsx';
+import { durationLabel, SlaPreview, numValue, parseNum } from './Settings.jsx';
 import { LogoMark } from '../components/Logo.jsx';
 
 /**
@@ -273,14 +273,14 @@ export default function SetupWizard({ workspace, onDone, notify }) {
                     <div key={t.priority} className="sla-row">
                       <span className={`pill ${t.priority}`}>{t.priority}</span>
                       <div className="sla-input-wrap">
-                        <input type="number" value={t.firstResponseMins} onChange={(e) => {
-                          const v = [...form.slaTargets]; v[i] = { ...t, firstResponseMins: +e.target.value }; set({ slaTargets: v });
+                        <input type="number" min="0" value={numValue(t.firstResponseMins)} onChange={(e) => {
+                          const v = [...form.slaTargets]; v[i] = { ...t, firstResponseMins: parseNum(e.target.value) }; set({ slaTargets: v });
                         }} />
                         <span className="unit">{durationLabel(t.firstResponseMins)}</span>
                       </div>
                       <div className="sla-input-wrap">
-                        <input type="number" value={t.resolveMins} onChange={(e) => {
-                          const v = [...form.slaTargets]; v[i] = { ...t, resolveMins: +e.target.value }; set({ slaTargets: v });
+                        <input type="number" min="0" value={numValue(t.resolveMins)} onChange={(e) => {
+                          const v = [...form.slaTargets]; v[i] = { ...t, resolveMins: parseNum(e.target.value) }; set({ slaTargets: v });
                         }} />
                         <span className="unit">{durationLabel(t.resolveMins)}</span>
                       </div>
@@ -290,7 +290,7 @@ export default function SetupWizard({ workspace, onDone, notify }) {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginTop: 18 }}>
                   <div className="field" style={{ margin: 0 }}>
                     <label>Auto-close resolved after (days)</label>
-                    <input type="number" value={form.autoCloseResolvedDays} onChange={(e) => set({ autoCloseResolvedDays: +e.target.value })} />
+                    <input type="number" min="0" value={numValue(form.autoCloseResolvedDays)} onChange={(e) => set({ autoCloseResolvedDays: parseNum(e.target.value) })} />
                   </div>
                   <div className="field" style={{ margin: 0 }}>
                     <label>Reopen resolved within</label>

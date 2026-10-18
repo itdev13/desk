@@ -53,6 +53,13 @@ export default function Team({ notify, onNavPlan }) {
     catch (err) { track('agent_toggle_blocked', { code: err.code }); notify(err.message, true); load(); }
   };
 
+  // Toggle whether a (non-admin) user can open the HelmDesk app at all.
+  const toggleAccess = async (a, accessEnabled) => {
+    setAgents((list) => list.map((x) => (x.ghlUserId === a.ghlUserId ? { ...x, accessEnabled } : x)));
+    try { await api.updateAgent(a.ghlUserId, { accessEnabled }); track('agent_access_toggle', { accessEnabled }); }
+    catch (err) { notify(err.message, true); load(); }
+  };
+
   return (
     <>
       <div className="topbar">
@@ -98,9 +105,18 @@ export default function Team({ notify, onNavPlan }) {
                   </div>
                 </div>
                 {!a.deleted && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span className="muted" style={{ fontSize: 12 }}>{a.active ? 'Assignable' : 'Excluded'}</span>
-                    <Switch checked={a.active} onChange={(v) => toggle(a, v)} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+                    {/* App access — admins always have access, so only show the toggle for agents. */}
+                    {a.role !== 'admin' && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }} title="Can this user open HelmDesk">
+                        <span className="muted" style={{ fontSize: 12 }}>{a.accessEnabled === false ? 'No access' : 'App access'}</span>
+                        <Switch checked={a.accessEnabled !== false} onChange={(v) => toggleAccess(a, v)} />
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }} title="Include in ticket assignment">
+                      <span className="muted" style={{ fontSize: 12 }}>{a.active ? 'Assignable' : 'Excluded'}</span>
+                      <Switch checked={a.active} onChange={(v) => toggle(a, v)} />
+                    </div>
                   </div>
                 )}
               </div>

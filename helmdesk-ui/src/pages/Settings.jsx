@@ -5,6 +5,18 @@ import { Icon, Switch, Select, TagInput, SectionHeader, ColorField } from '../co
 import PortalFormBuilder from '../components/PortalFormBuilder.jsx';
 import { track } from '../lib/analytics.js';
 
+/** Controlled-input value for a numeric field: blank while empty, otherwise a clean integer (no
+ *  leading zeros). Avoids the "0<number>" bug where clearing leaves a 0 and typing appends to it. */
+export function numValue(n) {
+  return n === '' || n === null || n === undefined ? '' : String(n);
+}
+/** Parse a numeric input's raw string into an integer (empty → 0), stripping any leading zeros. */
+export function parseNum(raw) {
+  if (raw === '' || raw === null || raw === undefined) return 0;
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) ? n : 0;
+}
+
 /** Render a minutes value as a friendly duration, e.g. 60 → "1h", 1440 → "1d", 90 → "1h 30m". */
 export function durationLabel(mins) {
   const n = Number(mins);
@@ -307,11 +319,11 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
                 <div key={t.priority} className="sla-row">
                   <span className={`pill ${t.priority}`}>{t.priority}</span>
                   <div className="sla-input-wrap">
-                    <input type="number" value={t.firstResponseMins} onChange={(e) => { const v = [...ws.slaTargets]; v[i] = { ...t, firstResponseMins: +e.target.value }; set({ slaTargets: v }); }} />
+                    <input type="number" min="0" value={numValue(t.firstResponseMins)} onChange={(e) => { const v = [...ws.slaTargets]; v[i] = { ...t, firstResponseMins: parseNum(e.target.value) }; set({ slaTargets: v }); }} />
                     <span className="unit">{durationLabel(t.firstResponseMins)}</span>
                   </div>
                   <div className="sla-input-wrap">
-                    <input type="number" value={t.resolveMins} onChange={(e) => { const v = [...ws.slaTargets]; v[i] = { ...t, resolveMins: +e.target.value }; set({ slaTargets: v }); }} />
+                    <input type="number" min="0" value={numValue(t.resolveMins)} onChange={(e) => { const v = [...ws.slaTargets]; v[i] = { ...t, resolveMins: parseNum(e.target.value) }; set({ slaTargets: v }); }} />
                     <span className="unit">{durationLabel(t.resolveMins)}</span>
                   </div>
                 </div>
@@ -322,7 +334,7 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
                 description="What happens after a ticket is resolved, and how ticket numbers look." />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
-              <div className="field" style={{ margin: 0 }}><label>Auto-close resolved (days)</label><input type="number" value={ws.autoCloseResolvedDays} onChange={(e) => set({ autoCloseResolvedDays: +e.target.value })} /><span className="hint">0 = never auto-close.</span></div>
+              <div className="field" style={{ margin: 0 }}><label>Auto-close resolved (days)</label><input type="number" min="0" value={numValue(ws.autoCloseResolvedDays)} onChange={(e) => set({ autoCloseResolvedDays: parseNum(e.target.value) })} /><span className="hint">0 = never auto-close.</span></div>
               <div className="field" style={{ margin: 0 }}>
                 <label>Reopen resolved within</label>
                 <Select

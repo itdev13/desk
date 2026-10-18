@@ -100,15 +100,21 @@ router.post('/verify', async (req, res) => {
     let role = 'agent';
     const isInstaller = userId && ownerUserId && ownerUserId === userId;
     const isPromoted = userId && (workspace?.adminUserIds || []).includes(userId);
+    const Agent = require('../models/Agent');
+    const agentRecord = userId ? await Agent.findOne({ locationId, ghlUserId: userId }) : null;
     if (isInstaller || isPromoted || !workspace?.setupComplete) {
       role = 'admin';
-    } else if (userId) {
-      const Agent = require('../models/Agent');
-      const agent = await Agent.findOne({ locationId, ghlUserId: userId });
-      if (agent?.role === 'admin') role = 'admin';
+    } else if (agentRecord?.role === 'admin') {
+      role = 'admin';
     }
+
+    // HelmDesk access gate. Admins (and the installer) always have access. For a non-admin agent,
+    // access is on unless an admin has turned off their accessEnabled flag. A user with no synced
+    // Agent record yet (e.g. before the first Team sync) defaults to having access.
+    const hasAccess = role === 'admin' || agentRecord == null || agentRecord.accessEnabled !== false;
+
     logger.info('[auth/verify] role resolved', {
-      locationId, userId, role, isInstaller, isPromoted,
+      locationId, userId, role, isInstaller, isPromoted, hasAccess,
       setupComplete: workspace?.setupComplete, ownerUserId
     });
 
@@ -123,7 +129,7 @@ router.post('/verify', async (req, res) => {
         setupComplete: workspace?.setupComplete || false,
         brand: workspace?.brand || { name: 'HelmDesk', primaryColor: '#E0A24A' }
       },
-      user: { userId, name, email, role },
+      user: { userId, name, email, role, hasAccess },
       // Tells the UI whether to send clickstream events (respects ANALYTICS_ENABLED + excluded ids).
       analytics: analyticsService.clientConfig(locationId)
     });

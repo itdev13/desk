@@ -43,6 +43,7 @@ router.patch('/:ghlUserId', requireAdmin, async (req, res) => {
     const update = {};
     if (req.body.active !== undefined) update.active = req.body.active;
     if (req.body.role) update.role = req.body.role;
+    if (req.body.accessEnabled !== undefined) update.accessEnabled = !!req.body.accessEnabled;
 
     // Seat limit: block turning an agent ACTIVE past the plan's seat allowance.
     if (update.active === true) {

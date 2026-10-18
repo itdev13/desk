@@ -23,7 +23,7 @@ import EnrollGate from './pages/EnrollGate.jsx';
  * iframe simple — the active view + selected ticket live in component state.
  */
 export default function App() {
-  const [phase, setPhase] = useState('loading'); // loading | connect | wizard | app | error
+  const [phase, setPhase] = useState('loading'); // loading | connect | noaccess | enroll | wizard | app | error
   const [workspace, setWorkspace] = useState(null);
   const [user, setUser] = useState(null);
   const [sub, setSub] = useState(null);
@@ -61,6 +61,12 @@ export default function App() {
       setUser(res.user);
       initAnalytics(res.analytics || {}); // start clickstream capture if the server has it enabled
       track('app_open', { role: res.user?.role, setupComplete: !!res.workspace?.setupComplete });
+
+      // Access gate: an admin turned off this user's HelmDesk access → block before anything else.
+      if (res.user?.hasAccess === false) {
+        setPhase('noaccess');
+        return;
+      }
 
       // Resolve entitlement before routing: no active plan → the enrol gate, not the app.
       let subStatus = null;
@@ -117,6 +123,7 @@ export default function App() {
   if (phase === 'loading') return <Spinner />;
   if (phase === 'error') return <ConnectScreen title="Something went wrong" message={errorMsg} retry={bootstrap} />;
   if (phase === 'connect') return <ConnectScreen title="Connect HelmDesk" message="Install HelmDesk from the marketplace to get started." cta />;
+  if (phase === 'noaccess') return <ConnectScreen title="You don't have access to HelmDesk" message="Your administrator hasn't enabled HelmDesk access for your account. Please contact your admin to request access." />;
   if (phase === 'enroll') return <EnrollGate brand={workspace?.brand} notify={notify} onRetry={bootstrap} />;
   if (phase === 'wizard') return <SetupWizard workspace={workspace} onDone={finishSetup} notify={notify} />;
 
