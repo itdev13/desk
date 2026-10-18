@@ -125,6 +125,7 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
         createKeywords: ws.createKeywords || [],
         assignmentMode: ws.assignmentMode,
         defaultAssigneeId: ws.defaultAssigneeId,
+        roundRobinPerPriority: ws.roundRobinPerPriority,
         slaTargets: ws.slaTargets,
         autoCloseResolvedDays: ws.autoCloseResolvedDays,
         reopenWindowDays: ws.reopenWindowDays,
@@ -282,6 +283,15 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
                 />
               </div>
             )}
+            {ws.assignmentMode === 'round_robin' && routing && (
+              <div className="toggle-row" style={{ marginTop: 14 }}>
+                <div>
+                  <div className="t-label">Balance evenly within each priority</div>
+                  <div className="t-desc">Each agent gets an equal share of urgents, highs, normals and lows — not just an equal share of total tickets.</div>
+                </div>
+                <Switch checked={!!ws.roundRobinPerPriority} onChange={(v) => set({ roundRobinPerPriority: v })} />
+              </div>
+            )}
 
             <div style={{ marginTop: 24 }}>
               <SectionHeader icon="clock" title="Response targets (SLA)"
@@ -365,7 +375,7 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
             {ws.portalEnabled && (
               <div style={{ marginTop: 18 }}>
                 <label style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink-soft)', display: 'block', marginBottom: 8 }}>Intake form fields</label>
-                <PortalFormBuilder value={ws.portalFields} onChange={(pf) => set({ portalFields: pf })} />
+                <PortalFormBuilder value={ws.portalFields} onChange={(pf) => set({ portalFields: pf })} brand={ws.brand} />
               </div>
             )}
             </fieldset>

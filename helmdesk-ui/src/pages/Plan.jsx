@@ -41,7 +41,16 @@ export default function Plan({ notify }) {
       <div className="page">
         {data?.current?.status === 'trialing' && (
           <div className="plan-trial-banner">
-            <Icon name="clock" size={16} /> You’re on a free trial of <b>{data.current.name}</b>. Upgrade any time to keep access.
+            <Icon name="clock" size={16} />{' '}
+            {typeof data.current.trialDaysLeft === 'number' ? (
+              data.current.trialDaysLeft <= 0 ? (
+                <>Your free trial of <b>{data.current.name}</b> ends today. You’ll be billed automatically to keep access — no action needed.</>
+              ) : (
+                <>You’re on a free trial of <b>{data.current.name}</b> — <b>{data.current.trialDaysLeft} day{data.current.trialDaysLeft === 1 ? '' : 's'} left</b>. You’ll be billed automatically when it ends, so there’s nothing you need to do to keep access.</>
+              )
+            ) : (
+              <>You’re on a free trial of <b>{data.current.name}</b>. You’ll be billed automatically when it ends to keep access.</>
+            )}
           </div>
         )}
 

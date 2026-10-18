@@ -195,10 +195,18 @@ class SubscriptionService {
     }
 
     const plan = { name: sub.planName, priceUsd: sub.priceUsd, seatLimit: sub.seatLimit };
+    // On a trial, surface how many whole days remain so the UI can show a countdown/upgrade nudge.
+    let trialDaysLeft = null;
+    if (sub.status === 'trialing' && sub.currentPeriodEnd) {
+      const ms = new Date(sub.currentPeriodEnd).getTime() - Date.now();
+      trialDaysLeft = Math.max(0, Math.ceil(ms / (24 * 60 * 60 * 1000)));
+    }
     return {
       entitled: isRequired() ? sub.isEntitled() : true,
       required: isRequired(),
       status: sub.status,
+      isTrial: sub.status === 'trialing',
+      trialDaysLeft,
       plan: { ...plan, whiteLabel: whiteLabelFor(plan), routing: routingFor(plan) },
       currentPeriodEnd: sub.currentPeriodEnd
     };
@@ -234,7 +242,7 @@ class SubscriptionService {
     ]);
     return {
       plans,
-      current: { name: current.plan?.name, status: current.status, priceUsd: current.plan?.priceUsd },
+      current: { name: current.plan?.name, status: current.status, priceUsd: current.plan?.priceUsd, isTrial: current.isTrial, trialDaysLeft: current.trialDaysLeft },
       // upgradeUrl = change tier (already subscribed); enrolUrl = first-time subscribe.
       upgradeUrl,
       enrolUrl

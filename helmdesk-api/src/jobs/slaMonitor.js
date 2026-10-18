@@ -3,6 +3,8 @@ const database = require('../config/database');
 const Ticket = require('../models/Ticket');
 const Workspace = require('../models/Workspace');
 const ticketService = require('../services/ticketService');
+const { fireTrigger } = require('../workflows/workflowsService');
+const { TRIGGERS } = require('../workflows/triggerKeys');
 
 /**
  * Background SLA monitor. Runs on an interval (no external scheduler needed for a single instance;
@@ -41,7 +43,25 @@ async function detectBreaches() {
       }
     });
     logger.warn('⏰ SLA breach', { ref: ticket.ref, locationId: ticket.locationId });
-    // Hook point: notify the assignee/manager here (in-app notification, email, or a GHL message).
+    // Workflow trigger: SLA breached — lets the agency build escalation automations (notify manager,
+    // create an urgent task, etc.). Fire-and-forget so a slow trigger never stalls the monitor.
+    const breachType = (!ticket.firstResponseAt && ticket.slaFirstResponseDueAt < now) ? 'first_response' : 'resolution';
+    fireTrigger(TRIGGERS.SLA_BREACHED, ticket.locationId, {
+      locationId: ticket.locationId,
+      ticketRef: ticket.ref,
+      ticketId: String(ticket._id),
+      subject: ticket.subject,
+      status: ticket.status,
+      priority: ticket.priority,
+      channel: ticket.channel,
+      contactId: ticket.contactId || null,
+      contactName: ticket.contactName || null,
+      contactEmail: ticket.contactEmail || null,
+      assigneeId: ticket.assigneeId || null,
+      assigneeName: ticket.assigneeName || null,
+      createdAt: ticket.createdAt,
+      breachType
+    }).catch((e) => logger.warn('SLA breach trigger fire failed', { ref: ticket.ref, message: e.message }));
   }
   return candidates.length;
 }

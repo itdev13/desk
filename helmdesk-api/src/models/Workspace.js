@@ -70,7 +70,12 @@ const workspaceSchema = new mongoose.Schema(
     // Step 3 — assignment.
     assignmentMode: { type: String, enum: ['round_robin', 'specific', 'unassigned'], default: 'round_robin' },
     defaultAssigneeId: { type: String, default: null }, // used when assignmentMode = 'specific'
-    roundRobinCursor: { type: Number, default: 0 }, // internal pointer for round-robin
+    roundRobinCursor: { type: Number, default: 0 }, // internal pointer for round-robin (global mode)
+    // When true, round-robin keeps a SEPARATE rotation per priority so each agent gets an equal share
+    // of urgents, highs, normals and lows — not just an equal share of total tickets.
+    roundRobinPerPriority: { type: Boolean, default: false },
+    // Per-priority cursors, used only when roundRobinPerPriority is on. { urgent, high, normal, low }.
+    roundRobinCursorByPriority: { type: Map, of: Number, default: {} },
 
     // Step 4 — SLA + lifecycle.
     slaTargets: {

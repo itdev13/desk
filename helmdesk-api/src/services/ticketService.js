@@ -6,6 +6,45 @@ const Agent = require('../models/Agent');
 const Workspace = require('../models/Workspace');
 const Counter = require('../models/Counter');
 const ghlService = require('./ghlService');
+const { fireTrigger } = require('../workflows/workflowsService');
+const { TRIGGERS } = require('../workflows/triggerKeys');
+
+/**
+ * Build the payload a workflow trigger carries. These field names are what the agency references as
+ * {{trigger.<field>}} in their workflow, so they must match the trigger's fields in the GHL dashboard.
+ * `extra` adds event-specific fields (e.g. newStatus, breachType).
+ */
+function buildTriggerPayload(ticket, extra = {}) {
+  return {
+    locationId: ticket.locationId,
+    ticketRef: ticket.ref,
+    ticketId: String(ticket._id),
+    subject: ticket.subject,
+    status: ticket.status,
+    priority: ticket.priority,
+    channel: ticket.channel,
+    contactId: ticket.contactId || null,
+    contactName: ticket.contactName || null,
+    contactEmail: ticket.contactEmail || null,
+    assigneeId: ticket.assigneeId || null,
+    assigneeName: ticket.assigneeName || null,
+    source: ticket.source || 'inbound', // 'portal' | 'inbound' | 'manual' — where the ticket came from
+    formName: ticket.formName || null,  // portal form name (only set when source='portal')
+    createdAt: ticket.createdAt,
+    ...extra
+  };
+}
+
+/** Fire a workflow trigger without ever blocking or breaking the ticket flow. */
+function safeFire(triggerKey, ticket, extra = {}) {
+  try {
+    fireTrigger(triggerKey, ticket.locationId, buildTriggerPayload(ticket, extra)).catch((e) =>
+      logger.warn('fireTrigger rejected', { triggerKey, message: e.message })
+    );
+  } catch (e) {
+    logger.warn('fireTrigger threw', { triggerKey, message: e.message });
+  }
+}
 
 /**
  * The ticket engine — the actual product. Pure logic over our own DB:
@@ -63,9 +102,10 @@ function computeSla(workspace, priority, from = new Date()) {
 
 /**
  * Decide the assignee for a new ticket based on the workspace's assignment mode.
+ * `priority` is used only when round-robin is configured to balance per-priority.
  * Returns { assigneeId, assigneeName } or nulls.
  */
-async function pickAssignee(workspace) {
+async function pickAssignee(workspace, priority = 'normal') {
   if (workspace.assignmentMode === 'unassigned') return { assigneeId: null, assigneeName: null };
 
   // Round-robin is a Team+ feature. If the plan doesn't allow it (e.g. after a downgrade, or legacy
@@ -84,12 +124,28 @@ async function pickAssignee(workspace) {
     return { assigneeId: null, assigneeName: null };
   }
 
-  // round_robin — rotate across active, non-deleted agents using the workspace cursor.
+  // round_robin — rotate across active, non-deleted agents.
   const agents = await Agent.find({ locationId: workspace.locationId, active: true, deleted: { $ne: true } }).sort({ ghlUserId: 1 });
   if (!agents.length) return { assigneeId: null, assigneeName: null };
-  const idx = workspace.roundRobinCursor % agents.length;
+
+  let idx;
+  if (workspace.roundRobinPerPriority) {
+    // Keep a separate rotation per priority so each agent gets an equal share WITHIN each priority
+    // level (an equal share of urgents, of highs, etc.) rather than only of the total.
+    const cursors = workspace.roundRobinCursorByPriority || new Map();
+    const key = priority || 'normal';
+    const cur = (typeof cursors.get === 'function' ? cursors.get(key) : cursors[key]) || 0;
+    idx = cur % agents.length;
+    if (typeof cursors.set === 'function') cursors.set(key, (idx + 1) % agents.length);
+    else cursors[key] = (idx + 1) % agents.length;
+    workspace.roundRobinCursorByPriority = cursors;
+    workspace.markModified('roundRobinCursorByPriority');
+  } else {
+    // Global rotation: balance the total number of tickets across agents.
+    idx = workspace.roundRobinCursor % agents.length;
+    workspace.roundRobinCursor = (idx + 1) % agents.length;
+  }
   const chosen = agents[idx];
-  workspace.roundRobinCursor = (idx + 1) % agents.length;
   await workspace.save();
   return { assigneeId: chosen.ghlUserId, assigneeName: chosen.name };
 }
@@ -315,6 +371,7 @@ async function createTicket(workspace, opts) {
     channel = null,
     conversationProviderId = null,
     source = 'manual',
+    formName = null, // portal form name (source='portal')
     firstMessage = null,
     ghlMessageId = null,
     createdByAgent = null, // { id, name } for manual creation
@@ -331,7 +388,7 @@ async function createTicket(workspace, opts) {
     const agent = await Agent.findOne({ locationId: workspace.locationId, ghlUserId: ruled.assignAgentId });
     assignee = { assigneeId: ruled.assignAgentId, assigneeName: agent?.name || null };
   } else {
-    assignee = await pickAssignee(workspace);
+    assignee = await pickAssignee(workspace, priority);
   }
 
   const number = await Counter.next(workspace.locationId, 'ticket');
@@ -354,6 +411,7 @@ async function createTicket(workspace, opts) {
     channel,
     conversationProviderId,
     source,
+    formName,
     assigneeId: assignee.assigneeId,
     assigneeName: assignee.assigneeName,
     ...sla,
@@ -372,6 +430,10 @@ async function createTicket(workspace, opts) {
     await recordEvent(ticket, 'assigned', { meta: { to: assignee.assigneeId, via: ruled.assignAgentId ? 'rule' : workspace.assignmentMode } });
     await bumpAgentLoad(workspace.locationId, assignee.assigneeId, +1);
   }
+
+  // Workflow trigger: a new ticket was created (and, if auto-assigned, it was assigned too).
+  safeFire(TRIGGERS.TICKET_CREATED, ticket);
+  if (assignee.assigneeId) safeFire(TRIGGERS.TICKET_ASSIGNED, ticket);
 
   // Store the opening customer message.
   if (firstMessage) {
@@ -436,6 +498,7 @@ async function appendCustomerMessage(workspace, ticket, { body, channel, ghlMess
   }
   await recordEvent(ticket, 'customer_replied', { actorType: 'contact', actorId: ticket.contactId });
   await ticket.save();
+  safeFire(TRIGGERS.CUSTOMER_REPLIED, ticket); // workflow trigger: customer replied on an existing ticket
   logger.info('💬 Customer message appended', { ref: ticket.ref, reopened: wasClosed });
   return ticket;
 }
@@ -618,6 +681,7 @@ async function changeStatus(ticket, newStatus, { agent } = {}) {
   ticket.lastActivityAt = now;
   await recordEvent(ticket, 'status_changed', { actorType: agent ? 'agent' : 'system', actorId: agent?.id, actorName: agent?.name, meta: { from, to: newStatus } });
   await ticket.save();
+  safeFire(TRIGGERS.STATUS_CHANGED, ticket, { previousStatus: from, newStatus }); // workflow trigger
   return ticket;
 }
 
@@ -632,6 +696,7 @@ async function assign(ticket, { assigneeId, assigneeName, agent }) {
   await ticket.save();
   if (prev && Ticket.OPEN_STATUSES.includes(ticket.status)) await bumpAgentLoad(ticket.locationId, prev, -1);
   if (assigneeId && Ticket.OPEN_STATUSES.includes(ticket.status)) await bumpAgentLoad(ticket.locationId, assigneeId, +1);
+  if (assigneeId) safeFire(TRIGGERS.TICKET_ASSIGNED, ticket); // workflow trigger: (re)assigned to an agent
   return ticket;
 }
 

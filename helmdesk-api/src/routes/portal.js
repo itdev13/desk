@@ -58,24 +58,26 @@ function renderField(f) {
   const reqMark = f.required ? ' <span style="color:#d64545">*</span>' : '';
   const maxAttr = f.maxLength ? `maxlength="${f.maxLength}"` : '';
   const ph = f.placeholder ? `placeholder="${esc(f.placeholder)}"` : '';
+  // Optional help/description line shown under the label.
+  const help = f.helpText ? `<span class="help">${esc(f.helpText)}</span>` : '';
   if (f.type === 'textarea') {
-    return `<label>${label}${reqMark}</label><textarea name="${name}" ${req} ${maxAttr} ${ph}></textarea>`;
+    return `<label>${label}${reqMark}</label>${help}<textarea name="${name}" ${req} ${maxAttr} ${ph}></textarea>`;
   }
   if (f.type === 'select') {
     const opts = (f.options || []).map((o) => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
-    return `<label>${label}${reqMark}</label><select name="${name}" ${req}><option value="">Select…</option>${opts}</select>`;
+    return `<label>${label}${reqMark}</label>${help}<select name="${name}" ${req}><option value="">Select…</option>${opts}</select>`;
   }
   if (f.type === 'radio' || f.type === 'checkbox') {
     const inputType = f.type;
     const opts = (f.options || []).map((o, i) =>
       `<label class="opt"><input type="${inputType}" name="${name}" value="${esc(o)}" ${f.required && inputType === 'radio' && i === 0 ? '' : ''}> ${esc(o)}</label>`
     ).join('');
-    return `<label>${label}${reqMark}</label><div class="opts" data-required="${f.required ? 1 : 0}" data-type="${inputType}" data-name="${name}">${opts}</div>`;
+    return `<label>${label}${reqMark}</label>${help}<div class="opts" data-required="${f.required ? 1 : 0}" data-type="${inputType}" data-name="${name}">${opts}</div>`;
   }
   // default: single-line text (email/phone get the right input type for keyboards + validation)
   const inputType = f.maps === 'email' ? 'email' : f.maps === 'phone' ? 'tel' : 'text';
   const ac = f.maps === 'email' ? 'email' : f.maps === 'phone' ? 'tel' : f.maps === 'name' ? 'name' : 'off';
-  return `<label>${label}${reqMark}</label><input type="${inputType}" name="${name}" ${req} ${maxAttr} ${ph} autocomplete="${ac}">`;
+  return `<label>${label}${reqMark}</label>${help}<input type="${inputType}" name="${name}" ${req} ${maxAttr} ${ph} autocomplete="${ac}">`;
 }
 
 /** Pick readable text (near-black or white) for a given background hex, via WCAG luminance. */
@@ -111,6 +113,7 @@ function renderPortalForm(ws) {
   h1{font-size:22px;margin:0}
   p.sub{color:#5a687f;margin:4px 0 24px;font-size:14px}
   label{display:block;font-size:13px;font-weight:600;color:#2a3447;margin:14px 0 6px}
+  .help{display:block;font-size:13px;color:#6b7280;margin:-2px 0 7px}
   input,textarea,select{width:100%;border:1px solid #dde3ec;border-radius:8px;padding:11px 12px;font-size:15px;font-family:inherit;color:#0f1729;background:#fff}
   input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px ${accent}33}
   textarea{min-height:120px;resize:vertical}
@@ -234,18 +237,38 @@ router.post('/:slug/submit', intakeLimiter, async (req, res) => {
     if (!subject) subject = custom[0]?.value?.slice(0, 80) || 'Support request';
     if (!message) message = custBlock || subject;
 
-    // Upsert the contact in GHL so the ticket links to a real person.
+    // Upsert the contact in GHL so the ticket links to a real person (creates them if they don't
+    // exist yet, by email/phone). Tag + source let the agency see these came from the portal.
     let contact = { id: null, name: name || email || phone };
     try {
       const upserted = await ghlService.upsertContact(ws.locationId, {
         firstName: (name || '').split(' ')[0] || undefined,
         lastName: (name || '').split(' ').slice(1).join(' ') || undefined,
         email: email || undefined,
-        phone: phone || undefined
+        phone: phone || undefined,
+        source: `${ws.brand?.name || 'HelmDesk'} Portal`,
+        tags: ['helmdesk', 'portal']
       });
       contact = { id: upserted.id || upserted.contact?.id, name: name || email || phone };
     } catch (e) {
       logger.warn('portal contact upsert failed (continuing without contactId)', { message: e.message });
+    }
+
+    // Mirror the submission into GHL's native Conversations as an inbound message, so the form
+    // submission is visible there too (not just in HelmDesk). Best-effort — never blocks the ticket.
+    const providerId = process.env.GHL_CONVERSATION_PROVIDER_ID || '6a4419eda0320c4756a842cb';
+    if (contact.id && providerId) {
+      try {
+        await ghlService.addInboundMessage(ws.locationId, {
+          type: 'Custom',
+          contactId: contact.id,
+          conversationProviderId: providerId,
+          direction: 'inbound',
+          message: `Ticketing - Form submitted\n\n${message}${custom.length ? '\n\n— Form details —\n' + custBlock : ''}`
+        });
+      } catch (e) {
+        logger.warn('portal inbound-message mirror failed (continuing)', { message: e.message });
+      }
     }
 
     // Fold custom answers into the opening message so the agent sees them in context — but only if
@@ -259,6 +282,7 @@ router.post('/:slug/submit', intakeLimiter, async (req, res) => {
       contactEmail: email || null,
       channel: 'portal',
       source: 'portal',
+      formName: `${ws.brand?.name || 'HelmDesk'} Portal`,
       firstMessage: message + appendCustom,
       customFields: custom
     });
