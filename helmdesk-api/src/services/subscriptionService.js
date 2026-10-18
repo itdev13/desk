@@ -122,6 +122,46 @@ function addOneMonth(date) {
   return d;
 }
 
+// GHL retries a failed trial→paid charge for ~3 days before auto-uninstalling. We wait past that
+// window before optimistically treating a still-'trialing' sub as paid, so a FAILING trial isn't
+// wrongly flipped to active during the retries. On a FAILED trial GHL sends UNINSTALL (→ 'canceled')
+// or APP_PAYMENT_STATUS FAILED (→ 'past_due') within this window; either flips the status away from
+// 'trialing', so this net then never runs. On the happy path GHL stays silent and, after the buffer,
+// assuming-paid is correct. A day of extra buffer absorbs clock skew.
+const TRIAL_CONVERT_GRACE_DAYS = Number(process.env.TRIAL_CONVERT_GRACE_DAYS || 4);
+
+/**
+ * Safety net for trial → paid conversion. GHL typically sends NO webhook when a trial successfully
+ * converts to paid, so a sub can stay 'trialing' forever even though the customer is paying. Once the
+ * trial window PLUS GHL's retry/grace buffer has passed, we flip the sub to 'active' on the SAME plan.
+ * Idempotent: only acts on a 'trialing' sub past the buffer, and persists the change once.
+ *
+ * Interaction with failed trials (important): this only touches status 'trialing'. A failed convert
+ * reaches us as UNINSTALL (→ 'canceled') or APP_PAYMENT_STATUS FAILED (→ 'past_due') during the retry
+ * window — both move the sub off 'trialing', so this net never converts a non-paying customer.
+ * Entitlement is unchanged on the happy path (trialing and active are both entitled).
+ */
+async function maybeConvertExpiredTrial(sub) {
+  if (!sub || sub.status !== 'trialing') return sub;
+  const end = sub.trialEndsAt || sub.currentPeriodEnd;
+  if (!end) return sub;
+  // Wait until the trial end PLUS GHL's retry window before assuming the charge went through.
+  const convertAfter = new Date(end).getTime() + TRIAL_CONVERT_GRACE_DAYS * 24 * 60 * 60 * 1000;
+  if (Date.now() < convertAfter) return sub; // trial ended but still inside GHL's charge/retry window
+  const cleanName = (sub.planName || '').replace(/\s*\(Trial\)\s*$/i, '');
+  sub.status = 'active';
+  sub.planName = cleanName || sub.planName;
+  sub.currentPeriodStart = new Date();
+  sub.currentPeriodEnd = addOneMonth(new Date());
+  try {
+    await sub.save();
+    logger.info('🔁 Trial auto-converted to active (no convert webhook from GHL)', { locationId: sub.locationId, planId: sub.planId });
+  } catch (e) {
+    logger.warn('trial auto-convert save failed (non-fatal)', { locationId: sub.locationId, message: e.message });
+  }
+  return sub;
+}
+
 class SubscriptionService {
   isRequired() {
     return isRequired();
@@ -141,11 +181,13 @@ class SubscriptionService {
     let resolvedStatus = status;
     let periodEnd;
     let isTrial = false;
+    let trialEndsAt = null;
     if (!resolvedStatus && trial?.onTrial) {
       resolvedStatus = 'trialing';
       isTrial = true;
       const start = trial.trialStartDate ? new Date(trial.trialStartDate) : now;
-      periodEnd = new Date(start.getTime() + (Number(trial.trialDuration) || 0) * 24 * 60 * 60 * 1000);
+      trialEndsAt = new Date(start.getTime() + (Number(trial.trialDuration) || 0) * 24 * 60 * 60 * 1000);
+      periodEnd = trialEndsAt;
     }
     if (!resolvedStatus) resolvedStatus = 'active';
 
@@ -168,6 +210,7 @@ class SubscriptionService {
         status: resolvedStatus,
         currentPeriodStart: periodStart,
         currentPeriodEnd: periodEnd,
+        trialEndsAt,
         ...(raw ? { rawWebhookData: raw } : {})
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
@@ -188,11 +231,16 @@ class SubscriptionService {
       return { entitled: !isRequired(), status: 'unknown', dbDisabled: true, plan: defaultPlan() };
     }
     const Subscription = require('../models/Subscription');
-    const sub = await Subscription.findOne({ locationId });
+    let sub = await Subscription.findOne({ locationId });
     if (!sub) {
       const p = defaultPlan();
       return { entitled: !isRequired(), status: 'none', plan: { ...p, whiteLabel: whiteLabelFor(p), routing: routingFor(p) }, required: isRequired() };
     }
+
+    // Safety net: GHL usually sends NO webhook when a trial successfully converts to paid, so a
+    // 'trialing' sub whose trial window has passed is treated as 'active' (same plan). We persist the
+    // flip so it's a one-time correction. Entitlement is unaffected either way (both are entitled).
+    sub = await maybeConvertExpiredTrial(sub);
 
     const plan = { name: sub.planName, priceUsd: sub.priceUsd, seatLimit: sub.seatLimit };
     // On a trial, surface how many whole days remain so the UI can show a countdown/upgrade nudge.

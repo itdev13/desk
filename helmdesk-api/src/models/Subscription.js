@@ -29,6 +29,10 @@ const subscriptionSchema = new mongoose.Schema(
 
     currentPeriodStart: Date,
     currentPeriodEnd: Date,
+    // When a trial was granted at install, the moment it ends (trialStart + duration). Used by the
+    // safety net: GHL usually sends NO webhook on a successful trial→paid convert, so once this time
+    // passes we flip a 'trialing' sub to 'active' ourselves (same planId). Null when no trial.
+    trialEndsAt: Date,
     canceledAt: Date,
     rawWebhookData: mongoose.Schema.Types.Mixed
   },
