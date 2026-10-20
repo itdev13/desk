@@ -497,12 +497,12 @@ async function appendCustomerMessage(workspace, ticket, { body, channel, ghlMess
     ticket.status = 'open';
     ticket.resolvedAt = null;
     ticket.closedAt = null;
-    // Reopening restarts the SLA clock from now, and clears any prior breach flag.
+    // Reopening restarts the SLA clock from now (fresh future due dates), so the breach flag clears.
     const sla = computeSla(workspace, ticket.priority, at);
     ticket.slaFirstResponseDueAt = sla.slaFirstResponseDueAt;
     ticket.slaResolveDueAt = sla.slaResolveDueAt;
     ticket.firstResponseAt = null;
-    ticket.breached = false;
+    recomputeBreached(ticket, at); // future dates → false; consistent with the other reopen paths
     await recordEvent(ticket, 'reopened', { actorType: 'contact', actorId: ticket.contactId, meta: { reason: 'customer_replied' } });
   } else if (ticket.status === 'pending' || ticket.status === 'on_hold') {
     // Resume from pause: credit the paused time back onto the due dates, then go back to open.
@@ -510,7 +510,7 @@ async function appendCustomerMessage(workspace, ticket, { body, channel, ghlMess
       extendSlaDue(ticket, at.getTime() - new Date(ticket.slaPausedAt).getTime());
     }
     ticket.status = 'open';
-    ticket.breached = false; // re-evaluate against the credited due dates
+    recomputeBreached(ticket, at); // breach stays set if a credited due date is still in the past
   }
   ticket.slaPaused = false;
   ticket.slaPausedAt = null;
@@ -679,6 +679,20 @@ async function addNote(ticket, { body, agent, mentions = [] }) {
   return ticket;
 }
 
+/**
+ * Recompute the `breached` flag from the ticket's CURRENT due dates, instead of blindly clearing it.
+ * A breach is still active if a due date is already in the past (first-response due passed and no reply
+ * yet, OR resolve due passed). This prevents flapping: clearing breached while a due date is still in
+ * the past would let the SLA monitor re-flag the ticket on its next pass and re-fire the escalation
+ * trigger. Call AFTER any due-date change (reopen credit, priority recompute, reopen restart).
+ */
+function recomputeBreached(ticket, at = new Date()) {
+  const now = at.getTime();
+  const firstBreached = !ticket.firstResponseAt && ticket.slaFirstResponseDueAt && new Date(ticket.slaFirstResponseDueAt).getTime() < now;
+  const resolveBreached = ticket.slaResolveDueAt && new Date(ticket.slaResolveDueAt).getTime() < now;
+  ticket.breached = !!(firstBreached || resolveBreached);
+}
+
 /** Push both SLA due dates forward by `ms` (used to credit back time a ticket spent paused). */
 function extendSlaDue(ticket, ms) {
   if (!ms || ms <= 0) return;
@@ -723,9 +737,10 @@ async function changeStatus(ticket, newStatus, { agent } = {}) {
   } else if (newStatus === 'open' || newStatus === 'new') {
     ticket.slaPaused = false;
     ticket.slaPausedAt = null;
-    // Reopening clears a stale breach flag — the SLA monitor re-evaluates against the (credited) due
-    // dates. Without this, a reopened ticket stayed red forever even after being brought back in time.
-    ticket.breached = false;
+    // Recompute the breach flag against the (credited) due dates rather than blindly clearing it.
+    // Clearing it while a due date is still in the past would make the SLA monitor re-flag the ticket
+    // and re-fire the escalation trigger on its next pass (flapping) — and briefly miscount it as in-SLA.
+    recomputeBreached(ticket, now);
     if (wasResolvedOrClosed) {
       ticket.resolvedAt = null;
       ticket.closedAt = null;
@@ -770,9 +785,10 @@ async function changePriority(workspace, ticket, newPriority, { agent } = {}) {
   const sla = computeSla(workspace, newPriority, ticket.createdAt || new Date());
   ticket.slaFirstResponseDueAt = sla.slaFirstResponseDueAt;
   ticket.slaResolveDueAt = sla.slaResolveDueAt;
-  // New targets → clear the stale breach flag; the SLA monitor re-flags against the new due dates on
-  // its next pass if they're already past. Without this a de-escalated ticket stayed breached forever.
-  ticket.breached = false;
+  // Recompute breach against the NEW due dates. If the new (e.g. de-escalated) targets are still in the
+  // past the ticket stays breached; if the new targets are now in the future it clears. Recomputing
+  // (vs. blindly clearing) stops the SLA monitor from re-flagging + re-firing the escalation trigger.
+  recomputeBreached(ticket);
   ticket.lastActivityAt = new Date();
   await recordEvent(ticket, 'priority_changed', { actorType: agent ? 'agent' : 'system', actorId: agent?.id, meta: { from, to: newPriority } });
   await ticket.save();
