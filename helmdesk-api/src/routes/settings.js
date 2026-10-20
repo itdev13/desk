@@ -56,13 +56,13 @@ function sanitizePortalFields(fields) {
 }
 
 /**
- * Mint a stable public portal slug the first time intake is enabled. Derived from the locationId
- * so it's stable across re-saves, and base64url so it's not a guessable sequential id.
- * Called from BOTH the settings update and the wizard so enabling the portal anywhere works.
+ * Mint a public portal slug the first time intake is enabled. It's RANDOM (not derived from the
+ * locationId — that's public, so a derived slug would be guessable). Minted once and stored, so it's
+ * stable across re-saves. Called from BOTH the settings update and the wizard.
  */
 function ensurePortalSlug(update, current, locationId) {
   if (update.portalEnabled && !current?.portalSlug && !update.portalSlug) {
-    update.portalSlug = `p-${Buffer.from(locationId).toString('base64url').slice(0, 12)}`;
+    update.portalSlug = `p-${require('crypto').randomBytes(9).toString('base64url')}`;
   }
 }
 

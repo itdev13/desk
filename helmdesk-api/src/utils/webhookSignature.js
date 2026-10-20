@@ -81,10 +81,18 @@ function webhookSignatureGuard(req, res, next) {
   const enforce = String(process.env.WEBHOOK_VERIFY_ENFORCE ?? 'false').toLowerCase() === 'true';
   const r = verifyWebhook(req);
 
+  // No signature header at all. Log-only mode accepts it (so a mis-config can't drop real webhooks
+  // during rollout); ENFORCE mode REJECTS it — an unsigned request is exactly how an attacker would
+  // forge a fake INSTALL/PLAN_CHANGE/InvoicePaid to grant themselves a paid plan, or inject tickets.
   if (r.reason === 'no_signature') {
-    logger.info('🔏 Webhook had no signature header (accepted)', { type: req.body?.type });
+    if (enforce) {
+      logger.warn('🔏 Webhook REJECTED — no signature (enforce on)', { type: req.body?.type });
+      return res.status(401).json({ success: false, error: 'Missing webhook signature' });
+    }
+    logger.info('🔏 Webhook had no signature header (accepted — log-only mode)', { type: req.body?.type });
     return next();
   }
+  // A signature was present but failed verification.
   if (!r.ok) {
     logger.warn('🔏 Webhook signature check FAILED', { scheme: r.scheme, reason: r.reason, enforce, type: req.body?.type });
     if (enforce) return res.status(401).json({ success: false, error: 'Invalid webhook signature' });

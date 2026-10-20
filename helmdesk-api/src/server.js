@@ -42,16 +42,18 @@ class HelmDeskApp {
       cors({
         origin(origin, callback) {
           if (!origin) return callback(null, true);
-          const trusted =
-            origin.includes('gohighlevel.com') ||
-            origin.includes('leadconnectorhq.com') ||
-            origin.includes('trycloudflare.com') ||
-            origin.includes('ngrok') ||
-            origin.includes('localhost') ||
-            origin.includes('127.0.0.1') ||
-            origin.includes('vercel.app') ||
-            origin.includes('vaultsuite.store');
-          return trusted ? callback(null, true) : callback(new Error('Not allowed by CORS'));
+          // Match on the actual HOSTNAME, not a substring — a substring check would let
+          // evil-gohighlevel.com.attacker.io or attacker-vercel.app through. We allow a domain and its
+          // subdomains only (host === base OR host endsWith "." + base).
+          let host;
+          try { host = new URL(origin).hostname.toLowerCase(); } catch { return callback(new Error('Bad origin')); }
+          const allowedBases = ['gohighlevel.com', 'leadconnectorhq.com', 'trycloudflare.com', 'vercel.app', 'vaultsuite.store'];
+          const allowedExact = ['localhost', '127.0.0.1'];
+          const ok =
+            allowedExact.includes(host) ||
+            host.endsWith('.ngrok.io') || host.endsWith('.ngrok-free.app') ||
+            allowedBases.some((b) => host === b || host.endsWith('.' + b));
+          return ok ? callback(null, true) : callback(new Error('Not allowed by CORS'));
         },
         credentials: true
       })

@@ -335,6 +335,10 @@ router.post('/inbound', async (req, res) => {
   const data = req.body || {};
   try {
     if (data.type && data.type !== 'InboundMessage') return res.status(200).json({ success: true, ignored: 'not_inbound' });
+    // Same guard as /helmdesk: ignore messages for a location that has uninstalled the app.
+    if (data.locationId && !(await isLocationActive(data.locationId))) {
+      return res.status(200).json({ success: true, ignored: 'not_installed' });
+    }
     const result = await processInbound(data);
     return res.status(200).json({ success: true, ...result });
   } catch (err) {

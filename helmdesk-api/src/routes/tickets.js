@@ -65,10 +65,12 @@ router.get('/', async (req, res) => {
     if (priority) query.priority = priority;
     if (assigneeId) query.assigneeId = assigneeId === 'none' ? null : assigneeId;
     if (q) {
+      // Escape regex metacharacters so a search like "(" can't 500 the route or hang Mongo (ReDoS).
+      const safe = String(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').slice(0, 200);
       query.$or = [
-        { subject: { $regex: q, $options: 'i' } },
-        { contactName: { $regex: q, $options: 'i' } },
-        { ref: { $regex: q, $options: 'i' } }
+        { subject: { $regex: safe, $options: 'i' } },
+        { contactName: { $regex: safe, $options: 'i' } },
+        { ref: { $regex: safe, $options: 'i' } }
       ];
     }
 
@@ -95,7 +97,7 @@ router.get('/', async (req, res) => {
 router.get('/board', async (req, res) => {
   try {
     const { locationId } = req.auth;
-    const columns = ['new', 'open', 'pending', 'resolved'];
+    const columns = ['new', 'open', 'pending', 'on_hold', 'resolved'];
     // Non-admins only see their own tickets on the board.
     const scope = req.auth.role !== 'admin' ? { assigneeId: req.auth.userId } : {};
     const result = {};

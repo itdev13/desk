@@ -272,6 +272,17 @@ async function handleInbound(workspace, payload) {
     at = new Date()
   } = payload;
 
+  // Idempotency: GHL retries webhooks, so the SAME message can arrive more than once. If we've already
+  // stored a comment with this ghlMessageId, skip it — otherwise a retry double-adds the message (and
+  // two concurrent retries could even create two tickets).
+  if (ghlMessageId) {
+    const seen = await Comment.findOne({ locationId: workspace.locationId, ghlMessageId }).select('_id').lean();
+    if (seen) {
+      logger.info('Inbound skipped — duplicate ghlMessageId (webhook retry)', { locationId: workspace.locationId, ghlMessageId });
+      return { action: 'duplicate', ghlMessageId };
+    }
+  }
+
   const gate = shouldAccept(workspace, { channel, body, isAutomated });
   if (!gate.accept) {
     logger.info('Inbound ignored', { locationId: workspace.locationId, reason: gate.reason, channel });
@@ -480,8 +491,8 @@ async function appendCustomerMessage(workspace, ticket, { body, channel, ghlMess
   ticket.lastActivityAt = at;
   // A customer reply un-pauses the SLA. If the ticket was resolved/closed, reopen it; if it was
   // waiting on the customer (pending/on_hold), move it back to open.
-  ticket.slaPaused = false;
   const wasClosed = ticket.status === 'resolved' || ticket.status === 'closed';
+  const wasInOpenSet = Ticket.OPEN_STATUSES.includes(ticket.status);
   if (wasClosed) {
     ticket.status = 'open';
     ticket.resolvedAt = null;
@@ -494,7 +505,18 @@ async function appendCustomerMessage(workspace, ticket, { body, channel, ghlMess
     ticket.breached = false;
     await recordEvent(ticket, 'reopened', { actorType: 'contact', actorId: ticket.contactId, meta: { reason: 'customer_replied' } });
   } else if (ticket.status === 'pending' || ticket.status === 'on_hold') {
+    // Resume from pause: credit the paused time back onto the due dates, then go back to open.
+    if (ticket.slaPaused && ticket.slaPausedAt) {
+      extendSlaDue(ticket, at.getTime() - new Date(ticket.slaPausedAt).getTime());
+    }
     ticket.status = 'open';
+    ticket.breached = false; // re-evaluate against the credited due dates
+  }
+  ticket.slaPaused = false;
+  ticket.slaPausedAt = null;
+  // Agent load: a closed ticket coming back into the open set should re-increment its assignee's count.
+  if (ticket.assigneeId && !wasInOpenSet && Ticket.OPEN_STATUSES.includes(ticket.status)) {
+    await bumpAgentLoad(ticket.locationId, ticket.assigneeId, +1);
   }
   await recordEvent(ticket, 'customer_replied', { actorType: 'contact', actorId: ticket.contactId });
   await ticket.save();
@@ -573,7 +595,12 @@ function buildSendPayload(ticket, message, { html, subject } = {}) {
   const payload = { type, contactId: ticket.contactId, message };
   if (type === 'Email') {
     payload.subject = subject || `Re: ${ticket.subject}`;
-    payload.html = html || `<p>${message}</p>`;
+    // Escape the message before wrapping in HTML (prevents broken markup / injection from the agent's
+    // text) and preserve line breaks. A caller-supplied `html` is trusted and used as-is.
+    const escaped = String(message)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/\r\n|\r|\n/g, '<br>');
+    payload.html = html || `<p>${escaped}</p>`;
   }
   return payload;
 }
@@ -652,30 +679,65 @@ async function addNote(ticket, { body, agent, mentions = [] }) {
   return ticket;
 }
 
-/** Change status with lifecycle side-effects (resolve stamps, reopen events, pause SLA). */
+/** Push both SLA due dates forward by `ms` (used to credit back time a ticket spent paused). */
+function extendSlaDue(ticket, ms) {
+  if (!ms || ms <= 0) return;
+  if (ticket.slaFirstResponseDueAt && !ticket.firstResponseAt) {
+    ticket.slaFirstResponseDueAt = new Date(ticket.slaFirstResponseDueAt.getTime() + ms);
+  }
+  if (ticket.slaResolveDueAt) {
+    ticket.slaResolveDueAt = new Date(ticket.slaResolveDueAt.getTime() + ms);
+  }
+}
+
+/** Change status with lifecycle side-effects (resolve stamps, reopen events, pause/resume SLA). */
 async function changeStatus(ticket, newStatus, { agent } = {}) {
   const from = ticket.status;
   if (from === newStatus) return ticket;
 
+  const OPEN = Ticket.OPEN_STATUSES;
+  const wasOpen = OPEN.includes(from);
+  const nowOpen = OPEN.includes(newStatus);
   const wasResolvedOrClosed = from === 'resolved' || from === 'closed';
-  ticket.status = newStatus;
   const now = new Date();
+
+  // Resuming from a pause: credit the paused time back onto the due dates so the clock effectively
+  // paused (rather than running in the background). Fixes false breaches right after the customer replies.
+  if (ticket.slaPaused && ticket.slaPausedAt && (newStatus === 'open' || newStatus === 'new')) {
+    extendSlaDue(ticket, now.getTime() - new Date(ticket.slaPausedAt).getTime());
+  }
+
+  ticket.status = newStatus;
 
   if (newStatus === 'resolved') {
     ticket.resolvedAt = now;
     ticket.slaPaused = true;
+    ticket.slaPausedAt = ticket.slaPausedAt || now;
   } else if (newStatus === 'closed') {
     ticket.closedAt = now;
     ticket.slaPaused = true;
+    ticket.slaPausedAt = ticket.slaPausedAt || now;
   } else if (newStatus === 'pending' || newStatus === 'on_hold') {
-    ticket.slaPaused = true; // waiting on customer — clock paused
+    ticket.slaPaused = true; // waiting — start (or keep) the pause clock
+    ticket.slaPausedAt = ticket.slaPausedAt || now;
   } else if (newStatus === 'open' || newStatus === 'new') {
     ticket.slaPaused = false;
+    ticket.slaPausedAt = null;
+    // Reopening clears a stale breach flag — the SLA monitor re-evaluates against the (credited) due
+    // dates. Without this, a reopened ticket stayed red forever even after being brought back in time.
+    ticket.breached = false;
     if (wasResolvedOrClosed) {
       ticket.resolvedAt = null;
       ticket.closedAt = null;
       await recordEvent(ticket, 'reopened', { actorType: agent ? 'agent' : 'system', actorId: agent?.id });
     }
+  }
+
+  // Keep the denormalized agent load in sync: a ticket leaving the open set should decrement its
+  // assignee's count; coming back into the open set should increment it again.
+  if (ticket.assigneeId) {
+    if (wasOpen && !nowOpen) await bumpAgentLoad(ticket.locationId, ticket.assigneeId, -1);
+    else if (!wasOpen && nowOpen) await bumpAgentLoad(ticket.locationId, ticket.assigneeId, +1);
   }
 
   ticket.lastActivityAt = now;
@@ -708,6 +770,9 @@ async function changePriority(workspace, ticket, newPriority, { agent } = {}) {
   const sla = computeSla(workspace, newPriority, ticket.createdAt || new Date());
   ticket.slaFirstResponseDueAt = sla.slaFirstResponseDueAt;
   ticket.slaResolveDueAt = sla.slaResolveDueAt;
+  // New targets → clear the stale breach flag; the SLA monitor re-flags against the new due dates on
+  // its next pass if they're already past. Without this a de-escalated ticket stayed breached forever.
+  ticket.breached = false;
   ticket.lastActivityAt = new Date();
   await recordEvent(ticket, 'priority_changed', { actorType: agent ? 'agent' : 'system', actorId: agent?.id, meta: { from, to: newPriority } });
   await ticket.save();

@@ -48,9 +48,15 @@ router.post('/verify', async (req, res) => {
       }
     }
 
-    // Dev / explicit fallback.
+    // Dev-only fallback: accept a raw locationId with NO SSO proof. This is a session-granting bypass
+    // (locationIds are public — they appear in every CRM URL), so it is gated behind an explicit env
+    // flag and MUST never be enabled in production. Without the flag, only a decrypted SSO blob works.
     if (!locationId && req.body.locationId) {
+      if (String(process.env.ALLOW_DEV_LOGIN || '').toLowerCase() !== 'true') {
+        return res.status(401).json({ success: false, error: 'SSO required.' });
+      }
       locationId = req.body.locationId;
+      logger.warn('⚠️ DEV LOGIN used (ALLOW_DEV_LOGIN=true) — must be off in production', { locationId });
     }
 
     if (!locationId) {

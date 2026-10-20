@@ -27,5 +27,8 @@ const commentSchema = new mongoose.Schema(
 );
 
 commentSchema.index({ ticketId: 1, createdAt: 1 });
+// Dedup lookup: find a comment by its GHL message id within a location (webhook-retry idempotency).
+// Sparse so the many null-ghlMessageId notes/comments don't bloat the index.
+commentSchema.index({ locationId: 1, ghlMessageId: 1 }, { sparse: true });
 
 module.exports = mongoose.model('Comment', commentSchema);
