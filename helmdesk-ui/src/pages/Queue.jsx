@@ -4,6 +4,7 @@ import { ago, slaDisplay, fmtMins, labelChannel } from '../lib/format.js';
 import { Icon, PriorityPill, Avatar } from '../components/ui.jsx';
 import NewTicketModal from '../components/NewTicketModal.jsx';
 import { useAutoRefresh, useDebounce } from '../lib/useAutoRefresh.js';
+import AssigneeFilter from '../components/AssigneeFilter.jsx';
 
 const ADMIN_VIEWS = [
   { key: 'mine', label: 'My queue' },
@@ -31,13 +32,14 @@ export default function Queue({ onOpen, notify, onChange, user, viewOverride }) 
   const [kpis, setKpis] = useState({});
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
+  const [assignee, setAssignee] = useState(''); // admin filter: '' all, 'none' unassigned, else ghlUserId
 
   // silent=true for background polls/focus refreshes: no spinner flicker, no error toast.
   const load = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
     try {
       const [list, dash] = await Promise.all([
-        api.listTickets({ view, q: debouncedQ || undefined, limit: 50 }),
+        api.listTickets({ view, q: debouncedQ || undefined, assigneeId: assignee || undefined, limit: 50 }),
         api.dashboard()
       ]);
       setTickets(list.tickets || []);
@@ -47,7 +49,7 @@ export default function Queue({ onOpen, notify, onChange, user, viewOverride }) 
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [view, debouncedQ, notify]);
+  }, [view, debouncedQ, assignee, notify]);
 
   useEffect(() => { load(); }, [load]);
   // Keep the queue live: poll every 20s + refresh when the tab regains focus.
@@ -85,10 +87,13 @@ export default function Queue({ onOpen, notify, onChange, user, viewOverride }) 
           <Kpi n={kpis.inSlaPct != null ? `${kpis.inSlaPct}%` : '—'} l="In SLA · 30d" tone={kpis.inSlaPct >= 90 ? 'good' : ''} />
         </div>
 
-        <div className="filters">
+        <div className="filters" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {VIEWS.map((v) => (
             <button key={v.key} className={`chip ${view === v.key ? 'active' : ''}`} onClick={() => setView(v.key)}>{v.label}</button>
           ))}
+          <div style={{ marginLeft: 'auto' }}>
+            <AssigneeFilter value={assignee} onChange={setAssignee} isAdmin={isAdmin} />
+          </div>
         </div>
 
         {loading ? (

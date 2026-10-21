@@ -7,14 +7,19 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  * { leftW, rightW, startDrag(side), resetWidths }.
  */
 const KEY = 'helmdesk.inbox.panes.v1';
-const DEFAULTS = { leftW: 340, rightW: 300, leftOpen: true, rightOpen: true };
-const MIN = 240, MAX = 560;
+const DEFAULTS = { leftW: 400, rightW: 320, leftOpen: true, rightOpen: true };
+const MIN = 300, MAX = 620;
+
+const clamp = (v) => Math.max(MIN, Math.min(MAX, v));
 
 function load() {
-  try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; }
-  catch { return { ...DEFAULTS }; }
+  try {
+    const saved = { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) || '{}') };
+    // Re-clamp the saved widths to the CURRENT min/max — otherwise a width dragged narrow before the
+    // minimum was raised would persist below it (the clamp only ran on drag, not on load).
+    return { ...saved, leftW: clamp(saved.leftW), rightW: clamp(saved.rightW) };
+  } catch { return { ...DEFAULTS }; }
 }
-const clamp = (v) => Math.max(MIN, Math.min(MAX, v));
 
 export function useResizablePanes() {
   const [{ leftW, rightW, leftOpen, rightOpen }, setState] = useState(load);

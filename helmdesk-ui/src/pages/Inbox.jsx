@@ -3,6 +3,7 @@ import { api } from '../lib/api.js';
 import { ago, slaDisplay, STATUS_LABEL, PRIORITY_LABEL, labelChannel, isCustomProviderChannel, cleanMessageText } from '../lib/format.js';
 import { looksLikeHtml } from '../lib/sanitizeHtml.js';
 import EmailFrame from '../components/EmailFrame.jsx';
+import AssigneeFilter from '../components/AssigneeFilter.jsx';
 import { Icon, PriorityPill, Avatar, Select } from '../components/ui.jsx';
 import { useAutoRefresh, useDebounce } from '../lib/useAutoRefresh.js';
 import { track } from '../lib/analytics.js';
@@ -39,6 +40,7 @@ export default function Inbox({ user, notify, onChange }) {
   const [checked, setChecked] = useState(() => new Set());
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [assignee, setAssignee] = useState(''); // admin filter: '' all, 'none' unassigned, else ghlUserId
 
   const toggleCheck = (id) => setChecked((prev) => {
     const next = new Set(prev);
@@ -49,11 +51,11 @@ export default function Inbox({ user, notify, onChange }) {
 
   // Map a status tab → the listTickets `view`/status params we already support.
   const listParams = useCallback(() => {
-    const base = { q: debouncedQ || undefined, limit: 50 };
+    const base = { q: debouncedQ || undefined, assigneeId: assignee || undefined, limit: 50 };
     if (tab === 'all') return { ...base, view: 'all' };
     if (tab === 'open') return { ...base, view: 'open' };
     return { ...base, view: 'all', status: tab }; // pending/resolved/closed filtered by status
-  }, [tab, debouncedQ]);
+  }, [tab, debouncedQ, assignee]);
 
   const loadList = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setLoadingList(true);
@@ -162,6 +164,11 @@ export default function Inbox({ user, notify, onChange }) {
             <Icon name="search" size={14} />
             <input placeholder="Search subject, contact, #ref…" value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
+          {isAdmin && (
+            <div style={{ marginTop: 8 }}>
+              <AssigneeFilter value={assignee} onChange={setAssignee} isAdmin={isAdmin} />
+            </div>
+          )}
         </div>
 
         {/* Bulk-select toolbar (admins only) — appears when tickets exist. */}
@@ -200,7 +207,7 @@ export default function Inbox({ user, notify, onChange }) {
                   </label>
                 )}
                 <button className={`inbox-row ${selectedId === t._id ? 'active' : ''}`} onClick={() => { setSelectedId(t._id); track('ticket_open', { id: t._id, from: 'inbox' }); }}>
-                  <span className={`stripe ${t.priority}`} />
+                  <div className="inbox-row-avatar"><Avatar name={t.contactName || t.ref} size={38} /></div>
                   <div className="inbox-row-body">
                     <div className="inbox-row-top">
                       <span className="inbox-row-subj">{t.subject}</span>
@@ -208,6 +215,7 @@ export default function Inbox({ user, notify, onChange }) {
                     </div>
                     <div className="inbox-row-sub">
                       <span className="ref">{t.ref}</span> · {t.contactName || 'Unknown'}
+                      {t.channel && <> · {labelChannel(t.channel)}</>}
                     </div>
                     <div className="inbox-row-meta">
                       <PriorityPill priority={t.priority} />

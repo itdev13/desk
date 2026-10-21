@@ -4,29 +4,31 @@ import { ago, slaDisplay } from '../lib/format.js';
 import { PriorityPill, Avatar } from '../components/ui.jsx';
 import { STATUS_LABEL } from '../lib/format.js';
 import { useAutoRefresh } from '../lib/useAutoRefresh.js';
+import AssigneeFilter from '../components/AssigneeFilter.jsx';
 
 /**
  * Kanban board — the visual the idea-board comments asked for most. Tickets bucketed by status
  * column. Moving a card to another column changes its status (the same lifecycle as the queue).
  */
-export default function Board({ onOpen }) {
+export default function Board({ onOpen, isAdmin }) {
   const [board, setBoard] = useState({});
   const [columns, setColumns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dragId, setDragId] = useState(null);
   const [overCol, setOverCol] = useState(null); // column currently hovered while dragging
+  const [assignee, setAssignee] = useState(''); // '' = all, 'none' = unassigned, else a ghlUserId
   const draggedRef = useRef(false); // true when a real drag happened, to suppress the trailing click
 
   const load = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
     try {
-      const res = await api.board();
+      const res = await api.board({ assigneeId: assignee || undefined });
       setBoard(res.board || {});
       setColumns(res.columns || []);
     } finally {
       if (!silent) setLoading(false);
     }
-  }, []);
+  }, [assignee]);
   useEffect(() => { load(); }, [load]);
   // Don't poll mid-drag (would fight the optimistic move); otherwise poll + focus refresh.
   useAutoRefresh(useCallback(() => { if (!dragId) load({ silent: true }); }, [load, dragId]));
@@ -62,7 +64,13 @@ export default function Board({ onOpen }) {
 
   return (
     <>
-      <div className="topbar"><h1>Board</h1><span className="sub">Drag a ticket to change its status</span></div>
+      <div className="topbar">
+        <h1>Board</h1>
+        <span className="sub">Drag a ticket to change its status</span>
+        <div style={{ marginLeft: 'auto' }}>
+          <AssigneeFilter value={assignee} onChange={setAssignee} isAdmin={isAdmin} />
+        </div>
+      </div>
       <div className="page">
         {loading ? (
           <div className="empty"><div className="spinner" style={{ margin: '0 auto' }} /></div>

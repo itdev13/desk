@@ -147,7 +147,7 @@ export default function App() {
         ) : view === 'queue' ? (
           <Queue onOpen={goTicket} user={user} notify={notify} onChange={refreshCounts} viewOverride={queueView} />
         ) : view === 'board' ? (
-          <Board onOpen={goTicket} />
+          <Board onOpen={goTicket} isAdmin={user?.role === 'admin'} />
         ) : view === 'dashboard' ? (
           <Dashboard />
         ) : view === 'support' ? (

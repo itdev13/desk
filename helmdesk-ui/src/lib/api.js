@@ -49,7 +49,7 @@ export const api = {
 
   // Tickets
   listTickets: (params) => request('/api/tickets', { params }),
-  board: () => request('/api/tickets/board'),
+  board: (params) => request('/api/tickets/board', { params }),
   getTicket: (id) => request(`/api/tickets/${id}`),
   createTicket: (body) => request('/api/tickets', { method: 'POST', body }),
   reply: (id, body) => request(`/api/tickets/${id}/reply`, { method: 'POST', body }),

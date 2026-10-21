@@ -98,8 +98,13 @@ router.get('/board', async (req, res) => {
   try {
     const { locationId } = req.auth;
     const columns = ['new', 'open', 'pending', 'on_hold', 'resolved'];
-    // Non-admins only see their own tickets on the board.
-    const scope = req.auth.role !== 'admin' ? { assigneeId: req.auth.userId } : {};
+    // Non-admins only see their own tickets. Admins may filter to one agent (or 'none' = unassigned).
+    let scope = {};
+    if (req.auth.role !== 'admin') {
+      scope = { assigneeId: req.auth.userId };
+    } else if (req.query.assigneeId) {
+      scope = { assigneeId: req.query.assigneeId === 'none' ? null : req.query.assigneeId };
+    }
     const result = {};
     await Promise.all(
       columns.map(async (status) => {
