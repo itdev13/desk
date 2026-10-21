@@ -325,13 +325,20 @@ button { font-family: inherit; cursor: pointer; }
 /* ── Tabs / filter chips ── */
 .filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .chip {
-  padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
+  padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;
   background: var(--panel); border: 1px solid var(--line); color: var(--slate);
+  transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
 }
-.chip:hover { border-color: var(--slate-2); }
-.chip.active { background: var(--ink); border-color: var(--ink); color: #fff; }
-.chip-icon { display: inline-flex; align-items: center; gap: 6px; }
-.chip-icon .ico { width: 15px; height: 15px; flex: none; }
+.chip:hover { border-color: var(--accent); color: var(--ink); }
+/* Settings tabs: a soft amber pill for the active one, not a hard black block —
+   reads as "selected" without shouting. */
+.chip.active {
+  background: var(--accent-soft); border-color: var(--accent);
+  color: var(--accent-dk); box-shadow: 0 1px 2px rgba(185,126,44,0.18);
+}
+.chip.active .ico { color: var(--accent-dk); }
+.chip-icon { display: inline-flex; align-items: center; gap: 7px; }
+.chip-icon .ico { width: 16px; height: 16px; flex: none; }
 
 /* ── Cards ── */
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 22px; box-shadow: var(--shadow); }
@@ -339,9 +346,9 @@ button { font-family: inherit; cursor: pointer; }
 .card .muted { color: var(--slate); font-size: 13px; }
 
 /* ── Forms ── */
-.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
-.field label { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
-.field .hint { font-size: 12px; color: var(--slate); font-weight: 400; }
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+.field label { font-size: 12px; font-weight: 600; color: var(--ink-soft); letter-spacing: 0.01em; }
+.field .hint { font-size: 12px; color: var(--slate); font-weight: 400; line-height: 1.5; }
 
 /* ── Styled Select (replaces native <select>) ── */
 .hd-select { position: relative; width: 100%; }
@@ -414,23 +421,23 @@ button { font-family: inherit; cursor: pointer; }
 .hd-select-empty { padding: 10px; color: var(--slate); font-size: 13px; text-align: center; }
 
 /* ── Section header (icon tile + title + description) ── */
-.section-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+.section-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 18px; }
 .section-ico {
-  width: 34px; height: 34px; border-radius: 9px; flex: none;
+  width: 32px; height: 32px; border-radius: 8px; flex: none;
   background: var(--accent-soft); color: var(--accent-dk);
   display: grid; place-items: center;
 }
-.section-head-title { font-size: 15px; font-weight: 700; color: var(--ink); }
-.section-head-desc { font-size: 12.5px; color: var(--slate); margin-top: 2px; max-width: 60ch; }
+.section-head-title { font-size: 16px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; line-height: 1.3; }
+.section-head-desc { font-size: 13px; color: var(--slate); margin-top: 3px; max-width: 64ch; line-height: 1.5; }
 
 /* SLA grid with column headers */
-.sla-grid { display: grid; gap: 8px; }
-.sla-grid-head { display: grid; grid-template-columns: 96px 1fr 1fr; gap: 10px; align-items: center; }
-.sla-grid-head .col-lbl { font-size: 11px; font-weight: 600; color: var(--slate); text-transform: uppercase; letter-spacing: 0.05em; }
-.sla-row { display: grid; grid-template-columns: 96px 1fr 1fr; gap: 10px; align-items: center; }
+.sla-grid { display: grid; gap: 7px; }
+.sla-grid-head { display: grid; grid-template-columns: 104px 1fr 1fr; gap: 12px; align-items: center; margin-bottom: 1px; }
+.sla-grid-head .col-lbl { font-size: 10.5px; font-weight: 700; color: var(--slate-2); text-transform: uppercase; letter-spacing: 0.06em; }
+.sla-row { display: grid; grid-template-columns: 104px 1fr 1fr; gap: 12px; align-items: center; }
 .sla-input-wrap { position: relative; }
-.sla-input-wrap .unit { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 11px; color: var(--slate-2); pointer-events: none; font-family: var(--mono); }
-.sla-input-wrap input { padding-right: 60px; }
+.sla-input-wrap .unit { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 11px; color: var(--slate-2); pointer-events: none; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.sla-input-wrap input { padding-right: 56px; font-variant-numeric: tabular-nums; }
 
 /* ── SLA live plain-English preview ── */
 .sla-preview {
@@ -512,16 +519,18 @@ input[type="number"] {
   appearance: textfield;
 }
 input[type="text"], input[type="email"], input[type="tel"], input[type="number"], select, textarea {
-  border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; font-size: 14px; font-family: inherit;
-  background: var(--panel); color: var(--ink); width: 100%;
+  border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; font-size: 13.5px; font-family: inherit;
+  background: var(--panel); color: var(--ink); width: 100%; line-height: 1.4;
+  transition: border-color 0.12s, box-shadow 0.12s;
 }
+input::placeholder, textarea::placeholder { color: var(--slate-2); }
 textarea { resize: vertical; min-height: 90px; }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
-.toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line-soft); }
+.toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 0; border-bottom: 1px solid var(--line-soft); }
 .toggle-row:last-child { border-bottom: none; }
-.toggle-row .t-label { font-weight: 600; font-size: 13.5px; }
-.toggle-row .t-desc { font-size: 12.5px; color: var(--slate); }
+.toggle-row .t-label { font-weight: 600; font-size: 13.5px; color: var(--ink); }
+.toggle-row .t-desc { font-size: 12.5px; color: var(--slate); margin-top: 2px; line-height: 1.5; }
 
 /* iOS-style switch */
 .switch { position: relative; width: 42px; height: 24px; flex: none; }

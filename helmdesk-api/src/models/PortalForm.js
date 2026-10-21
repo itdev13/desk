@@ -27,7 +27,10 @@ const portalFormSchema = new mongoose.Schema(
   {
     locationId: { type: String, required: true, index: true },
     name: { type: String, default: 'Support request' }, // internal + shown as the form title
-    slug: { type: String, required: true, unique: true, index: true }, // short public id
+    slug: { type: String, required: true, unique: true, index: true }, // short public id (the lookup key)
+    // A readable, URL-safe slug of the agency's brand/workspace name, used only to make the public URL
+    // pretty (/f/<workspace-name>/<slug>). Cosmetic — routing always keys off `slug`.
+    workspaceSlug: { type: String, default: null },
     enabled: { type: Boolean, default: true },
     fields: { type: [fieldSchema], default: undefined }, // falls back to defaults when empty
     submitCount: { type: Number, default: 0 } // how many submissions (handy stat)
