@@ -37,7 +37,7 @@ const ALLOWED = [
 function sanitizePortalFields(fields) {
   if (!Array.isArray(fields)) return undefined;
   const TYPES = ['text', 'textarea', 'select', 'radio', 'checkbox'];
-  const MAPS = ['name', 'email', 'phone', 'subject', 'message'];
+  const MAPS = ['name', 'email', 'phone', 'subject', 'message', 'priority'];
   return fields.slice(0, 40).map((f, i) => {
     const type = TYPES.includes(f.type) ? f.type : 'text';
     const isChoice = ['select', 'radio', 'checkbox'].includes(type);
@@ -154,3 +154,5 @@ router.post('/complete-setup', requireAdmin, async (req, res) => {
 });
 
 module.exports = router;
+// Reused by the forms route so multi-form fields are sanitized identically to the legacy portal fields.
+module.exports.sanitizePortalFields = sanitizePortalFields;

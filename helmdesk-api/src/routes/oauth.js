@@ -94,6 +94,12 @@ router.get('/callback', async (req, res) => {
       }
 
       logger.info('✅ HelmDesk connected (location)', { locationId: tokenData.locationId });
+      // Populate the team roster immediately on install (best-effort; non-blocking). Without this, a
+      // plain location install wouldn't sync users until an admin clicked "Sync team".
+      require('../services/agentService')
+        .syncAgents(tokenData.locationId, tokenData.companyId)
+        .then((r) => logger.info('[oauth] initial agent sync', { locationId: tokenData.locationId, synced: r?.diagnostics?.saved }))
+        .catch((e) => logger.warn('[oauth] initial agent sync failed (non-blocking)', { message: e.message }));
     } else {
       // Company-level (agency) install.
       await OAuthToken.findOneAndUpdate(

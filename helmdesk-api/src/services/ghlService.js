@@ -354,24 +354,36 @@ class GHLService {
    * GET /users/search requires a companyId; the response shape is { users: [...] }.
    */
   async searchUsers(locationId, { companyId } = {}) {
-    const params = { locationId, query: '' };
-    if (companyId) params.companyId = companyId;
-    logger.info('[searchUsers] GET /users/search', { locationId, params });
+    // PAGINATE: GHL's /users/search returns a limited page, so a location with more users than one page
+    // would only sync the first page. Loop with limit+skip until we've pulled everyone (guarded against
+    // an infinite loop). `total` in the response tells us when to stop.
+    const PAGE = 100;
+    const all = [];
+    let skip = 0;
+    let total = null;
     try {
-      const response = await this.apiRequest('GET', '/users/search', locationId, null, params);
-      const users = response.users || response.data?.users || [];
-      // Log the response SHAPE so we catch a different key / wrapped payload (top-level keys + count).
-      logger.info('[searchUsers] response', {
-        locationId,
-        topLevelKeys: Object.keys(response || {}),
-        count: users.length,
-        firstUser: users[0] ? { id: users[0].id, name: users[0].name, email: users[0].email } : null
-      });
-      if (users.length === 0) {
-        // Dump the raw body (trimmed) when empty — this is the case we're debugging.
-        logger.warn('[searchUsers] EMPTY result — raw body', { locationId, body: JSON.stringify(response).slice(0, 800) });
+      for (let guard = 0; guard < 50; guard++) { // hard cap: 50 pages = 5000 users
+        const params = { locationId, query: '', limit: PAGE, skip };
+        if (companyId) params.companyId = companyId;
+        const response = await this.apiRequest('GET', '/users/search', locationId, null, params);
+        const page = response.users || response.data?.users || [];
+        if (total === null) total = response.total ?? response.meta?.total ?? null;
+        if (skip === 0) {
+          logger.info('[searchUsers] first page', {
+            locationId, topLevelKeys: Object.keys(response || {}), count: page.length, total,
+            firstUser: page[0] ? { id: page[0].id, name: page[0].name, email: page[0].email } : null
+          });
+          if (page.length === 0) {
+            logger.warn('[searchUsers] EMPTY result — raw body', { locationId, body: JSON.stringify(response).slice(0, 800) });
+          }
+        }
+        all.push(...page);
+        // Stop when: a short page (fewer than PAGE), or we've reached the reported total, or empty.
+        if (page.length < PAGE || (total !== null && all.length >= total) || page.length === 0) break;
+        skip += PAGE;
       }
-      return users;
+      logger.info('[searchUsers] fetched all users', { locationId, count: all.length, total });
+      return all;
     } catch (error) {
       logger.error('[searchUsers] FAILED', {
         locationId,

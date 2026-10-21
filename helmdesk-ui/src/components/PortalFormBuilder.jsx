@@ -24,13 +24,17 @@ const MAPS = [
   { value: 'email', label: 'Contact email' },
   { value: 'phone', label: 'Contact phone' },
   { value: 'subject', label: 'Ticket subject' },
-  { value: 'message', label: 'Ticket message' }
+  { value: 'message', label: 'Ticket message' },
+  { value: 'priority', label: 'Ticket priority' }
 ];
+// Standard priority options (match the ticket's priority values). Used when a field maps to 'priority'.
+const PRIORITY_OPTIONS = ['Low', 'Normal', 'High', 'Urgent'];
 const DEFAULTS = [
   { key: 'name', type: 'text', label: 'Name', placeholder: '', helpText: '', required: false, maxLength: 120, options: [], maps: 'name' },
   { key: 'email', type: 'text', label: 'Email', placeholder: '', helpText: '', required: false, maxLength: 160, options: [], maps: 'email' },
   { key: 'phone', type: 'text', label: 'Phone (optional)', placeholder: '', helpText: '', required: false, maxLength: 40, options: [], maps: 'phone' },
   { key: 'subject', type: 'text', label: 'Subject', placeholder: '', helpText: '', required: true, maxLength: 160, options: [], maps: 'subject' },
+  { key: 'priority', type: 'select', label: 'Priority', placeholder: '', helpText: 'How urgent is this?', required: false, maxLength: null, options: [...PRIORITY_OPTIONS], maps: 'priority' },
   { key: 'message', type: 'textarea', label: 'How can we help?', placeholder: '', helpText: '', required: true, maxLength: 4000, options: [], maps: 'message' }
 ];
 
@@ -100,7 +104,11 @@ export default function PortalFormBuilder({ value, onChange, brand }) {
                     </div>
                     <div className="field" style={{ margin: 0, flex: 1.4 }}>
                       <label>Maps to</label>
-                      <Select value={f.maps || ''} onChange={(v) => update(i, { maps: v || null })} options={MAPS} />
+                      <Select value={f.maps || ''} onChange={(v) => {
+                        // Mapping a field to priority turns it into a dropdown with the standard options.
+                        if (v === 'priority') update(i, { maps: 'priority', type: 'select', options: (f.options?.length ? f.options : [...PRIORITY_OPTIONS]) });
+                        else update(i, { maps: v || null });
+                      }} options={MAPS} />
                     </div>
                   </div>
 

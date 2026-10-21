@@ -194,17 +194,23 @@ function shouldAccept(workspace, { channel, body, isAutomated }) {
   const text = (body || '').toLowerCase();
 
   // 2. Skip keywords WIN over everything. A message containing one never becomes a ticket
-  //    (e.g. "unsubscribe", "stop") — even if it would otherwise match a create keyword.
+  //    (e.g. "unsubscribe", "stop") — this is the blacklist.
   if (matchesKeyword(text, workspace.skipKeywords)) {
     return { accept: false, reason: 'skip_keyword' };
   }
 
-  // 3. Create keywords FORCE a ticket, overriding the soft filters below
-  //    (automation / short-message). Channel gate above still had to pass.
-  const forced = matchesKeyword(text, workspace.createKeywords);
-  if (forced) return { accept: true, forced: true };
+  // 3. Create keywords act as a WHITELIST when configured: if the list is non-empty, a message must
+  //    contain one of them to become a ticket — anything else is skipped. (When the list is empty we
+  //    keep the default "every message becomes a ticket" behavior, so existing setups aren't changed.)
+  const hasCreateKeywords = Array.isArray(workspace.createKeywords) && workspace.createKeywords.length > 0;
+  if (hasCreateKeywords) {
+    if (matchesKeyword(text, workspace.createKeywords)) {
+      return { accept: true, forced: true }; // matched the whitelist → create (also overrides soft filters)
+    }
+    return { accept: false, reason: 'no_create_keyword' }; // whitelist on, no match → skip
+  }
 
-  // 4. Soft filters (skippable by a create keyword).
+  // 4. No whitelist configured → default accept, but soft filters can still skip noise.
   if (workspace.ignoreAutomatedReplies && isAutomated) {
     return { accept: false, reason: 'automated_reply' };
   }
@@ -383,6 +389,7 @@ async function createTicket(workspace, opts) {
     conversationProviderId = null,
     source = 'manual',
     formName = null, // portal form name (source='portal')
+    priority: requestedPriority = null, // explicit priority (e.g. customer-chosen on the portal form)
     firstMessage = null,
     ghlMessageId = null,
     createdByAgent = null, // { id, name } for manual creation
@@ -390,9 +397,11 @@ async function createTicket(workspace, opts) {
     at = new Date()
   } = opts;
 
-  // Rules → starting priority + assignment overrides.
+  // Priority precedence: an auto-triage RULE wins, then an explicitly requested priority (portal /
+  // manual), then the default. Rules stay authoritative so an agency's routing can't be overridden by
+  // a customer's self-selected priority.
   const ruled = applyRules(workspace, { channel, body: firstMessage });
-  const priority = ruled.priority || 'normal';
+  const priority = ruled.priority || requestedPriority || 'normal';
 
   let assignee;
   if (ruled.assignAgentId) {
@@ -817,5 +826,6 @@ module.exports = {
   recordEvent,
   computeSla,
   shouldAccept,
-  canReplyOnChannel
+  canReplyOnChannel,
+  bumpAgentLoad
 };

@@ -54,6 +54,12 @@ export const api = {
   createTicket: (body) => request('/api/tickets', { method: 'POST', body }),
   reply: (id, body) => request(`/api/tickets/${id}/reply`, { method: 'POST', body }),
   note: (id, body) => request(`/api/tickets/${id}/note`, { method: 'POST', body }),
+  bulkDeleteTickets: (ids) => request('/api/tickets/bulk-delete', { method: 'POST', body: { ids } }),
+  // Multiple intake forms (admin)
+  forms: () => request('/api/forms'),
+  createForm: (body) => request('/api/forms', { method: 'POST', body }),
+  updateForm: (id, body) => request(`/api/forms/${id}`, { method: 'PUT', body }),
+  deleteForm: (id) => request(`/api/forms/${id}`, { method: 'DELETE' }),
   setStatus: (id, status) => request(`/api/tickets/${id}/status`, { method: 'PATCH', body: { status } }),
   setAssignee: (id, assigneeId) => request(`/api/tickets/${id}/assign`, { method: 'PATCH', body: { assigneeId } }),
   setPriority: (id, priority) => request(`/api/tickets/${id}/priority`, { method: 'PATCH', body: { priority } }),

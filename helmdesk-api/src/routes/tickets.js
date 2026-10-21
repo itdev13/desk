@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireAdmin } = require('../middleware/auth');
 const Ticket = require('../models/Ticket');
 const Comment = require('../models/Comment');
 const TicketEvent = require('../models/TicketEvent');
@@ -17,7 +17,7 @@ router.use(requireAuth);
  * or mutate a ticket that isn't theirs, even by guessing the id. (Admins see all.)
  */
 async function loadTicket(req, res) {
-  const query = { _id: req.params.id, locationId: req.auth.locationId };
+  const query = { _id: req.params.id, locationId: req.auth.locationId, deleted: { $ne: true } };
   if (req.auth.role !== 'admin') query.assigneeId = req.auth.userId;
   const ticket = await Ticket.findOne(query);
   if (!ticket) {
@@ -44,7 +44,7 @@ router.get('/', async (req, res) => {
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 1), 100);
 
-    const query = { locationId };
+    const query = { locationId, deleted: { $ne: true } };
 
     // 'mine' and 'unassigned' are scoped to OPEN tickets so the lists match the KPI counts
     // (a resolved/closed ticket isn't "waiting on me" or "needs picking up").
@@ -103,7 +103,7 @@ router.get('/board', async (req, res) => {
     const result = {};
     await Promise.all(
       columns.map(async (status) => {
-        result[status] = await Ticket.find({ locationId, status, ...scope })
+        result[status] = await Ticket.find({ locationId, status, deleted: { $ne: true }, ...scope })
           .sort({ lastActivityAt: -1 })
           .limit(50)
           .lean();
@@ -227,6 +227,43 @@ router.patch('/:id/priority', async (req, res) => {
   const workspace = await Workspace.findOne({ locationId: req.auth.locationId });
   const updated = await ticketService.changePriority(workspace, ticket, priority, { agent: actor(req) });
   res.json({ success: true, ticket: updated });
+});
+
+/**
+ * POST /api/tickets/bulk-delete  (ADMIN only)
+ * Soft-delete one or more tickets: body { ids: [ticketId, ...] }. Tickets are hidden from all lists
+ * but kept in the DB (recoverable). Decrements the assignee's open-count for any deleted OPEN ticket.
+ */
+router.post('/bulk-delete', requireAdmin, async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body.ids) ? req.body.ids.filter(Boolean).slice(0, 500) : [];
+    if (!ids.length) return res.status(400).json({ success: false, error: 'No tickets selected.' });
+
+    // Load the targeted, not-already-deleted tickets in THIS location (so you can't delete across tenants).
+    const tickets = await Ticket.find({ _id: { $in: ids }, locationId: req.auth.locationId, deleted: { $ne: true } })
+      .select('_id assigneeId status').lean();
+    if (!tickets.length) return res.json({ success: true, deleted: 0 });
+
+    const now = new Date();
+    await Ticket.updateMany(
+      { _id: { $in: tickets.map((t) => t._id) }, locationId: req.auth.locationId },
+      { $set: { deleted: true, deletedAt: now, deletedBy: req.auth.userId || null } }
+    );
+
+    // Keep denormalized agent load in sync: each deleted OPEN ticket frees a slot for its assignee.
+    const OPEN = Ticket.OPEN_STATUSES;
+    for (const t of tickets) {
+      if (t.assigneeId && OPEN.includes(t.status)) {
+        await ticketService.bumpAgentLoad(req.auth.locationId, t.assigneeId, -1);
+      }
+    }
+
+    logger.info('🗑️ Tickets soft-deleted', { locationId: req.auth.locationId, count: tickets.length, by: req.auth.userId });
+    res.json({ success: true, deleted: tickets.length });
+  } catch (err) {
+    logger.error('bulk-delete failed', { message: err.message });
+    res.status(500).json({ success: false, error: 'Could not delete tickets.' });
+  }
 });
 
 module.exports = router;

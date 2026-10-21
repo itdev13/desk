@@ -1,10 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const Workspace = require('../models/Workspace');
+const PortalForm = require('../models/PortalForm');
 const ticketService = require('../services/ticketService');
 const ghlService = require('../services/ghlService');
 const logger = require('../utils/logger');
 const rateLimit = require('express-rate-limit');
+
+const PORTAL_CSP =
+  "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; " +
+  "connect-src 'self'; img-src 'self' data:; base-uri 'self'; form-action 'self'";
 
 /**
  * Public client-portal intake. NO session auth — this is the customer-facing "Submit a request"
@@ -27,17 +32,14 @@ router.get('/:slug.json', async (req, res) => {
   res.json({ success: true, brand: ws.brand, locationName: ws.locationName });
 });
 
-/** GET /portal/:slug — the customer-facing, branded intake FORM (self-contained HTML page). */
+/** GET /portal/:slug — LEGACY single-form intake (the workspace's own portalSlug/portalFields). */
 router.get('/:slug', async (req, res) => {
   const ws = await Workspace.findOne({ portalSlug: req.params.slug, portalEnabled: true });
   if (!ws) return res.status(404).send(renderPortalNotFound());
-  // The global helmet CSP uses script-src 'self', which blocks this page's INLINE <script> (the
-  // one that intercepts submit and POSTs). That silently made the form fall back to a native GET.
-  // This is a self-contained public page, so relax its CSP to allow its own inline script + styles.
-  res.set('Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; " +
-    "connect-src 'self'; img-src 'self' data:; base-uri 'self'; form-action 'self'");
-  res.send(renderPortalForm(ws));
+  // Relax CSP so this self-contained page's inline script/styles run (global CSP blocks inline).
+  res.set('Content-Security-Policy', PORTAL_CSP);
+  const legacyForm = { name: 'Submit a request', fields: ws.portalFields };
+  res.send(renderPortalForm(ws, legacyForm, `/portal/${esc(req.params.slug)}/submit`));
 });
 
 function esc(s) {
@@ -93,15 +95,20 @@ function contrastText(hex) {
   return L > 0.5 ? '#0f1729' : '#ffffff'; // dark text on light bg, white text on dark bg
 }
 
-function renderPortalForm(ws) {
+/**
+ * Render the public intake page. `ws` supplies branding; `form` supplies the fields/title/slug and
+ * `submitPath` is where the form POSTs (so legacy /portal/:slug and new /f/:slug can both reuse this).
+ */
+function renderPortalForm(ws, form, submitPath) {
   const accent = esc(ws.brand?.primaryColor || '#E0A24A');
   const onAccent = contrastText(ws.brand?.primaryColor || '#E0A24A');
   const brandName = esc(ws.brand?.name || 'Support');
-  const slug = esc(ws.portalSlug);
-  const fields = (ws.portalFields && ws.portalFields.length) ? ws.portalFields : Workspace.PORTAL_DEFAULT_FIELDS;
+  const formTitle = esc(form?.name || 'Submit a request');
+  const action = esc(submitPath);
+  const fields = (form?.fields && form.fields.length) ? form.fields : Workspace.PORTAL_DEFAULT_FIELDS;
   return `<!DOCTYPE html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${brandName} — Submit a request</title>
+<title>${brandName} — ${formTitle}</title>
 <style>
   :root{--accent:${accent};--on-accent:${onAccent}}
   *{box-sizing:border-box}
@@ -135,8 +142,8 @@ function renderPortalForm(ws) {
 </style></head>
 <body><div class="wrap"><div class="card">
   <div class="head"><div class="badge">${brandName[0] ? brandName[0].toUpperCase() : 'S'}</div><h1>${brandName}</h1></div>
-  <p class="sub">Submit a request and our team will get back to you.</p>
-  <form id="f" method="post" action="/portal/${slug}/submit">
+  <p class="sub">${formTitle} and our team will get back to you.</p>
+  <form id="f" method="post" action="${action}">
     ${fields.map((f) => renderField(f)).join('\n    ')}
     <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
     <button type="submit" id="btn">Submit request</button>
@@ -191,21 +198,17 @@ function renderPortalForm(ws) {
 }
 
 /**
- * POST /portal/:slug/submit
- * Body: { name, email, phone, subject, message }
- * Creates/merges the GHL contact, then creates a portal-sourced ticket.
+ * Shared submission handler. `ws` = branding/location; `form` = the form whose fields/name drive the
+ * ticket (a PortalForm for /f/:slug, or a synthetic {name, fields} for the legacy /portal/:slug).
  */
-router.post('/:slug/submit', intakeLimiter, async (req, res) => {
+async function processSubmission(ws, form, req, res) {
   try {
-    const ws = await Workspace.findOne({ portalSlug: req.params.slug, portalEnabled: true });
-    if (!ws) return res.status(404).json({ success: false, error: 'Portal not found' });
-
     // Honeypot: real users never fill the hidden `website` field; bots do. Silently 200 to not tip them off.
     if (req.body.website) return res.json({ success: true });
 
-    // Interpret the submitted body via the workspace's configured fields (falling back to defaults).
-    const fields = (ws.portalFields && ws.portalFields.length) ? ws.portalFields : Workspace.PORTAL_DEFAULT_FIELDS;
-    const core = { name: '', email: '', phone: '', subject: '', message: '' };
+    // Interpret the submitted body via the form's configured fields (falling back to defaults).
+    const fields = (form?.fields && form.fields.length) ? form.fields : Workspace.PORTAL_DEFAULT_FIELDS;
+    const core = { name: '', email: '', phone: '', subject: '', message: '', priority: '' };
     const custom = []; // { label, value } for non-core questions, shown to the agent
 
     for (const fld of fields) {
@@ -275,6 +278,13 @@ router.post('/:slug/submit', intakeLimiter, async (req, res) => {
     // the message came from a real message field (if we already derived it from the custom answers,
     // they're in there and we'd be duplicating).
     const appendCustom = core.message && custom.length ? '\n\n— Form details —\n' + custBlock : '';
+    // Normalize a customer-chosen priority (e.g. "High" → "high"); ignore anything not in the enum so a
+    // crafted submission can't set a junk value. Falls through to the ticket default when unset/invalid.
+    const VALID_PRIORITIES = ['urgent', 'high', 'normal', 'low'];
+    const chosenPriority = VALID_PRIORITIES.includes(String(core.priority).toLowerCase())
+      ? String(core.priority).toLowerCase()
+      : null;
+
     const ticket = await ticketService.createTicket(ws, {
       subject,
       contactId: contact.id,
@@ -282,16 +292,52 @@ router.post('/:slug/submit', intakeLimiter, async (req, res) => {
       contactEmail: email || null,
       channel: 'portal',
       source: 'portal',
-      formName: `${ws.brand?.name || 'HelmDesk'} Portal`,
+      formName: form?.name || `${ws.brand?.name || 'HelmDesk'} Portal`,
+      priority: chosenPriority || undefined, // undefined → createTicket applies the default/rules
       firstMessage: message + appendCustom,
       customFields: custom
     });
+
+    // Bump the form's submission counter (best-effort), if this came from a saved PortalForm.
+    if (form?._id) PortalForm.updateOne({ _id: form._id }, { $inc: { submitCount: 1 } }).catch(() => {});
 
     res.json({ success: true, ref: ticket.ref, message: 'Your request has been submitted. We will be in touch shortly.' });
   } catch (error) {
     logger.error('portal submit failed', { message: error.message });
     res.status(500).json({ success: false, error: 'Could not submit your request. Please try again.' });
   }
+}
+
+/** LEGACY: POST /portal/:slug/submit — the workspace's own single form. */
+router.post('/:slug/submit', intakeLimiter, async (req, res) => {
+  const ws = await Workspace.findOne({ portalSlug: req.params.slug, portalEnabled: true });
+  if (!ws) return res.status(404).json({ success: false, error: 'Portal not found' });
+  return processSubmission(ws, { name: 'Submit a request', fields: ws.portalFields }, req, res);
+});
+
+/* ── Multi-form intake (short URLs): /f/:slug ─────────────────────────────────────────────
+ * A PortalForm has its own short slug + fields. Resolve the form, then its workspace for branding. */
+async function loadFormAndWs(slug) {
+  const form = await PortalForm.findOne({ slug, enabled: true }).lean();
+  if (!form) return null;
+  const ws = await Workspace.findOne({ locationId: form.locationId, portalEnabled: true });
+  if (!ws) return null;
+  return { form, ws };
+}
+
+/** GET /f/:slug — a specific multi-form intake page. */
+router.get('/f/:slug', async (req, res) => {
+  const found = await loadFormAndWs(req.params.slug);
+  if (!found) return res.status(404).send(renderPortalNotFound());
+  res.set('Content-Security-Policy', PORTAL_CSP);
+  res.send(renderPortalForm(found.ws, found.form, `/portal/f/${esc(req.params.slug)}/submit`));
+});
+
+/** POST /f/:slug/submit — submit a specific multi-form. */
+router.post('/f/:slug/submit', intakeLimiter, async (req, res) => {
+  const found = await loadFormAndWs(req.params.slug);
+  if (!found) return res.status(404).json({ success: false, error: 'Form not found' });
+  return processSubmission(found.ws, found.form, req, res);
 });
 
 module.exports = router;

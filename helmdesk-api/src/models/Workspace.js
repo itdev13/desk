@@ -127,7 +127,8 @@ const workspaceSchema = new mongoose.Schema(
         required: { type: Boolean, default: false },
         maxLength: { type: Number, default: null }, // for text/textarea
         options: { type: [String], default: [] },   // for select/radio/checkbox
-        maps: { type: String, default: null }        // name|email|phone|subject|message|null(custom)
+        helpText: { type: String, default: '' },     // optional guidance shown under the field
+        maps: { type: String, default: null }        // name|email|phone|subject|message|priority|null(custom)
       }],
       default: undefined
     }
@@ -150,6 +151,7 @@ const PORTAL_DEFAULT_FIELDS = [
   { key: 'email', type: 'text', label: 'Email', required: false, maxLength: 160, options: [], maps: 'email' },
   { key: 'phone', type: 'text', label: 'Phone (optional)', required: false, maxLength: 40, options: [], maps: 'phone' },
   { key: 'subject', type: 'text', label: 'Subject', required: true, maxLength: 160, options: [], maps: 'subject' },
+  { key: 'priority', type: 'select', label: 'Priority', helpText: 'How urgent is this?', required: false, maxLength: null, options: ['Low', 'Normal', 'High', 'Urgent'], maps: 'priority' },
   { key: 'message', type: 'textarea', label: 'How can we help?', required: true, maxLength: 4000, options: [], maps: 'message' }
 ];
 

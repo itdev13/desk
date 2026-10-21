@@ -98,7 +98,8 @@ class HelmDeskApp {
     this.app.use('/api/subscription', require('./routes/subscription'));
     this.app.use('/api/support', require('./routes/support'));
     this.app.use('/api/analytics', require('./routes/analytics')); // self-auth via token in header/body
-    this.app.use('/portal', require('./routes/portal')); // public, unauthenticated intake
+    this.app.use('/api/forms', gate, require('./routes/forms')); // admin: manage multiple intake forms
+    this.app.use('/portal', require('./routes/portal')); // public, unauthenticated intake (legacy + /f/:slug)
 
     // Serve the built Custom Page UI (if present) at /app, same-origin for the GHL iframe.
     const uiDist = path.resolve(__dirname, '../../helmdesk-ui/dist');

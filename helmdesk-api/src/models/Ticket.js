@@ -52,6 +52,9 @@ const ticketSchema = new mongoose.Schema(
     resolvedAt: { type: Date, default: null },
     closedAt: { type: Date, default: null },
     breached: { type: Boolean, default: false, index: true }, // any SLA breached
+    deleted: { type: Boolean, default: false, index: true }, // soft-deleted (hidden from lists, kept in DB)
+    deletedAt: { type: Date, default: null },
+    deletedBy: { type: String, default: null }, // ghlUserId of the admin who deleted it
     slaPaused: { type: Boolean, default: false }, // true while waiting on customer (pending/on_hold)
     slaPausedAt: { type: Date, default: null }, // when the current pause began; used to push due dates
 

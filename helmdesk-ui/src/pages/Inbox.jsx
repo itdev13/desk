@@ -33,6 +33,17 @@ export default function Inbox({ user, notify, onChange }) {
   const [counts, setCounts] = useState({});
   const [loadingList, setLoadingList] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
+  // Bulk-select (admin only): a Set of ticket ids checked for deletion, + the confirm modal flag.
+  const [checked, setChecked] = useState(() => new Set());
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const toggleCheck = (id) => setChecked((prev) => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+  const clearChecks = () => setChecked(new Set());
 
   // Map a status tab → the listTickets `view`/status params we already support.
   const listParams = useCallback(() => {
@@ -71,6 +82,32 @@ export default function Inbox({ user, notify, onChange }) {
   useAutoRefresh(useCallback(() => loadList({ silent: true }), [loadList]));
 
   const onTicketChanged = () => { loadList({ silent: true }); onChange?.(); };
+
+  // Clear any stale selections when the list changes (tab switch / search / refresh).
+  useEffect(() => { clearChecks(); }, [tab, debouncedQ]);
+
+  const allChecked = tickets.length > 0 && tickets.every((t) => checked.has(t._id));
+  const toggleAll = () => setChecked(allChecked ? new Set() : new Set(tickets.map((t) => t._id)));
+
+  const doBulkDelete = async () => {
+    const ids = [...checked];
+    if (!ids.length) return;
+    setDeleting(true);
+    try {
+      const r = await api.bulkDeleteTickets(ids);
+      notify?.(`Deleted ${r.deleted} ticket${r.deleted === 1 ? '' : 's'}.`);
+      track('tickets_bulk_delete', { count: r.deleted });
+      if (selectedId && checked.has(selectedId)) setSelectedId(null);
+      clearChecks();
+      setConfirmDelete(false);
+      loadList({ silent: true });
+      onChange?.();
+    } catch (err) {
+      notify?.(err.message || 'Could not delete tickets.', true);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const { leftW, rightW, leftOpen, rightOpen, startDrag, resetWidths, toggleLeft, toggleRight } = useResizablePanes();
 
@@ -125,6 +162,22 @@ export default function Inbox({ user, notify, onChange }) {
           </div>
         </div>
 
+        {/* Bulk-select toolbar (admins only) — appears when tickets exist. */}
+        {isAdmin && !loadingList && tickets.length > 0 && (
+          <div className="inbox-bulkbar">
+            <label className="inbox-check-all">
+              <input type="checkbox" checked={allChecked} onChange={toggleAll}
+                ref={(el) => { if (el) el.indeterminate = checked.size > 0 && !allChecked; }} />
+              <span>{checked.size > 0 ? `${checked.size} selected` : 'Select all'}</span>
+            </label>
+            {checked.size > 0 && (
+              <button type="button" className="inbox-bulk-del" onClick={() => setConfirmDelete(true)}>
+                <Icon name="trash" size={14} /> Delete
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="inbox-rows">
           {loadingList ? (
             <div className="empty"><div className="spinner" style={{ margin: '24px auto' }} /></div>
@@ -136,27 +189,51 @@ export default function Inbox({ user, notify, onChange }) {
             </div>
           ) : tickets.map((t) => {
             const sla = slaDisplay(t);
+            const isChecked = checked.has(t._id);
             return (
-              <button key={t._id} className={`inbox-row ${selectedId === t._id ? 'active' : ''}`} onClick={() => { setSelectedId(t._id); track('ticket_open', { id: t._id, from: 'inbox' }); }}>
-                <span className={`stripe ${t.priority}`} />
-                <div className="inbox-row-body">
-                  <div className="inbox-row-top">
-                    <span className="inbox-row-subj">{t.subject}</span>
-                    <span className={`inbox-row-sla sla ${sla.tone}`}>{sla.text}</span>
+              <div key={t._id} className={`inbox-row-wrap ${isChecked ? 'checked' : ''}`}>
+                {isAdmin && (
+                  <label className="inbox-row-check" onClick={(e) => e.stopPropagation()}>
+                    <input type="checkbox" checked={isChecked} onChange={() => toggleCheck(t._id)} />
+                  </label>
+                )}
+                <button className={`inbox-row ${selectedId === t._id ? 'active' : ''}`} onClick={() => { setSelectedId(t._id); track('ticket_open', { id: t._id, from: 'inbox' }); }}>
+                  <span className={`stripe ${t.priority}`} />
+                  <div className="inbox-row-body">
+                    <div className="inbox-row-top">
+                      <span className="inbox-row-subj">{t.subject}</span>
+                      <span className={`inbox-row-sla sla ${sla.tone}`}>{sla.text}</span>
+                    </div>
+                    <div className="inbox-row-sub">
+                      <span className="ref">{t.ref}</span> · {t.contactName || 'Unknown'}
+                    </div>
+                    <div className="inbox-row-meta">
+                      <PriorityPill priority={t.priority} />
+                      <span className="inbox-row-ago">{ago(t.lastActivityAt)}</span>
+                    </div>
                   </div>
-                  <div className="inbox-row-sub">
-                    <span className="ref">{t.ref}</span> · {t.contactName || 'Unknown'}
-                  </div>
-                  <div className="inbox-row-meta">
-                    <PriorityPill priority={t.priority} />
-                    <span className="inbox-row-ago">{ago(t.lastActivityAt)}</span>
-                  </div>
-                </div>
-              </button>
+                </button>
+              </div>
             );
           })}
         </div>
       </aside>
+      )}
+
+      {/* Confirm-delete modal */}
+      {confirmDelete && (
+        <div className="modal-overlay" onClick={() => !deleting && setConfirmDelete(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h3>Delete {checked.size} ticket{checked.size === 1 ? '' : 's'}?</h3>
+            <p>They'll be removed from your lists. This hides them from view — your team won't see them anymore.</p>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-ghost" disabled={deleting} onClick={() => setConfirmDelete(false)}>Cancel</button>
+              <button type="button" className="btn btn-danger" disabled={deleting} onClick={doBulkDelete}>
+                {deleting ? 'Deleting…' : `Delete ${checked.size}`}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Center + Right: the selected ticket ── */}

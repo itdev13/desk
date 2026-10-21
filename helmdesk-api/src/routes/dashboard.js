@@ -19,8 +19,10 @@ router.get('/', async (req, res) => {
     const since30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const OPEN = Ticket.OPEN_STATUSES;
 
-    // Non-admins see metrics for THEIR tickets only; admins see the whole workspace.
-    const scope = req.auth.role !== 'admin' ? { locationId, assigneeId: req.auth.userId } : { locationId };
+    // Non-admins see metrics for THEIR tickets only; admins see the whole workspace. Exclude deleted.
+    const scope = req.auth.role !== 'admin'
+      ? { locationId, assigneeId: req.auth.userId, deleted: { $ne: true } }
+      : { locationId, deleted: { $ne: true } };
 
     const [byStatus, openTotal, overdue, unassigned, mine, byAgent, slaAgg, resolveAgg, byChannel] = await Promise.all([
       // Counts by status.
