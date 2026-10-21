@@ -191,7 +191,7 @@ function renderPortalForm(ws, form, submitPath) {
     if(d.website){return;} // honeypot: bots fill this hidden field
     btn.disabled=true;btn.textContent='Submitting…';
     try{
-      const r=await fetch('/portal/${slug}/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});
+      const r=await fetch('${action}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});
       const j=await r.json();
       if(!r.ok||j.success===false)throw new Error(j.error||'Something went wrong');
       // Success → swap the form out for a clean confirmation panel.
