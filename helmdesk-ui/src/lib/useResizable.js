@@ -7,8 +7,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  * { leftW, rightW, startDrag(side), resetWidths }.
  */
 const KEY = 'helmdesk.inbox.panes.v1';
-const DEFAULTS = { leftW: 400, rightW: 320, leftOpen: true, rightOpen: true };
-const MIN = 300, MAX = 620;
+const DEFAULTS = { leftW: 450, rightW: 320, leftOpen: true, rightOpen: true };
+const MIN = 350, MAX = 660;
 
 const clamp = (v) => Math.max(MIN, Math.min(MAX, v));
 

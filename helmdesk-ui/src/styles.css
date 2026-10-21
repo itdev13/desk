@@ -783,20 +783,20 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 
 /* Card list: each conversation is its own rounded card with breathing room, not a flush row.
    No left stripe, no row separators — the card IS the separation. Selected = accent border + tint. */
-.inbox-rows { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.inbox-rows { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
 .inbox-row {
-  display: flex; gap: 0; width: 100%; text-align: left; cursor: pointer;
+  display: flex; gap: 0; width: 100%; box-sizing: border-box; text-align: left; cursor: pointer;
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 0;
   transition: border-color 0.12s, box-shadow 0.12s, background 0.12s;
 }
 .inbox-row:hover { border-color: var(--accent); box-shadow: 0 2px 8px -4px rgba(15,23,41,0.18); }
 .inbox-row.active { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent); }
 
-/* Bulk-select: checkbox beside each card + the checked state. */
-.inbox-row-wrap { display: flex; align-items: center; gap: 2px; }
+/* Bulk-select: checkbox beside each card + the checked state. Full width so every card is identical. */
+.inbox-row-wrap { display: flex; align-items: center; gap: 2px; width: 100%; }
 .inbox-row-wrap.checked .inbox-row { border-color: var(--accent); background: var(--accent-soft); }
-.inbox-row-wrap .inbox-row { flex: 1; }
-.inbox-row-check { display: flex; align-items: center; padding: 0 4px 0 6px; cursor: pointer; }
+.inbox-row-wrap .inbox-row { flex: 1; min-width: 0; }
+.inbox-row-check { display: flex; align-items: center; padding: 0 4px 0 6px; flex: none; cursor: pointer; }
 .inbox-row-check input { width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent); }
 .inbox-bulkbar {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
@@ -817,7 +817,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .inbox-row-avatar { flex: none; padding: 12px 0 0 12px; align-self: flex-start; }
 .inbox-row-body { padding: 11px 14px 11px 12px; flex: 1; min-width: 0; }
 .inbox-row-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.inbox-row-subj { font-size: 14px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inbox-row-subj { font-size: 14px; font-weight: 600; color: var(--ink); min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .inbox-row-sla { font-size: 11px; flex: none; font-family: var(--mono); }
 .inbox-row-sub { font-size: 12px; color: var(--slate); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .inbox-row-sub .ref { font-family: var(--mono); color: var(--slate-2); }
