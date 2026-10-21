@@ -877,3 +877,11 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .form-url-row { display: flex; gap: 8px; padding: 0 14px 12px; }
 .form-url-row input { flex: 1; min-width: 0; font-size: 12.5px; font-family: var(--mono); background: var(--panel); border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; color: var(--ink-2); }
 .form-fields { padding: 4px 14px 16px; border-top: 1px solid var(--line-soft); }
+
+/* ── Team page search ── */
+.team-search { display: flex; align-items: center; gap: 8px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 9px; color: var(--slate); min-width: 260px; max-width: 360px; }
+.team-search input { border: none; outline: none; background: none; font-size: 13px; width: 100%; color: var(--ink); }
+.team-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.team-search-clear { display: inline-grid; place-items: center; width: 18px; height: 18px; border: none; background: var(--line-soft); border-radius: 50%; color: var(--slate); cursor: pointer; flex: none; }
+.team-search-clear .ico { transform: rotate(45deg); }
+.team-search-clear:hover { background: var(--line); color: var(--ink); }

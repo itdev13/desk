@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../lib/api.js';
-import { ago, slaDisplay, STATUS_LABEL, PRIORITY_LABEL, labelChannel, isCustomProviderChannel } from '../lib/format.js';
+import { ago, slaDisplay, STATUS_LABEL, PRIORITY_LABEL, labelChannel, isCustomProviderChannel, cleanMessageText } from '../lib/format.js';
+import { looksLikeHtml } from '../lib/sanitizeHtml.js';
+import EmailFrame from '../components/EmailFrame.jsx';
 import { Icon, PriorityPill, Avatar, Select } from '../components/ui.jsx';
 import { useAutoRefresh, useDebounce } from '../lib/useAutoRefresh.js';
 import { track } from '../lib/analytics.js';
@@ -348,7 +350,11 @@ function TicketPanes({ id, isAdmin, notify, onChanged, rightOpen = true, toggleR
             return (
               <div key={c._id} className={`msg ${c.kind} ${c.authorType === 'system' ? 'system' : ''}`}>
                 <div className="meta">{author} · {ago(c.createdAt)}</div>
-                <div style={{ whiteSpace: 'pre-wrap' }}>{c.body}</div>
+                {/* Emails arrive as HTML — render the real email in a sandboxed frame so it keeps its
+                    own look without breaking the thread. Everything else shows as clean text. */}
+                {c.channel === 'Email' && looksLikeHtml(c.body)
+                  ? <EmailFrame html={c.body} />
+                  : <div style={{ whiteSpace: 'pre-wrap' }}>{cleanMessageText(c.body)}</div>}
               </div>
             );
           })}

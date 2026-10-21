@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../lib/api.js';
-import { ago, slaDisplay, STATUS_LABEL, PRIORITY_LABEL, labelChannel, isCustomProviderChannel } from '../lib/format.js';
+import { ago, slaDisplay, STATUS_LABEL, PRIORITY_LABEL, labelChannel, isCustomProviderChannel, cleanMessageText } from '../lib/format.js';
+import { looksLikeHtml } from '../lib/sanitizeHtml.js';
+import EmailFrame from '../components/EmailFrame.jsx';
 import { Icon, PriorityPill, Avatar, Select } from '../components/ui.jsx';
 import { track } from '../lib/analytics.js';
 
@@ -102,7 +104,10 @@ export default function TicketDetail({ id, onBack, user, notify, onChange }) {
                   <div className="meta">
                     {author}{' · '}{ago(c.createdAt)}
                   </div>
-                  <div style={{ whiteSpace: 'pre-wrap' }}>{c.body}</div>
+                  {/* HTML emails render in a sandboxed frame (keeps their look); else clean text. */}
+                  {c.channel === 'Email' && looksLikeHtml(c.body)
+                    ? <EmailFrame html={c.body} />
+                    : <div style={{ whiteSpace: 'pre-wrap' }}>{cleanMessageText(c.body)}</div>}
                 </div>
                 );
               })}

@@ -126,3 +126,33 @@ export function contrastText(hex) {
   const L = 0.2126 * lin(v(0)) + 0.7152 * lin(v(2)) + 0.0722 * lin(v(4));
   return L > 0.5 ? '#0f1729' : '#ffffff';
 }
+
+/**
+ * Turn a message body into clean, readable text for the conversation thread.
+ * Email replies often arrive as full HTML documents (doctype, <style>, templates, tracking footers).
+ * We extract just the human-readable text — safely, by parsing into a detached DOM and reading
+ * textContent (never injecting HTML, so no XSS). Non-HTML bodies pass through unchanged.
+ *
+ * - Strips <style>/<script>/<head> noise and tags.
+ * - Converts <br> and block elements to line breaks so paragraphs survive.
+ * - Collapses the runaway blank lines that email templates produce.
+ */
+export function cleanMessageText(body) {
+  const raw = String(body || '');
+  // Heuristic: looks like HTML if it has a tag. Plain text is returned as-is.
+  if (!/<[a-z!][\s\S]*>/i.test(raw)) return raw.trim();
+  try {
+    const doc = new DOMParser().parseFromString(raw, 'text/html');
+    // Drop non-content nodes entirely.
+    doc.querySelectorAll('style, script, head, title, meta, link').forEach((n) => n.remove());
+    // Turn <br> and block ends into newlines so structure isn't lost when we read textContent.
+    doc.querySelectorAll('br').forEach((n) => n.replaceWith('\n'));
+    doc.querySelectorAll('p, div, tr, li, h1, h2, h3, h4, blockquote').forEach((n) => n.append('\n'));
+    const text = (doc.body?.textContent || '').replace(/ /g, ' ');
+    // Collapse 3+ blank lines → 1, trim trailing spaces per line.
+    return text.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  } catch {
+    // If parsing ever fails, strip tags crudely as a fallback.
+    return raw.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+}

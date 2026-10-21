@@ -10,6 +10,7 @@ export default function Team({ notify, onNavPlan }) {
   const [syncing, setSyncing] = useState(false);
   const [seatLimit, setSeatLimit] = useState(null); // null = unknown/unlimited
   const [upgradeUrl, setUpgradeUrl] = useState(''); // GHL upgrade/downgrade deep-link
+  const [query, setQuery] = useState(''); // filter the roster by name/email
 
   const load = () => api.agents().then((r) => setAgents(r.agents || [])).finally(() => setLoading(false));
   useEffect(() => {
@@ -45,7 +46,10 @@ export default function Team({ notify, onNavPlan }) {
 
   // Display order: assignable (active) first, then excluded, then deleted — each group A→Z by name.
   const rank = (a) => (a.deleted ? 2 : a.active ? 0 : 1);
-  const sortedAgents = [...agents].sort((a, b) => rank(a) - rank(b) || (a.name || '').localeCompare(b.name || ''));
+  const q = query.trim().toLowerCase();
+  const sortedAgents = [...agents]
+    .filter((a) => !q || (a.name || '').toLowerCase().includes(q) || (a.email || '').toLowerCase().includes(q))
+    .sort((a, b) => rank(a) - rank(b) || (a.name || '').localeCompare(b.name || ''));
 
   const toggle = async (a, active) => {
     setAgents((list) => list.map((x) => (x.ghlUserId === a.ghlUserId ? { ...x, active } : x)));
@@ -64,7 +68,20 @@ export default function Team({ notify, onNavPlan }) {
     <>
       <div className="topbar">
         <h1>Team</h1>
-        <button className="btn btn-ghost" style={{ marginLeft: 'auto' }} disabled={syncing} onClick={sync}>
+        <div className="team-search" style={{ marginLeft: 'auto' }}>
+          <Icon name="search" size={14} />
+          <input
+            placeholder="Search name or email…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          {query && (
+            <button type="button" className="team-search-clear" onClick={() => setQuery('')} title="Clear">
+              <Icon name="plus" size={13} />
+            </button>
+          )}
+        </div>
+        <button className="btn btn-ghost" disabled={syncing} onClick={sync}>
           <Icon name="users" size={15} /> {syncing ? 'Syncing…' : 'Sync team'}
         </button>
       </div>
@@ -87,6 +104,8 @@ export default function Team({ notify, onNavPlan }) {
           <div className="card" style={{ padding: 0 }}>
             {agents.length === 0 ? (
               <div className="empty"><strong>No agents yet</strong><p>Sync your team to start assigning tickets.</p></div>
+            ) : sortedAgents.length === 0 ? (
+              <div className="empty"><strong>No matches</strong><p>No team member matches “{query}”.</p></div>
             ) : sortedAgents.map((a) => (
               <div key={a.ghlUserId} className="toggle-row" style={{ padding: '14px 20px', opacity: a.deleted ? 0.6 : 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
