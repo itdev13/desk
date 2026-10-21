@@ -333,35 +333,42 @@ async function loadFormAndWs(slug) {
   return { form, ws };
 }
 
-/** GET /f/:slug — a specific multi-form intake page. */
-router.get('/f/:slug', async (req, res) => {
-  const found = await loadFormAndWs(req.params.slug);
-  if (!found) return res.status(404).send(renderPortalNotFound());
-  res.set('Content-Security-Policy', PORTAL_CSP);
-  res.send(renderPortalForm(found.ws, found.form, `/portal/f/${esc(req.params.slug)}/submit`));
-});
-
-/** POST /f/:slug/submit — submit a specific multi-form. */
-router.post('/f/:slug/submit', intakeLimiter, async (req, res) => {
-  const found = await loadFormAndWs(req.params.slug);
-  if (!found) return res.status(404).json({ success: false, error: 'Form not found' });
-  return processSubmission(found.ws, found.form, req, res);
-});
-
-/* Pretty URL: /f/<workspace-name>/<slug>. The name segment is cosmetic — we always key off <slug>. */
-/** GET /f/:nameSlug/:slug — same page, with the workspace name in the path. */
-router.get('/f/:nameSlug/:slug', async (req, res) => {
-  const found = await loadFormAndWs(req.params.slug);
-  if (!found) return res.status(404).send(renderPortalNotFound());
-  res.set('Content-Security-Policy', PORTAL_CSP);
-  res.send(renderPortalForm(found.ws, found.form, `/portal/f/${esc(req.params.nameSlug)}/${esc(req.params.slug)}/submit`));
-});
-
-/** POST /f/:nameSlug/:slug/submit — submit via the pretty URL. */
-router.post('/f/:nameSlug/:slug/submit', intakeLimiter, async (req, res) => {
-  const found = await loadFormAndWs(req.params.slug);
-  if (!found) return res.status(404).json({ success: false, error: 'Form not found' });
-  return processSubmission(found.ws, found.form, req, res);
-});
-
 module.exports = router;
+
+/* ── Short public mount: /f/… ─────────────────────────────────────────────────────────────────
+ * Mounted at the TOP LEVEL in server.js as `/f`, so a form's public URL is the short, clean
+ * /f/<workspace-name>/<slug> (NOT /portal/f/…). Routes here are relative to that /f mount.
+ * Submit paths therefore also live under /f. */
+const fRouter = express.Router();
+
+/** GET /f/:slug — a specific multi-form intake page (plain short URL). */
+fRouter.get('/:slug', async (req, res) => {
+  const found = await loadFormAndWs(req.params.slug);
+  if (!found) return res.status(404).send(renderPortalNotFound());
+  res.set('Content-Security-Policy', PORTAL_CSP);
+  res.send(renderPortalForm(found.ws, found.form, `/f/${esc(req.params.slug)}/submit`));
+});
+
+/** POST /f/:slug/submit */
+fRouter.post('/:slug/submit', intakeLimiter, async (req, res) => {
+  const found = await loadFormAndWs(req.params.slug);
+  if (!found) return res.status(404).json({ success: false, error: 'Form not found' });
+  return processSubmission(found.ws, found.form, req, res);
+});
+
+/* Pretty URL: /f/<workspace-name>/<slug>. The name segment is cosmetic — we key off <slug>. */
+fRouter.get('/:nameSlug/:slug', async (req, res) => {
+  const found = await loadFormAndWs(req.params.slug);
+  if (!found) return res.status(404).send(renderPortalNotFound());
+  res.set('Content-Security-Policy', PORTAL_CSP);
+  res.send(renderPortalForm(found.ws, found.form, `/f/${esc(req.params.nameSlug)}/${esc(req.params.slug)}/submit`));
+});
+
+/** POST /f/:nameSlug/:slug/submit */
+fRouter.post('/:nameSlug/:slug/submit', intakeLimiter, async (req, res) => {
+  const found = await loadFormAndWs(req.params.slug);
+  if (!found) return res.status(404).json({ success: false, error: 'Form not found' });
+  return processSubmission(found.ws, found.form, req, res);
+});
+
+module.exports.fRouter = fRouter;
