@@ -376,6 +376,19 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
                 <ColorField value={ws.brand?.primaryColor || ''} onChange={(v) => set({ brand: { ...ws.brand, primaryColor: v } })} />
               </div>
             </div>
+            <div className="field" style={{ marginTop: 14, marginBottom: 0 }}>
+              <label>Logo URL <span style={{ fontWeight: 400, color: 'var(--slate)' }}>(optional)</span></label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <input type="text" value={ws.brand?.logoUrl || ''} placeholder="https://yoursite.com/logo.png"
+                  onChange={(e) => set({ brand: { ...ws.brand, logoUrl: e.target.value } })} />
+                {/^https:\/\//i.test((ws.brand?.logoUrl || '').trim()) && (
+                  <img src={ws.brand.logoUrl.trim()} alt="Logo preview"
+                    style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--line)', background: '#fff', flex: 'none' }}
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                )}
+              </div>
+              <span className="hint">Shown on your client intake forms in place of the letter badge. Paste an <b>https</b> image link (PNG/SVG/JPG).</span>
+            </div>
             <div className="toggle-row" style={{ marginTop: 14 }}>
               <div><div className="t-label">Client portal intake</div><div className="t-desc">Let customers submit tickets from a branded web form.</div></div>
               <Switch checked={ws.portalEnabled} onChange={(v) => set({ portalEnabled: v })} />

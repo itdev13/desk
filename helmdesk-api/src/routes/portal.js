@@ -9,7 +9,7 @@ const rateLimit = require('express-rate-limit');
 
 const PORTAL_CSP =
   "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; " +
-  "connect-src 'self'; img-src 'self' data:; base-uri 'self'; form-action 'self'";
+  "connect-src 'self'; img-src 'self' data: https:; base-uri 'self'; form-action 'self'";
 
 /**
  * Public client-portal intake. NO session auth — this is the customer-facing "Submit a request"
@@ -105,6 +105,9 @@ function renderPortalForm(ws, form, submitPath) {
   const brandName = esc(ws.brand?.name || 'Support');
   const formTitle = esc(form?.name || 'Submit a request');
   const action = esc(submitPath);
+  // The agency's logo, if they set one (https only). Shown in place of the initial-letter badge.
+  const rawLogo = String(ws.brand?.logoUrl || '').trim();
+  const logoUrl = /^https:\/\//i.test(rawLogo) ? esc(rawLogo) : '';
   const fields = (form?.fields && form.fields.length) ? form.fields : Workspace.PORTAL_DEFAULT_FIELDS;
   return `<!DOCTYPE html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -117,6 +120,9 @@ function renderPortalForm(ws, form, submitPath) {
   .card{background:#fff;border:1px solid #dde3ec;border-radius:16px;padding:32px;box-shadow:0 8px 30px -22px rgba(15,23,41,.4)}
   .head{display:flex;align-items:center;gap:12px;margin-bottom:6px}
   .badge{width:44px;height:44px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-weight:800;font-size:20px}
+  /* Fixed circular frame so any logo dimensions (wide, tall, square) look uniform. object-fit:cover
+     fills the circle; a white ground + hairline keeps a transparent/odd logo tidy. */
+  .logo{width:48px;height:48px;border-radius:50%;object-fit:cover;background:#fff;border:1px solid #e5e9f0;display:block;flex:none}
   h1{font-size:22px;margin:0}
   p.sub{color:#5a687f;margin:4px 0 24px;font-size:14px}
   label{display:block;font-size:13px;font-weight:600;color:#2a3447;margin:14px 0 6px}
@@ -141,7 +147,9 @@ function renderPortalForm(ws, form, submitPath) {
   .foot{text-align:center;color:#9aa6ba;font-size:12px;margin-top:18px}
 </style></head>
 <body><div class="wrap"><div class="card">
-  <div class="head"><div class="badge">${brandName[0] ? brandName[0].toUpperCase() : 'S'}</div><h1>${brandName}</h1></div>
+  <div class="head">${logoUrl
+    ? `<img class="logo" src="${logoUrl}" alt="${brandName}">`
+    : `<div class="badge">${brandName[0] ? brandName[0].toUpperCase() : 'S'}</div>`}<h1>${brandName}</h1></div>
   <p class="sub">${formTitle} and our team will get back to you.</p>
   <form id="f" method="post" action="${action}">
     ${fields.map((f) => renderField(f)).join('\n    ')}
