@@ -40,7 +40,12 @@ async function recordSubscriptionTx(payload) {
  * ════════════════════════════════════════════════════════════════════════════ */
 router.post('/helmdesk', async (req, res) => {
   const data = req.body || {};
-  const { type, appId, companyId, locationId } = data;
+  const { type, appId } = data;
+  // GHL sometimes sends companyId/locationId as an EMPTY STRING rather than omitting the field (seen
+  // on PLAN_CHANGE). Normalize "" → null so downstream `{ companyId }` / `{ locationId }` queries
+  // don't match the wrong doc (e.g. deleteMany({ companyId: "" })). Trim stray whitespace too.
+  const companyId = (data.companyId || '').trim() || null;
+  const locationId = (data.locationId || '').trim() || null;
 
   logger.info('📥 Lifecycle webhook', { type, appId, companyId, locationId });
   logger.info('📦 Webhook payload', { type, payload: JSON.stringify(data).slice(0, 2000) });
