@@ -18,6 +18,12 @@ const installationSchema = new mongoose.Schema(
       logoUrl: { type: String, default: null }
     },
     planId: String,
+    // The marketplace app version this install is currently on. Set from the INSTALL webhook and
+    // bumped on every UPDATE webhook. On app-load the reconnect check compares this against the
+    // VersionConfig table: if a forceReconnect version exists that this install is NOT on, we prompt a
+    // reconnect. (The same value also lives in rawWebhookData.versionId; this top-level field is the
+    // one we query.)
+    versionId: { type: String, default: null, index: true },
     trial: { type: mongoose.Schema.Types.Mixed, default: {} },
     status: { type: String, enum: ['active', 'uninstalled'], default: 'active', index: true },
     installedAt: Date,

@@ -92,7 +92,10 @@ async function buildUpgradeUrl(locationId, mode = 'enrol') {
     const appId = inst?.appId || process.env.GHL_APP_ID;
     if (!appId || !locationId) return '';
 
-    const versionId = process.env.GHL_APP_VERSION_ID || '';
+    // Prefer the version this install is actually on (captured at INSTALL, bumped on UPDATE) so the
+    // enrol link always points at the right version. Fall back to the env default for old installs
+    // that predate version capture.
+    const versionId = inst?.versionId || inst?.rawWebhookData?.versionId || process.env.GHL_APP_VERSION_ID || '';
     const rawDomain = inst?.whitelabelDetails?.domain || process.env.GHL_DEFAULT_APP_DOMAIN || 'app.gohighlevel.com';
     const host = String(rawDomain).replace(/^https?:\/\//i, '').replace(/\/+$/, '');
     const base = `https://${host}/v2/location/${locationId}/integration/${appId}`;

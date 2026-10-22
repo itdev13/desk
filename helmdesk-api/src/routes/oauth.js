@@ -73,7 +73,8 @@ router.get('/callback', async (req, res) => {
         { locationId: tokenData.locationId },
         {
           $setOnInsert: { locationId: tokenData.locationId, installerUserId: tokenData.userId || null },
-          $set: { companyId: tokenData.companyId, locationName: details.locationName }
+          // A fresh connect grants the current scopes, so clear any pending reconnect prompt.
+          $set: { companyId: tokenData.companyId, locationName: details.locationName, needsReconnect: false, needsReconnectReason: null }
         },
         { upsert: true, new: true, setDefaultsOnInsert: true }
       );

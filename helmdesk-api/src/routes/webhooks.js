@@ -104,7 +104,7 @@ router.post('/helmdesk', async (req, res) => {
           locationId ? { appId, locationId } : { appId, companyId },
           {
             appId, companyId, locationId, userId: data.userId, companyName: data.companyName,
-            planId: data.planId, trial: data.trial || {},
+            planId: data.planId, versionId: data.versionId || null, trial: data.trial || {},
             // White-label domain (if the installing agency is white-labeled) → used to build the
             // plan/upgrade link on their own domain rather than app.gohighlevel.com.
             isWhitelabelCompany: !!data.isWhitelabelCompany,
@@ -177,9 +177,23 @@ router.post('/helmdesk', async (req, res) => {
         break;
       }
 
-      case 'APP_UPDATE':
-        logger.info('🔄 App version updated', { appId, version: data.version });
+      case 'UPDATE':
+      case 'APP_UPDATE': {
+        const newVersionId = data.versionId || data.version || null;
+        logger.info('🔄 App version updated', { appId, locationId, companyId, versionId: newVersionId, previousVersionId: data.previousVersionId });
+        // The UPDATE webhook's only job here: record the new version on the Installation record. The
+        // reconnect decision is made entirely at app-load (auth/verify) by comparing this stored
+        // version against the VersionConfig table — so bumping it here is what eventually clears the
+        // banner once the install has caught up to a flagged version. We update both the queryable
+        // top-level field and rawWebhookData so the stored payload stays self-consistent.
+        if (newVersionId) {
+          await Installation.updateOne(
+            locationId ? { appId, locationId } : { appId, companyId },
+            { $set: { versionId: newVersionId, 'rawWebhookData.versionId': newVersionId } }
+          );
+        }
         break;
+      }
 
       case 'PLAN_CHANGE': {
         const newPlanId = data.newPlanId;

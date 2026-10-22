@@ -46,6 +46,11 @@ const workspaceSchema = new mongoose.Schema(
 
     // ── Setup wizard state ──
     setupComplete: { type: Boolean, default: false },
+    // Set when the app updated to a version that added new OAuth scopes (e.g. contacts). GHL doesn't
+    // grant new scopes to an existing token, so the admin must re-authorize — the app shows a
+    // "Reconnect" banner while this is true, and OAuth clears it on a fresh connect.
+    needsReconnect: { type: Boolean, default: false },
+    needsReconnectReason: { type: String, default: null },
 
     // Step 1 — which channels create tickets. Empty = none (safe default until configured).
     // Valid values mirror GHL messageType: SMS, Email, WhatsApp, FB, IG, Live_Chat, Call, GMB.

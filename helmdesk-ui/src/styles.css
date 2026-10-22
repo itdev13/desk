@@ -222,6 +222,26 @@ button { font-family: inherit; cursor: pointer; }
 
 .main { overflow-y: auto; display: flex; flex-direction: column; min-width: 0; flex: 1; }
 
+/* Reconnect banner — a full-width amber strip under the top nav prompting the admin to re-authorize
+   after an update that added new permissions. Non-dismissable: it stays until a fresh connect clears
+   the workspace flag. */
+.reconnect-banner {
+  display: flex; align-items: center; gap: 12px; flex: none;
+  padding: 10px 20px;
+  background: linear-gradient(90deg, #FDF3DF 0%, #FBE9C7 100%);
+  border-bottom: 1px solid #E7C98A;
+  color: #6B4A12; font-size: 13.5px; font-weight: 600;
+}
+.reconnect-banner .rc-ico { font-size: 16px; line-height: 1; }
+.reconnect-banner .rc-text { flex: 1; min-width: 0; }
+.reconnect-banner .rc-btn {
+  flex: none; text-decoration: none; white-space: nowrap;
+  padding: 7px 16px; border-radius: 8px;
+  background: #0F1729; color: #F7E7C4; font-weight: 700; font-size: 12.5px;
+  transition: background .15s ease;
+}
+.reconnect-banner .rc-btn:hover { background: #1B2740; }
+
 @media (max-width: 720px) {
   .topnav { flex-wrap: wrap; gap: 8px 14px; }
   .topnav-tabs { order: 3; width: 100%; overflow-x: auto; }

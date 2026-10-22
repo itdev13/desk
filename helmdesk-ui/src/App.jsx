@@ -139,6 +139,15 @@ export default function App() {
         isAdmin={user?.role === 'admin'}
         onNav={(v, qv) => { setOpenTicketId(null); setView(v); if (qv) setQueueView(qv); }}
       />
+      {/* Reconnect banner — shown to admins after an update added new permissions (GHL doesn't grant
+          new scopes to an existing token, so the admin must re-authorize). */}
+      {workspace?.needsReconnect && user?.role === 'admin' && (
+        <div className="reconnect-banner">
+          <span className="rc-ico">⚡</span>
+          <span className="rc-text">{workspace.needsReconnectReason || 'New features need you to reconnect HelmDesk.'}</span>
+          <a className="rc-btn" href={api.authorizeUrl()} target="_blank" rel="noopener">Reconnect now</a>
+        </div>
+      )}
       <div className="main">
         {view === 'inbox' && !openTicketId ? (
           <Inbox user={user} notify={notify} onChange={refreshCounts} />

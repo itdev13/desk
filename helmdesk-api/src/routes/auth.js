@@ -23,6 +23,58 @@ function decryptSSO(encrypted) {
 }
 
 /**
+ * Decide whether this location should be prompted to reconnect, and keep the workspace flag in sync.
+ *
+ * Runs on every app load. The source of truth is the VersionConfig table: you seed one row per
+ * release that added a new OAuth scope (e.g. contacts), as { versionId, forceReconnect:true, reason }.
+ *
+ * The check:
+ *   1. Read this install's current versionId (set at INSTALL, bumped by the UPDATE webhook).
+ *   2. Look for a VersionConfig row that is forceReconnect:true AND whose versionId is NOT the one
+ *      this install is on. That means there's a newer flagged version the install hasn't caught up
+ *      to — the user hasn't re-authorized for its new scope yet → show the banner.
+ *   3. Once the UPDATE webhook bumps the install's versionId to that flagged version (or the user
+ *      reconnects), the install IS on the flagged version, no mismatch remains → banner clears.
+ *
+ * No "current version" env var: the VersionConfig rows themselves say which versions need a reconnect.
+ *
+ * Returns { needsReconnect, needsReconnectReason }.
+ */
+async function resolveReconnect(locationId, workspace) {
+  const Installation = require('../models/Installation');
+  const install = await Installation.findOne({ locationId, status: 'active' })
+    .select('versionId rawWebhookData.versionId')
+    .sort({ installedAt: -1 })
+    .lean();
+  const installedVersion = install?.versionId || install?.rawWebhookData?.versionId || null;
+
+  // Is there a version that requires a reconnect which this install is NOT yet on? If the install is
+  // already on it (versionId matches), there's nothing to prompt. Most recent flagged row wins.
+  const VersionConfig = require('../models/VersionConfig');
+  const cfg = await VersionConfig.findOne({
+    forceReconnect: true,
+    versionId: { $ne: installedVersion }
+  }).sort({ createdAt: -1 }).lean();
+
+  const needsReconnect = !!cfg;
+  const needsReconnectReason = cfg ? (cfg.reason || 'New features need you to reconnect.') : null;
+
+  // Keep the workspace flag consistent with the computed state (only write when it changed, so we
+  // don't touch the DB on every load). This also self-heals a stale flag once the user reconnects
+  // and the UPDATE webhook bumps their install version to the flagged one.
+  if (workspace &&
+      (!!workspace.needsReconnect !== needsReconnect ||
+       (workspace.needsReconnectReason || null) !== needsReconnectReason)) {
+    await Workspace.updateOne(
+      { locationId },
+      { $set: { needsReconnect, needsReconnectReason } }
+    );
+  }
+
+  return { needsReconnect, needsReconnectReason };
+}
+
+/**
  * POST /api/auth/verify
  * Body: { encryptedData } (preferred, from GHL SSO) OR { locationId } (dev fallback).
  * Returns a session token + the workspace's setup state so the UI can route to the wizard.
@@ -124,6 +176,13 @@ router.post('/verify', async (req, res) => {
       setupComplete: workspace?.setupComplete, ownerUserId
     });
 
+    // Reconcile the reconnect prompt from the installed version vs the version we're serving. Only
+    // admins can re-authorize, so there's no point computing/showing it for agents.
+    const { needsReconnect, needsReconnectReason } =
+      role === 'admin'
+        ? await resolveReconnect(locationId, workspace)
+        : { needsReconnect: false, needsReconnectReason: null };
+
     const sessionToken = signSession({ locationId, companyId, userId, name, email, role });
     const analyticsService = require('../services/analyticsService');
     res.json({
@@ -133,6 +192,8 @@ router.post('/verify', async (req, res) => {
         locationId,
         locationName: workspace?.locationName || token?.locationName || null,
         setupComplete: workspace?.setupComplete || false,
+        needsReconnect,
+        needsReconnectReason,
         brand: workspace?.brand || { name: 'HelmDesk', primaryColor: '#E0A24A' }
       },
       user: { userId, name, email, role, hasAccess },
