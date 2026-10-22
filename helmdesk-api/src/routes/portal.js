@@ -248,6 +248,19 @@ async function processSubmission(ws, form, req, res) {
     if (!subject) subject = custom[0]?.value?.slice(0, 80) || 'Support request';
     if (!message) message = custBlock || subject;
 
+    // A full, labeled summary of EVERY submitted field (core + custom), in the form's field order, for
+    // the GHL conversation mirror — so the agent sees Name/Email/Phone/Subject/Priority/answers there,
+    // not just the free-text message. Skips blanks and the long message body (which is shown above it).
+    const CORE_LABELS = { name: 'Name', email: 'Email', phone: 'Phone', subject: 'Subject', priority: 'Priority' };
+    const summaryLines = [];
+    for (const fld of fields) {
+      if (fld.maps === 'message') continue; // the message is already the body of the mirror
+      const label = fld.maps ? (CORE_LABELS[fld.maps] || fld.label) : fld.label;
+      const value = fld.maps ? core[fld.maps] : (custom.find((c) => c.label === fld.label)?.value || '');
+      if (value) summaryLines.push(`${label}: ${value}`);
+    }
+    const detailsBlock = summaryLines.join('\n');
+
     // Upsert the contact in GHL so the ticket links to a real person (creates them if they don't
     // exist yet, by email/phone). Tag + source let the agency see these came from the portal.
     let contact = { id: null, name: name || email || phone };
@@ -275,7 +288,7 @@ async function processSubmission(ws, form, req, res) {
           contactId: contact.id,
           conversationProviderId: providerId,
           direction: 'inbound',
-          message: `Ticketing - Form submitted\n\n${message}${custom.length ? '\n\n— Form details —\n' + custBlock : ''}`
+          message: `Ticketing - Form submitted\n\n${message}${detailsBlock ? '\n\n— Form details —\n' + detailsBlock : ''}`
         });
       } catch (e) {
         logger.warn('portal inbound-message mirror failed (continuing)', { message: e.message });

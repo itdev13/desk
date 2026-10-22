@@ -26,7 +26,7 @@ const FRAME_CSS = `
   blockquote { margin: 0.4em 0; padding-left: 10px; border-left: 3px solid #d1d5db; color: #6b7280; }
 `;
 
-export default function EmailFrame({ html, title = 'Email message' }) {
+export default function EmailFrame({ html, title = 'Email message', onResize }) {
   const ref = useRef(null);
   const [height, setHeight] = useState(0);
 
@@ -48,6 +48,9 @@ export default function EmailFrame({ html, title = 'Email message' }) {
       const doc = frame.contentDocument.documentElement;
       const bar = doc.scrollWidth > doc.clientWidth ? 14 : 0; // room for a horizontal scrollbar
       setHeight(Math.ceil(body.getBoundingClientRect().height) + bar);
+      // Let the parent re-position (e.g. a thread that wants to stay scrolled to the bottom) now that
+      // this frame's real height is known — otherwise its initial 20px height throws scrolling off.
+      if (typeof onResize === 'function') onResize();
     };
     const onLoad = () => {
       measure();

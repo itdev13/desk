@@ -35,13 +35,25 @@ export default function TicketDetail({ id, onBack, user, notify, onChange }) {
   useEffect(() => { api.assignableAgents().then((r) => setAgents(r.agents || [])).catch(() => {}); }, []);
   // If this ticket's channel can't be replied on (Call/portal), force the composer to Note mode.
   useEffect(() => { if (data && data.canReply === false) setMode('note'); }, [data]);
-  // Land at the newest message (bottom of the thread), like a normal inbox conversation, whenever the
-  // comment list changes (initial load + after sending). `auto` on first paint so it doesn't animate a
-  // long scroll on open.
+  // Land at the newest message (bottom of the thread), like a normal inbox conversation. Stable so we
+  // can also hand it to EmailFrame — those render in an iframe that only reports its real height AFTER
+  // load, so an early scroll lands short; each frame calls this again once it has resized.
+  //
+  // We only auto-scroll during a short settling window after the comment list changes. Email iframes
+  // keep firing onResize as they lay out; without the window, a late resize would yank the agent back
+  // to the bottom even after they scrolled up to read.
+  const autoScrollUntil = useRef(0);
+  const scrollToBottom = useCallback(() => {
+    if (Date.now() > autoScrollUntil.current) return;
+    threadEndRef.current?.scrollIntoView({ block: 'end' });
+  }, []);
   const commentCount = data?.comments?.length || 0;
   useEffect(() => {
-    threadEndRef.current?.scrollIntoView({ block: 'end' });
-  }, [commentCount]);
+    // Open the settling window; iframes re-trigger scrollToBottom via onResize until it closes.
+    autoScrollUntil.current = Date.now() + 1200;
+    const t = setTimeout(scrollToBottom, 0);
+    return () => clearTimeout(t);
+  }, [commentCount, scrollToBottom]);
 
   if (loading) return <div className="empty" style={{ paddingTop: 120 }}><div className="spinner" style={{ margin: '0 auto' }} /></div>;
   if (!data) return null;
@@ -114,7 +126,7 @@ export default function TicketDetail({ id, onBack, user, notify, onChange }) {
                   </div>
                   {/* HTML emails render in a sandboxed frame (keeps their look); else clean text. */}
                   {c.channel === 'Email' && looksLikeHtml(c.body)
-                    ? <EmailFrame html={c.body} />
+                    ? <EmailFrame html={c.body} onResize={scrollToBottom} />
                     : <div style={{ whiteSpace: 'pre-wrap' }}>{cleanMessageText(c.body)}</div>}
                 </div>
                 );

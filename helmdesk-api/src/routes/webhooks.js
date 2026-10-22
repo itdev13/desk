@@ -312,6 +312,17 @@ async function processInbound(data) {
   const locationId = data.locationId;
   if (!locationId || !database.isConnected()) return { persisted: false };
 
+  // Ignore our OWN portal mirror echoing back. When the portal form is submitted we post the
+  // submission into GHL Conversations as an inbound message (so it's visible there) using OUR
+  // conversation provider id. GHL then fires this InboundMessage webhook for that very message — if we
+  // processed it we'd create a SECOND, duplicate ticket for the same form submission. The provider id
+  // is the reliable signal: a message on our provider is ours, not a real customer reply.
+  const ourProviderId = process.env.GHL_CONVERSATION_PROVIDER_ID || '6a4419eda0320c4756a842cb';
+  if (data.conversationProviderId && data.conversationProviderId === ourProviderId) {
+    logger.info('⏭️  Ignoring our own portal mirror (inbound echo on our provider)', { locationId, messageId: data.messageId });
+    return { ignored: 'own_portal_mirror' };
+  }
+
   const workspace = await Workspace.findOne({ locationId });
   if (!workspace) {
     logger.info('Inbound for unconfigured workspace — ignored', { locationId });

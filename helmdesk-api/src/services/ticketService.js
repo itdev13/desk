@@ -15,6 +15,15 @@ const { TRIGGERS } = require('../workflows/triggerKeys');
  * `extra` adds event-specific fields (e.g. newStatus, breachType).
  */
 function buildTriggerPayload(ticket, extra = {}) {
+  // Custom portal answers (e.g. the "Do the contact details match?" dropdown) are stored on the ticket
+  // as [{label, value}]. Expose them to workflows two ways: the raw array, and a flat {label: value}
+  // map so a workflow condition can branch on a single answer without iterating.
+  const cf = Array.isArray(ticket.customFields) ? ticket.customFields : [];
+  const customFieldMap = {};
+  for (const f of cf) {
+    if (f && f.label != null) customFieldMap[String(f.label)] = f.value ?? '';
+  }
+
   return {
     locationId: ticket.locationId,
     ticketRef: ticket.ref,
@@ -30,6 +39,8 @@ function buildTriggerPayload(ticket, extra = {}) {
     assigneeName: ticket.assigneeName || null,
     source: ticket.source || 'inbound', // 'portal' | 'inbound' | 'manual' — where the ticket came from
     formName: ticket.formName || null,  // portal form name (only set when source='portal')
+    customFields: cf,                   // [{ label, value }] — custom portal question answers
+    customFieldMap,                     // { "<question label>": "<answer>" } for easy workflow branching
     createdAt: ticket.createdAt,
     ...extra
   };
