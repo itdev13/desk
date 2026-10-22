@@ -83,6 +83,11 @@ export default function FormsManager({ brand, notify }) {
               <input type="text" readOnly value={form.url || ''} onFocus={(e) => e.target.select()} />
               <button type="button" className="btn btn-ghost" onClick={() => copyUrl(form.url)}>Copy link</button>
             </div>
+            {/* Tells the agency the exact value to match in a workflow filter. The portal trigger sends
+                this as `formName`, so "Form name equals <name>" targets submissions of this form. */}
+            <div className="form-filter-hint">
+              In workflows, filter by <strong>Form name</strong> = <code>{form.name || 'Untitled form'}</code> to act only on this form’s submissions.
+            </div>
 
             {open && (
               <div className="form-fields">

@@ -14,7 +14,11 @@ const TRIGGERS = {
   SLA_BREACHED: 'helmdesk_sla_breached',           // a ticket missed its first-response/resolve target
   STATUS_CHANGED: 'helmdesk_ticket_status_changed',// a ticket's status changed (carries newStatus)
   TICKET_ASSIGNED: 'helmdesk_ticket_assigned',     // a ticket was assigned/reassigned to an agent
-  CUSTOMER_REPLIED: 'helmdesk_customer_replied'    // the customer replied on an existing ticket
+  CUSTOMER_REPLIED: 'helmdesk_customer_replied',   // the customer replied on an existing ticket
+  // Fires ONLY when a public portal form is submitted. Carries `formName` (so a workflow can filter by
+  // which form) plus the custom answers, on top of the standard ticket fields. Declare these fields on
+  // the matching trigger in the GHL marketplace dashboard so they're filterable in the builder.
+  PORTAL_SUBMITTED: 'helmdesk_portal_submitted'
 };
 
 module.exports = { TRIGGERS };

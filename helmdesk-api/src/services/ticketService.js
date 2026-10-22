@@ -465,6 +465,10 @@ async function createTicket(workspace, opts) {
   // Workflow trigger: a new ticket was created (and, if auto-assigned, it was assigned too).
   safeFire(TRIGGERS.TICKET_CREATED, ticket);
   if (assignee.assigneeId) safeFire(TRIGGERS.TICKET_ASSIGNED, ticket);
+  // Portal-only trigger: lets a workflow filter by `formName` and branch on the custom answers (both
+  // already in the payload). Fired in addition to TICKET_CREATED so agencies can target portal forms
+  // specifically without inspecting `source` on the generic trigger.
+  if (ticket.source === 'portal') safeFire(TRIGGERS.PORTAL_SUBMITTED, ticket);
 
   // Store the opening customer message.
   if (firstMessage) {

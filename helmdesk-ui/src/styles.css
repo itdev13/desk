@@ -986,6 +986,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .form-del-btn:hover { border-color: var(--crit); color: var(--crit); background: var(--crit-bg); }
 .form-url-row { display: flex; gap: 8px; padding: 0 14px 12px; }
 .form-url-row input { flex: 1; min-width: 0; font-size: 12.5px; font-family: var(--mono); background: var(--panel); border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; color: var(--ink-2); }
+.form-filter-hint { padding: 0 14px 12px; font-size: 12px; line-height: 1.5; color: var(--slate); }
+.form-filter-hint code { font-family: var(--mono); font-size: 11.5px; background: var(--panel); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; color: var(--ink-2); }
 .form-fields { padding: 4px 14px 16px; border-top: 1px solid var(--line-soft); }
 
 /* ── Team page search ── */
