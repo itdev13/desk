@@ -59,6 +59,14 @@ async function resolveReconnect(locationId, workspace) {
   const needsReconnect = !!cfg;
   const needsReconnectReason = cfg ? (cfg.reason || 'New features need you to reconnect.') : null;
 
+  logger.info('[auth/verify] reconnect check', {
+    locationId,
+    installedVersion,
+    installFound: !!install,
+    matchedConfigVersion: cfg?.versionId || null,
+    needsReconnect
+  });
+
   // Keep the workspace flag consistent with the computed state (only write when it changed, so we
   // don't touch the DB on every load). This also self-heals a stale flag once the user reconnects
   // and the UPDATE webhook bumps their install version to the flagged one.
