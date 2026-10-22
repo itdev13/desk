@@ -142,6 +142,19 @@ router.get('/callback', async (req, res) => {
         { upsert: true, new: true }
       );
       logger.info('✅ HelmDesk connected (company)', { companyId: tokenData.companyId, locations: locations.length });
+
+      // Drop the agency's existing location tokens so they get lazily re-minted (getValidToken) from
+      // this freshly-authorized company token on next use. GHL does NOT refresh a live location token's
+      // scopes on its own — once minted, it stays frozen on whatever scopes it was first granted. So
+      // after we add a new scope (e.g. contacts.write) and the agency re-authorizes at the company
+      // level, the stale per-location tokens would keep the OLD scope set. Deleting them here forces a
+      // clean re-mint that inherits the new grant, without a bulk API burst (each is re-created only
+      // when that sub-account is next opened). Non-blocking.
+      OAuthToken.deleteMany({ companyId: tokenData.companyId, tokenType: 'location' })
+        .then((r) => logger.info('[oauth] cleared stale location tokens after company reconnect (lazy re-mint on next use)', {
+          companyId: tokenData.companyId, deleted: r.deletedCount
+        }))
+        .catch((e) => logger.warn('[oauth] could not clear stale location tokens (non-blocking)', { message: e.message }));
     }
 
     res.send(renderSuccessPage());

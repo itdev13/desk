@@ -40,12 +40,16 @@ function decryptSSO(encrypted) {
  *
  * Returns { needsReconnect, needsReconnectReason }.
  */
-async function resolveReconnect(locationId, workspace) {
+async function resolveReconnect(locationId, workspace, companyId) {
   const Installation = require('../models/Installation');
-  const install = await Installation.findOne({ locationId, status: 'active' })
-    .select('versionId rawWebhookData.versionId appId isWhitelabelCompany whitelabelDetails.domain')
-    .sort({ installedAt: -1 })
-    .lean();
+  const sel = 'versionId rawWebhookData.versionId appId isWhitelabelCompany whitelabelDetails.domain';
+  // Prefer the per-location install record. Agency (company-level) installs may not create one per
+  // sub-account, so fall back to the company's record — it carries the same appId + white-label domain
+  // and the agency-wide version.
+  let install = await Installation.findOne({ locationId, status: 'active' }).select(sel).sort({ installedAt: -1 }).lean();
+  if (!install && companyId) {
+    install = await Installation.findOne({ companyId, status: 'active' }).select(sel).sort({ installedAt: -1 }).lean();
+  }
   const installedVersion = install?.versionId || install?.rawWebhookData?.versionId || null;
 
   // Is there a version that requires a reconnect which this install is NOT yet on? If the install is
@@ -202,7 +206,7 @@ router.post('/verify', async (req, res) => {
     // admins can re-authorize, so there's no point computing/showing it for agents.
     const { needsReconnect, needsReconnectReason, reconnectUrl } =
       role === 'admin'
-        ? await resolveReconnect(locationId, workspace)
+        ? await resolveReconnect(locationId, workspace, companyId)
         : { needsReconnect: false, needsReconnectReason: null, reconnectUrl: null };
 
     const sessionToken = signSession({ locationId, companyId, userId, name, email, role });
