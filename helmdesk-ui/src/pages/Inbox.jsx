@@ -215,7 +215,11 @@ export default function Inbox({ user, notify, onChange }) {
                     </div>
                     <div className="inbox-row-sub">
                       <span className="ref">{t.ref}</span> · {t.contactName || 'Unknown'}
-                      {t.channel && <> · {labelChannel(t.channel)}</>}
+                      {/* Portal tickets show which form they came from (e.g. "Form: Support Form")
+                          instead of the generic "Portal" channel label. */}
+                      {t.source === 'portal'
+                        ? <> · Form: {t.formName || 'Support form'}</>
+                        : t.channel && <> · {labelChannel(t.channel)}</>}
                     </div>
                     <div className="inbox-row-meta">
                       <PriorityPill priority={t.priority} />
@@ -402,9 +406,9 @@ function TicketPanes({ id, isAdmin, notify, onChanged, rightOpen = true, toggleR
               <div className="muted" style={{ fontSize: 12 }}>{ticket.contactEmail || labelChannel(ticket.channel)}</div>
             </div>
           </div>
-          <div className="kv"><span className="k">Channel</span>
+          <div className="kv"><span className="k">{ticket.source === 'portal' ? 'Form' : 'Channel'}</span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              {labelChannel(ticket.channel)}
+              {ticket.source === 'portal' ? (ticket.formName || 'Support form') : labelChannel(ticket.channel)}
               {isCustomProviderChannel(ticket.channel) && ticket.conversationProviderId && (
                 <span className="info-dot" title={`Conversation provider id: ${ticket.conversationProviderId}`}>i</span>
               )}

@@ -464,11 +464,26 @@ button { font-family: inherit; cursor: pointer; }
 .hd-select-caret { color: var(--slate); flex: none; transition: transform 0.15s; }
 .hd-select-caret.up { transform: rotate(180deg); }
 
-.hd-select-menu {
-  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 40;
-  margin: 0; padding: 5px; list-style: none;
+/* Popover wraps the (optional) search box + the scrollable options list. Min-width keeps it readable
+   even when the trigger is narrow; it can grow with the trigger. */
+.hd-select-pop {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 40;
+  min-width: 100%; width: max-content; max-width: 320px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
-  box-shadow: var(--shadow-lg); max-height: 200px; overflow-y: auto;
+  box-shadow: var(--shadow-lg); overflow: hidden;
+}
+.hd-select-search {
+  display: flex; align-items: center; gap: 7px;
+  padding: 8px 10px; border-bottom: 1px solid var(--line-soft); color: var(--slate);
+}
+.hd-select-search input {
+  flex: 1; min-width: 0; border: none; background: transparent; outline: none;
+  font-size: 13.5px; color: var(--ink);
+}
+.hd-select-search input::placeholder { color: var(--slate); }
+.hd-select-menu {
+  margin: 0; padding: 5px; list-style: none;
+  max-height: 240px; overflow-y: auto;
 }
 .hd-select-opt {
   display: flex; align-items: center; gap: 8px;
@@ -788,8 +803,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .toast.err { background: var(--crit); }
 .section-title { display: flex; align-items: center; justify-content: space-between; }
 .section-title h2 { font-size: 16px; margin: 0; }
-.dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.bar-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+.dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.bar-row { display: flex; align-items: center; gap: 12px; }
 .bar-row .name { width: 120px; font-size: 13px; flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bar-track { flex: 1; height: 10px; background: var(--line-soft); border-radius: 999px; overflow: hidden; }
 .bar-fill { height: 100%; background: var(--accent); border-radius: 999px; }
@@ -978,8 +993,13 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .form-card { border: 1px solid var(--line); border-radius: 12px; background: var(--paper); overflow: hidden; }
 .form-card.open { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent); }
 .form-card-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
-.form-name { flex: 1; min-width: 0; border: 1px solid transparent; background: transparent; font-size: 14px; font-weight: 650; color: var(--ink); padding: 6px 8px; border-radius: 7px; }
-.form-name:hover, .form-name:focus { border-color: var(--line); background: var(--panel); outline: none; }
+.form-name-wrap { flex: 1; min-width: 0; display: flex; align-items: center; gap: 2px; border: 1px solid transparent; border-radius: 7px; }
+.form-name-wrap:hover { border-color: var(--line); background: var(--panel); }
+.form-name-wrap:focus-within { border-color: var(--accent); background: var(--panel); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent); }
+.form-name { flex: 1; min-width: 0; border: none; background: transparent; font-size: 14px; font-weight: 650; color: var(--ink); padding: 6px 8px; border-radius: 7px; }
+.form-name:focus { outline: none; }
+.form-name-edit { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: none; background: transparent; color: var(--slate); border-radius: 6px; cursor: pointer; transition: color .15s ease, background .15s ease; }
+.form-name-edit:hover { color: var(--accent-dk); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .form-enable { display: flex; align-items: center; flex: none; }
 .form-edit-btn { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--accent-dk); background: none; border: none; cursor: pointer; flex: none; }
 .form-del-btn { width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid var(--line); background: var(--panel); border-radius: 7px; cursor: pointer; color: var(--slate); flex: none; }
@@ -999,6 +1019,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .team-search-clear:hover { background: var(--line); color: var(--ink); }
 
 /* ── Assignee filter (admin, in Board/Queue/Inbox) ── */
-.assignee-filter { display: inline-flex; align-items: center; gap: 7px; color: var(--slate); min-width: 180px; }
+.assignee-filter { display: inline-flex; align-items: center; gap: 7px; color: var(--slate); min-width: 240px; }
 .assignee-filter > .ico { flex: none; }
-.assignee-filter .pp-select, .assignee-filter .select, .assignee-filter > div { flex: 1; min-width: 150px; }
+.assignee-filter .pp-select, .assignee-filter .select, .assignee-filter > div { flex: 1; min-width: 210px; }

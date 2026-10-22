@@ -80,7 +80,8 @@ export function Icon({ name, size = 17 }) {
     'panel-left': <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16" /></>,
     'panel-right': <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M15 4v16" /></>,
     grip: <><circle cx="9" cy="6" r="1" /><circle cx="15" cy="6" r="1" /><circle cx="9" cy="12" r="1" /><circle cx="15" cy="12" r="1" /><circle cx="9" cy="18" r="1" /><circle cx="15" cy="18" r="1" /></>,
-    eye: <><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></>
+    eye: <><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></>,
+    pencil: <><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></>
   };
   return <svg {...p} className="ico">{paths[name] || null}</svg>;
 }
@@ -142,11 +143,18 @@ export function Toast({ message, error, onDone }) {
  * Props: value, onChange(value), options [{value,label,meta?,disabled?}], placeholder.
  * Keyboard: Enter/Space/ArrowDown opens; Esc closes; click-outside closes.
  */
-export function Select({ value, onChange, options = [], placeholder = 'Select…', disabled = false }) {
+export function Select({ value, onChange, options = [], placeholder = 'Select…', disabled = false, searchable = false }) {
   const [open, setOpen] = React.useState(false);
   const [active, setActive] = React.useState(-1);
+  const [query, setQuery] = React.useState('');
   const ref = React.useRef(null);
+  const searchRef = React.useRef(null);
   const selected = options.find((o) => o.value === value);
+
+  // Filter by the search box (searchable mode only). Case-insensitive match on the option label.
+  const shown = searchable && query
+    ? options.filter((o) => String(o.label).toLowerCase().includes(query.toLowerCase()))
+    : options;
 
   React.useEffect(() => {
     if (!open) return;
@@ -155,6 +163,11 @@ export function Select({ value, onChange, options = [], placeholder = 'Select…
     return () => document.removeEventListener('mousedown', onDoc);
   }, [open]);
 
+  // Reset the query and focus the search box each time the menu opens.
+  React.useEffect(() => {
+    if (open && searchable) { setQuery(''); setTimeout(() => searchRef.current?.focus(), 0); }
+  }, [open, searchable]);
+
   const pick = (opt) => { if (opt.disabled) return; onChange(opt.value); setOpen(false); };
 
   const onKey = (e) => {
@@ -162,9 +175,9 @@ export function Select({ value, onChange, options = [], placeholder = 'Select…
     if (!open && (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown')) { e.preventDefault(); setOpen(true); setActive(Math.max(0, options.findIndex((o) => o.value === value))); return; }
     if (!open) return;
     if (e.key === 'Escape') { setOpen(false); return; }
-    if (e.key === 'ArrowDown') { e.preventDefault(); setActive((i) => Math.min(options.length - 1, i + 1)); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActive((i) => Math.min(shown.length - 1, i + 1)); }
     if (e.key === 'ArrowUp') { e.preventDefault(); setActive((i) => Math.max(0, i - 1)); }
-    if (e.key === 'Enter' && active >= 0) { e.preventDefault(); pick(options[active]); }
+    if (e.key === 'Enter' && active >= 0 && shown[active]) { e.preventDefault(); pick(shown[active]); }
   };
 
   return (
@@ -177,18 +190,27 @@ export function Select({ value, onChange, options = [], placeholder = 'Select…
         <svg className={`hd-select-caret ${open ? 'up' : ''}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
       </button>
       {open && (
-        <ul className="hd-select-menu" role="listbox">
-          {options.length === 0 && <li className="hd-select-empty">No options</li>}
-          {options.map((o, i) => (
-            <li key={o.value ?? `opt-${i}`} role="option" aria-selected={o.value === value}
-              className={`hd-select-opt ${o.value === value ? 'sel' : ''} ${i === active ? 'active' : ''} ${o.disabled ? 'disabled' : ''}`}
-              onMouseEnter={() => setActive(i)} onClick={() => pick(o)}>
-              <Truncate className="hd-select-opt-label">{o.label}</Truncate>
-              {o.meta && <span className="hd-select-meta">{o.meta}</span>}
-              {o.value === value && <Icon name="check" size={14} />}
-            </li>
-          ))}
-        </ul>
+        <div className="hd-select-pop">
+          {searchable && (
+            <div className="hd-select-search">
+              <Icon name="search" size={14} />
+              <input ref={searchRef} type="text" value={query} placeholder="Search…"
+                onChange={(e) => { setQuery(e.target.value); setActive(0); }} onKeyDown={onKey} />
+            </div>
+          )}
+          <ul className="hd-select-menu" role="listbox">
+            {shown.length === 0 && <li className="hd-select-empty">{query ? 'No matches' : 'No options'}</li>}
+            {shown.map((o, i) => (
+              <li key={o.value ?? `opt-${i}`} role="option" aria-selected={o.value === value}
+                className={`hd-select-opt ${o.value === value ? 'sel' : ''} ${i === active ? 'active' : ''} ${o.disabled ? 'disabled' : ''}`}
+                onMouseEnter={() => setActive(i)} onClick={() => pick(o)}>
+                <Truncate className="hd-select-opt-label">{o.label}</Truncate>
+                {o.meta && <span className="hd-select-meta">{o.meta}</span>}
+                {o.value === value && <Icon name="check" size={14} />}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );

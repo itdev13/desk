@@ -22,7 +22,7 @@ export function labelChannel(c) {
     SMS: 'SMS', Email: 'Email', WhatsApp: 'WhatsApp', FB: 'Facebook', IG: 'Instagram',
     Live_Chat: 'Live Chat', WebChat: 'Web Chat', GMB: 'Google', Call: 'Call', RCS: 'RCS',
     Custom: 'Custom Provider', CustomSMS: 'Custom Provider SMS', CustomEmail: 'Custom Provider Email',
-    portal: 'Portal'
+    portal: 'Form'
   }[c] || c || '—';
 }
 

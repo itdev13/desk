@@ -220,9 +220,9 @@ export default function TicketDetail({ id, onBack, user, notify, onChange }) {
                   <div className="muted" style={{ fontSize: 12 }}>{ticket.contactEmail || ticket.channel}</div>
                 </div>
               </div>
-              <div className="kv"><span className="k">Channel</span>
+              <div className="kv"><span className="k">{ticket.source === 'portal' ? 'Form' : 'Channel'}</span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  {labelChannel(ticket.channel)}
+                  {ticket.source === 'portal' ? (ticket.formName || 'Support form') : labelChannel(ticket.channel)}
                   {isCustomProviderChannel(ticket.channel) && ticket.conversationProviderId && (
                     <span className="info-dot" title={`Conversation provider id: ${ticket.conversationProviderId}`}>i</span>
                   )}

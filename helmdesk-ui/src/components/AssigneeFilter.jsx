@@ -31,7 +31,7 @@ export default function AssigneeFilter({ value, onChange, isAdmin }) {
   return (
     <div className="assignee-filter" title="Filter tickets by who they're assigned to">
       <Icon name="users" size={14} />
-      <Select value={value || ''} onChange={onChange} options={options} placeholder="All agents" />
+      <Select value={value || ''} onChange={onChange} options={options} placeholder="All agents" searchable />
     </div>
   );
 }

@@ -68,8 +68,14 @@ export default function FormsManager({ brand, notify }) {
         return (
           <div key={form._id} className={`form-card${open ? ' open' : ''}`}>
             <div className="form-card-head">
-              <input className="form-name" value={form.name} onChange={(e) => setForms((l) => l.map((f) => f._id === form._id ? { ...f, name: e.target.value } : f))}
-                onBlur={(e) => saveForm(form, { name: e.target.value })} placeholder="Form name" />
+              <div className="form-name-wrap" title="Click to rename">
+                <input className="form-name" value={form.name} onChange={(e) => setForms((l) => l.map((f) => f._id === form._id ? { ...f, name: e.target.value } : f))}
+                  onBlur={(e) => saveForm(form, { name: e.target.value })} placeholder="Form name" />
+                <button type="button" className="form-name-edit" title="Rename form"
+                  onClick={(e) => e.currentTarget.parentNode.querySelector('.form-name')?.focus()}>
+                  <Icon name="pencil" size={14} />
+                </button>
+              </div>
               <label className="form-enable" title="Enabled">
                 <Switch checked={form.enabled !== false} onChange={(v) => saveForm(form, { enabled: v })} />
               </label>

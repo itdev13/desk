@@ -74,13 +74,17 @@ export default function Dashboard() {
 
           <div className="card">
             <div className="section-title" style={{ marginBottom: 14 }}><h2>Open by agent</h2></div>
-            {byAgent.length === 0 ? <div className="muted">No open tickets.</div> : byAgent.map((a) => (
-              <div key={a.agentId || 'none'} className="bar-row">
-                <span className="name">{a.name}</span>
-                <div className="bar-track"><div className="bar-fill" style={{ width: `${(a.open / maxAgent) * 100}%` }} /></div>
-                <span className="val">{a.open}</span>
-              </div>
-            ))}
+            {/* Cap the height + scroll so a long roster doesn't stretch the grid row and leave the
+                neighbouring chart floating in empty space. */}
+            <div style={{ maxHeight: 300, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {byAgent.length === 0 ? <div className="muted">No open tickets.</div> : byAgent.map((a) => (
+                <div key={a.agentId || 'none'} className="bar-row">
+                  <span className="name">{a.name}</span>
+                  <div className="bar-track"><div className="bar-fill" style={{ width: `${(a.open / maxAgent) * 100}%` }} /></div>
+                  <span className="val">{a.open}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
