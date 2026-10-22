@@ -79,6 +79,25 @@ router.get('/callback', async (req, res) => {
         { upsert: true, new: true, setDefaultsOnInsert: true }
       );
 
+      // The user just re-authorized with the current scopes, so advance their install record to the
+      // version that required the reconnect. Without this, the app-load check (resolveReconnect) would
+      // still see install.versionId ≠ the flagged version and re-raise the banner on the next load —
+      // before GHL's UPDATE webhook (which also bumps the version) has arrived. Stamping it here makes
+      // the clear stick immediately.
+      try {
+        const VersionConfig = require('../models/VersionConfig');
+        const flagged = await VersionConfig.findOne({ forceReconnect: true }).sort({ createdAt: -1 }).lean();
+        if (flagged?.versionId) {
+          const Installation = require('../models/Installation');
+          await Installation.updateOne(
+            { locationId: tokenData.locationId, status: 'active' },
+            { $set: { versionId: flagged.versionId, 'rawWebhookData.versionId': flagged.versionId } }
+          );
+        }
+      } catch (e) {
+        logger.warn('[oauth] version stamp on reconnect failed (non-blocking)', { message: e.message });
+      }
+
       // Capture installer email for support/win-back (non-blocking).
       if (tokenData.userId) {
         ghlService
