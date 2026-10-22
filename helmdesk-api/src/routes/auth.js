@@ -52,13 +52,15 @@ async function resolveReconnect(locationId, workspace, companyId) {
   }
   const installedVersion = install?.versionId || install?.rawWebhookData?.versionId || null;
 
-  // Is there a version that requires a reconnect which this install is NOT yet on? If the install is
-  // already on it (versionId matches), there's nothing to prompt. Most recent flagged row wins.
+  // Compare the install against the SINGLE latest flagged version (newest forceReconnect row). Prompt
+  // only when the install is NOT already on that latest version. We must not use a `versionId: { $ne }`
+  // match across all flagged rows: with two flagged versions A (older) then B (newer), an install
+  // sitting on B would still "not equal" A and wrongly re-prompt for the older A. Pinning to the single
+  // latest row means once they're on B, nothing re-triggers — and each new flagged release re-arms the
+  // prompt for everyone not yet on it.
   const VersionConfig = require('../models/VersionConfig');
-  const cfg = await VersionConfig.findOne({
-    forceReconnect: true,
-    versionId: { $ne: installedVersion }
-  }).sort({ createdAt: -1 }).lean();
+  const latest = await VersionConfig.findOne({ forceReconnect: true }).sort({ createdAt: -1 }).lean();
+  const cfg = latest && latest.versionId !== installedVersion ? latest : null;
 
   const needsReconnect = !!cfg;
   const needsReconnectReason = cfg ? (cfg.reason || 'New features need you to reconnect.') : null;

@@ -48,7 +48,15 @@ router.get('/callback', async (req, res) => {
     const tokenData = await ghlService.getAccessToken(code);
     const isLocationLevel = !!tokenData.locationId;
 
+    // Was this an UPGRADE re-auth rather than a first install? A workspace that already existed with
+    // needsReconnect set means the user was prompted to reconnect for a new version — so we show an
+    // "updated" confirmation instead of the generic "find us in the menu" install page.
+    let isUpgrade = false;
+
     if (isLocationLevel) {
+      const priorWs = await Workspace.findOne({ locationId: tokenData.locationId }).select('needsReconnect').lean();
+      isUpgrade = !!priorWs?.needsReconnect;
+
       await OAuthToken.findOneAndUpdate(
         { locationId: tokenData.locationId },
         {
@@ -121,7 +129,10 @@ router.get('/callback', async (req, res) => {
         .then((r) => logger.info('[oauth] initial agent sync', { locationId: tokenData.locationId, synced: r?.diagnostics?.saved }))
         .catch((e) => logger.warn('[oauth] initial agent sync failed (non-blocking)', { message: e.message }));
     } else {
-      // Company-level (agency) install.
+      // Company-level (agency) install. An upgrade re-auth if ANY workspace under this company was
+      // flagged needsReconnect (an existing agency reconnecting for a new version).
+      isUpgrade = !!(await Workspace.exists({ companyId: tokenData.companyId, needsReconnect: true }));
+
       await OAuthToken.findOneAndUpdate(
         { companyId: tokenData.companyId, tokenType: 'company' },
         {
@@ -155,14 +166,35 @@ router.get('/callback', async (req, res) => {
           companyId: tokenData.companyId, deleted: r.deletedCount
         }))
         .catch((e) => logger.warn('[oauth] could not clear stale location tokens (non-blocking)', { message: e.message }));
+
+      // The agency re-authorized for the whole company, so clear the reconnect prompt across all its
+      // sub-account workspaces and advance their install version to the flagged one (so the app-load
+      // check doesn't re-raise the banner before each location's UPDATE webhook arrives).
+      try {
+        await Workspace.updateMany(
+          { companyId: tokenData.companyId, needsReconnect: true },
+          { $set: { needsReconnect: false, needsReconnectReason: null } }
+        );
+        const VersionConfig = require('../models/VersionConfig');
+        const flagged = await VersionConfig.findOne({ forceReconnect: true }).sort({ createdAt: -1 }).lean();
+        if (flagged?.versionId) {
+          const Installation = require('../models/Installation');
+          await Installation.updateMany(
+            { companyId: tokenData.companyId, status: 'active' },
+            { $set: { versionId: flagged.versionId, 'rawWebhookData.versionId': flagged.versionId } }
+          );
+        }
+      } catch (e) {
+        logger.warn('[oauth] clear reconnect flags on company reconnect failed (non-blocking)', { message: e.message });
+      }
     }
 
-    res.send(renderSuccessPage());
+    res.send(renderSuccessPage({ upgrade: isUpgrade }));
   } catch (error) {
     const isCodeReused =
       error.response?.data?.error === 'invalid_grant' &&
       error.response?.data?.error_description?.includes('authorization code');
-    if (isCodeReused) return res.send(renderSuccessPage(true));
+    if (isCodeReused) return res.send(renderSuccessPage({ already: true }));
     logger.error('OAuth callback error', { message: error.message, data: error.response?.data });
     res.status(500).send(renderErrorPage(error.message));
   }
@@ -188,15 +220,22 @@ const LOGO_SVG = `<svg width="56" height="56" viewBox="0 0 112 112" aria-label="
   <circle cx="56" cy="55.5" r="5.2" fill="#0F1729"/><circle cx="56" cy="55.5" r="2.2" fill="#D4912F"/>
 </svg>`;
 
-function renderSuccessPage(already = false) {
-  return `<!DOCTYPE html><html><head><title>HelmDesk Connected</title>
+function renderSuccessPage({ already = false, upgrade = false } = {}) {
+  // Three states: first install, "already connected" (duplicate callback), and an UPGRADE re-auth
+  // (an existing install that reconnected to enable a new version's features).
+  const heading = upgrade ? 'HelmDesk updated' : `HelmDesk ${already ? 'already ' : ''}connected`;
+  const body = upgrade
+    ? `The new features are now enabled. Head back to <strong style="color:#E0A24A">HelmDesk</strong> in your sub-account menu to pick up where you left off.`
+    : `Open your sub-account and find <strong style="color:#E0A24A">HelmDesk</strong> in the left menu to finish setup.`;
+  const pill = upgrade ? '✓ Update complete — you can close this window.' : '✓ Installation complete — you can close this window.';
+  return `<!DOCTYPE html><html><head><title>HelmDesk ${upgrade ? 'Updated' : 'Connected'}</title>
   <style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#0F1729;color:#fff}
   .c{text-align:center;background:#131C2E;padding:48px;border-radius:16px;max-width:440px;border:1px solid #232E45;border-top:3px solid #E0A24A}
   h1{margin:0 0 8px;font-size:24px}p{color:#C3CCDB;line-height:1.6}
   .s{display:inline-block;margin-top:8px;padding:10px 16px;background:#E4F4EC;color:#14492f;border-radius:8px;font-size:14px;font-weight:600}</style></head>
-  <body><div class="c">${LOGO_SVG}<h1>HelmDesk ${already ? 'already ' : ''}connected</h1>
-  <p>Open your sub-account and find <strong style="color:#E0A24A">HelmDesk</strong> in the left menu to finish setup.</p>
-  <div class="s">✓ Installation complete — you can close this window.</div></div></body></html>`;
+  <body><div class="c">${LOGO_SVG}<h1>${heading}</h1>
+  <p>${body}</p>
+  <div class="s">${pill}</div></div></body></html>`;
 }
 
 function renderErrorPage(message) {
