@@ -90,6 +90,7 @@ class HelmDeskApp {
     this.app.use('/oauth', require('./routes/oauth'));
     this.app.use('/api/auth', require('./routes/auth'));
     this.app.use('/api/webhooks', require('./routes/webhooks'));
+    this.app.use('/api/revenue', require('./routes/revenue')); // vendor revenue summary (gated by REVENUE_API_KEY)
     this.app.use('/api/workflows', require('./routes/workflows')); // GHL custom workflow triggers (provider endpoints)
     this.app.use('/api/tickets', gate, require('./routes/tickets'));
     this.app.use('/api/settings', gate, require('./routes/settings'));
