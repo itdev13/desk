@@ -842,5 +842,6 @@ module.exports = {
   computeSla,
   shouldAccept,
   canReplyOnChannel,
-  bumpAgentLoad
+  bumpAgentLoad,
+  buildTriggerPayload
 };

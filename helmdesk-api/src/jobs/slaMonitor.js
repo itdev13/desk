@@ -46,22 +46,10 @@ async function detectBreaches() {
     // Workflow trigger: SLA breached — lets the agency build escalation automations (notify manager,
     // create an urgent task, etc.). Fire-and-forget so a slow trigger never stalls the monitor.
     const breachType = (!ticket.firstResponseAt && ticket.slaFirstResponseDueAt < now) ? 'first_response' : 'resolution';
-    fireTrigger(TRIGGERS.SLA_BREACHED, ticket.locationId, {
-      locationId: ticket.locationId,
-      ticketRef: ticket.ref,
-      ticketId: String(ticket._id),
-      subject: ticket.subject,
-      status: ticket.status,
-      priority: ticket.priority,
-      channel: ticket.channel,
-      contactId: ticket.contactId || null,
-      contactName: ticket.contactName || null,
-      contactEmail: ticket.contactEmail || null,
-      assigneeId: ticket.assigneeId || null,
-      assigneeName: ticket.assigneeName || null,
-      createdAt: ticket.createdAt,
-      breachType
-    }).catch((e) => logger.warn('SLA breach trigger fire failed', { ref: ticket.ref, message: e.message }));
+    // Use the shared payload builder so SLA breaches carry the SAME fields as every other trigger
+    // (source, formName, customFields, …), plus the breach-specific `breachType`.
+    fireTrigger(TRIGGERS.SLA_BREACHED, ticket.locationId, ticketService.buildTriggerPayload(ticket, { breachType }))
+      .catch((e) => logger.warn('SLA breach trigger fire failed', { ref: ticket.ref, message: e.message }));
   }
   return candidates.length;
 }
