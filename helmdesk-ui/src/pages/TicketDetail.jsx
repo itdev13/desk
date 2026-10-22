@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { api } from '../lib/api.js';
 import { ago, slaDisplay, STATUS_LABEL, PRIORITY_LABEL, labelChannel, isCustomProviderChannel, cleanMessageText } from '../lib/format.js';
 import { looksLikeHtml } from '../lib/sanitizeHtml.js';
@@ -18,6 +18,7 @@ export default function TicketDetail({ id, onBack, user, notify, onChange }) {
   const [mode, setMode] = useState('reply'); // reply | note
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
+  const threadEndRef = useRef(null);
 
   const load = useCallback(async () => {
     try {
@@ -34,6 +35,13 @@ export default function TicketDetail({ id, onBack, user, notify, onChange }) {
   useEffect(() => { api.assignableAgents().then((r) => setAgents(r.agents || [])).catch(() => {}); }, []);
   // If this ticket's channel can't be replied on (Call/portal), force the composer to Note mode.
   useEffect(() => { if (data && data.canReply === false) setMode('note'); }, [data]);
+  // Land at the newest message (bottom of the thread), like a normal inbox conversation, whenever the
+  // comment list changes (initial load + after sending). `auto` on first paint so it doesn't animate a
+  // long scroll on open.
+  const commentCount = data?.comments?.length || 0;
+  useEffect(() => {
+    threadEndRef.current?.scrollIntoView({ block: 'end' });
+  }, [commentCount]);
 
   if (loading) return <div className="empty" style={{ paddingTop: 120 }}><div className="spinner" style={{ margin: '0 auto' }} /></div>;
   if (!data) return null;
@@ -142,6 +150,8 @@ export default function TicketDetail({ id, onBack, user, notify, onChange }) {
                 </button>
               </div>
             </div>
+            {/* Scroll anchor: on load / after a send we bring this (newest message + composer) into view. */}
+            <div ref={threadEndRef} />
           </div>
 
           {/* Side panel */}
