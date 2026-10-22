@@ -36,13 +36,22 @@ const mongoose = require('mongoose');
   console.log(vcs.length ? JSON.stringify(vcs, null, 2) : '(none — banner can never fire until you seed one)');
 
   const installs = await Installation.find({ status: 'active' })
-    .select('locationId companyName versionId rawWebhookData.versionId')
+    .select('locationId companyName appId versionId rawWebhookData.versionId isWhitelabelCompany whitelabelDetails.domain')
     .lean();
-  console.log('\n=== Active installs (versionId) ===');
+  console.log('\n=== Active installs ===');
   for (const i of installs) {
     const v = i.versionId || i.rawWebhookData?.versionId || null;
     const flagged = vcs.find((c) => c.forceReconnect && c.versionId !== v);
-    console.log(`${i.locationId} (${i.companyName || '?'}): installedVersion=${v || 'NULL'} → banner=${flagged ? 'YES (' + flagged.versionId + ')' : 'no'}`);
+    // Mirror resolveReconnect's domain rule exactly.
+    const appId = i.appId || process.env.GHL_APP_ID || null;
+    const wlDomain = i.isWhitelabelCompany ? (i.whitelabelDetails?.domain || '').trim() : '';
+    const host = (wlDomain || 'app.gohighlevel.com').replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+    const url = appId ? `https://${host}/v2/location/${i.locationId}/integration/${appId}` : '(no appId!)';
+    console.log(`\n${i.locationId} (${i.companyName || '?'})`);
+    console.log(`  installedVersion : ${v || 'NULL'}`);
+    console.log(`  whitelabel       : ${i.isWhitelabelCompany ? 'yes' : 'no'}  domain=${JSON.stringify(i.whitelabelDetails?.domain)}`);
+    console.log(`  banner           : ${flagged ? 'YES (flagged ' + flagged.versionId + ')' : 'no'}`);
+    console.log(`  reconnectUrl     : ${url}`);
   }
 
   await mongoose.disconnect();

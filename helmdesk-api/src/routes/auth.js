@@ -43,7 +43,7 @@ function decryptSSO(encrypted) {
 async function resolveReconnect(locationId, workspace) {
   const Installation = require('../models/Installation');
   const install = await Installation.findOne({ locationId, status: 'active' })
-    .select('versionId rawWebhookData.versionId')
+    .select('versionId rawWebhookData.versionId appId isWhitelabelCompany whitelabelDetails.domain')
     .sort({ installedAt: -1 })
     .lean();
   const installedVersion = install?.versionId || install?.rawWebhookData?.versionId || null;
@@ -59,12 +59,26 @@ async function resolveReconnect(locationId, workspace) {
   const needsReconnect = !!cfg;
   const needsReconnectReason = cfg ? (cfg.reason || 'New features need you to reconnect.') : null;
 
+  // The deep-link the Update button sends them to: the app's integration page in their CRM. Shape:
+  //   https://{domain}/v2/location/{locationId}/integration/{appId}
+  // Domain rule: if this is a white-label company AND it has its own app domain (e.g. app.adminify.ai),
+  // open the link there so it stays inside their branding; otherwise fall back to app.gohighlevel.com.
+  let reconnectUrl = null;
+  if (needsReconnect) {
+    const appId = install?.appId || process.env.GHL_APP_ID || null;
+    const wlDomain = install?.isWhitelabelCompany ? (install?.whitelabelDetails?.domain || '').trim() : '';
+    const rawDomain = wlDomain || 'app.gohighlevel.com';
+    const host = String(rawDomain).replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+    if (appId) reconnectUrl = `https://${host}/v2/location/${locationId}/integration/${appId}`;
+  }
+
   logger.info('[auth/verify] reconnect check', {
     locationId,
     installedVersion,
     installFound: !!install,
     matchedConfigVersion: cfg?.versionId || null,
-    needsReconnect
+    needsReconnect,
+    reconnectUrl
   });
 
   // Keep the workspace flag consistent with the computed state (only write when it changed, so we
@@ -79,7 +93,7 @@ async function resolveReconnect(locationId, workspace) {
     );
   }
 
-  return { needsReconnect, needsReconnectReason };
+  return { needsReconnect, needsReconnectReason, reconnectUrl };
 }
 
 /**
@@ -186,10 +200,10 @@ router.post('/verify', async (req, res) => {
 
     // Reconcile the reconnect prompt from the installed version vs the version we're serving. Only
     // admins can re-authorize, so there's no point computing/showing it for agents.
-    const { needsReconnect, needsReconnectReason } =
+    const { needsReconnect, needsReconnectReason, reconnectUrl } =
       role === 'admin'
         ? await resolveReconnect(locationId, workspace)
-        : { needsReconnect: false, needsReconnectReason: null };
+        : { needsReconnect: false, needsReconnectReason: null, reconnectUrl: null };
 
     const sessionToken = signSession({ locationId, companyId, userId, name, email, role });
     const analyticsService = require('../services/analyticsService');
@@ -202,6 +216,7 @@ router.post('/verify', async (req, res) => {
         setupComplete: workspace?.setupComplete || false,
         needsReconnect,
         needsReconnectReason,
+        reconnectUrl,
         brand: workspace?.brand || { name: 'HelmDesk', primaryColor: '#E0A24A' }
       },
       user: { userId, name, email, role, hasAccess },

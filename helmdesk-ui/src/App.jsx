@@ -16,6 +16,7 @@ import Team from './pages/Team.jsx';
 import Support from './pages/Support.jsx';
 import Plan from './pages/Plan.jsx';
 import EnrollGate from './pages/EnrollGate.jsx';
+import ReconnectModal from './components/ReconnectModal.jsx';
 
 /**
  * App root. Resolves the GHL session (SSO blob or ?locationId dev fallback), then either runs the
@@ -33,6 +34,9 @@ export default function App() {
   const [counts, setCounts] = useState({});
   const [toast, setToast] = useState({ message: '', error: false });
   const [errorMsg, setErrorMsg] = useState('');
+  // Session-only dismissal of the reconnect prompt. useState (not storage) → it resets on refresh, so
+  // "Not now" lets them keep working but the prompt returns the next time they open the app.
+  const [reconnectDismissed, setReconnectDismissed] = useState(false);
 
   const notify = useCallback((message, error = false) => setToast({ message, error }), []);
 
@@ -139,15 +143,6 @@ export default function App() {
         isAdmin={user?.role === 'admin'}
         onNav={(v, qv) => { setOpenTicketId(null); setView(v); if (qv) setQueueView(qv); }}
       />
-      {/* Reconnect banner — shown to admins after an update added new permissions (GHL doesn't grant
-          new scopes to an existing token, so the admin must re-authorize). */}
-      {workspace?.needsReconnect && user?.role === 'admin' && (
-        <div className="reconnect-banner">
-          <span className="rc-ico">⚡</span>
-          <span className="rc-text">{workspace.needsReconnectReason || 'New features need you to reconnect HelmDesk.'}</span>
-          <a className="rc-btn" href={api.authorizeUrl()} target="_blank" rel="noopener">Reconnect now</a>
-        </div>
-      )}
       <div className="main">
         {view === 'inbox' && !openTicketId ? (
           <Inbox user={user} notify={notify} onChange={refreshCounts} />
@@ -173,6 +168,18 @@ export default function App() {
         )}
       </div>
       <Toast message={toast.message} error={toast.error} onDone={() => setToast({ message: '', error: false })} />
+
+      {/* Upgrade/reconnect prompt — a modal OVERLAY over the working app (admins only). "Not now"
+          dismisses for this session; it returns on the next load because reconnectDismissed is state,
+          not persisted. */}
+      {workspace?.needsReconnect && user?.role === 'admin' && !reconnectDismissed && (
+        <ReconnectModal
+          brand={workspace.brand}
+          reason={workspace.needsReconnectReason}
+          reconnectUrl={workspace.reconnectUrl}
+          onClose={() => setReconnectDismissed(true)}
+        />
+      )}
     </div>
   );
 }
