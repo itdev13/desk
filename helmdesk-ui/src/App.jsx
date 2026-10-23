@@ -200,9 +200,11 @@ function TopNav({ workspace, sub, view, queueView, counts, isAdmin, onNav }) {
   return (
     <nav className="topnav">
       <div className="topnav-brand">
-        {(!brand.name || brand.name === 'HelmDesk')
-          ? <LogoMark size={30} />
-          : <div className="ws-badge" style={brand.primaryColor ? { background: brand.primaryColor, color: contrastText(brand.primaryColor) } : undefined}>{brand.name[0].toUpperCase()}</div>}
+        {brand.logoUrl
+          ? <img className="ws-logo" src={brand.logoUrl} alt={brand.name || 'Workspace'} />
+          : (!brand.name || brand.name === 'HelmDesk')
+            ? <LogoMark size={30} />
+            : <div className="ws-badge" style={brand.primaryColor ? { background: brand.primaryColor, color: contrastText(brand.primaryColor) } : undefined}>{brand.name[0].toUpperCase()}</div>}
         <div className="ws-name">
           {brand.name || 'HelmDesk'}
           <small>{workspace?.locationName || 'Workspace'}</small>

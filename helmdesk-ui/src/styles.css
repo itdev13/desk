@@ -65,6 +65,12 @@ button { font-family: inherit; cursor: pointer; }
   width: 30px; height: 30px; border-radius: 50%; flex: none; display: grid; place-items: center;
   font-weight: 800; font-size: 15px; background: var(--accent); color: var(--ink);
 }
+/* Workspace logo in the top nav (shown when the agency set a brand logo URL). Circular to match the
+   letter badge it replaces; object-fit so any aspect ratio looks right. */
+.ws-logo {
+  width: 30px; height: 30px; border-radius: 50%; flex: none;
+  object-fit: cover; background: var(--panel); border: 1px solid var(--line);
+}
 .topnav-brand .ws-name { font-size: 14px; color: var(--ink); font-weight: 800; line-height: 1.1; }
 .topnav-brand .ws-name small { display: block; color: var(--slate); font-weight: 500; font-size: 11px; }
 
