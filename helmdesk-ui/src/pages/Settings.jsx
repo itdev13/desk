@@ -166,7 +166,7 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
   const tabs = [
     { key: 'channels', label: 'Channels & filters', icon: 'filter' },
     { key: 'assignment', label: 'Assignment & SLA', icon: 'route' },
-    { key: 'brand', label: 'Branding & portal', icon: 'palette' }
+    { key: 'brand', label: 'Branding & forms', icon: 'palette' }
   ];
 
   return (
@@ -399,7 +399,7 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
             {!whiteLabel && (
               <div className="plan-lock">
                 <Icon name="palette" size={16} />
-                <span>White-label branding & the client portal are an <b>Agency plan</b> feature. <button type="button" className="link-btn" onClick={() => onNavPlan?.()}>Switch plan →</button></span>
+                <span>White-label branding & support forms are an <b>Agency plan</b> feature. <button type="button" className="link-btn" onClick={() => onNavPlan?.()}>Switch plan →</button></span>
               </div>
             )}
             <fieldset disabled={!whiteLabel} style={{ border: 'none', padding: 0, margin: 0, opacity: whiteLabel ? 1 : 0.55 }}>
@@ -424,7 +424,7 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
               <span className="hint">Shown on your client intake forms in place of the letter badge. Paste an <b>https</b> image link (PNG/SVG/JPG).</span>
             </div>
             <div className="toggle-row" style={{ marginTop: 14 }}>
-              <div><div className="t-label">Client portal intake</div><div className="t-desc">Let customers submit tickets from a branded web form.</div></div>
+              <div><div className="t-label">Support forms</div><div className="t-desc">Let customers submit tickets from a branded web form (shareable link or embedded widget).</div></div>
               <Switch checked={ws.portalEnabled} onChange={(v) => set({ portalEnabled: v })} />
             </div>
             {ws.portalEnabled && (
@@ -463,9 +463,9 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
             items={[
               { term: 'Brand name', desc: 'Replaces “HelmDesk” across the app your clients see — the top-left name and page titles.' },
               { term: 'Primary color', desc: 'The accent color used for buttons and highlights, so the app matches your agency’s branding.' },
-              { term: 'Client portal intake', desc: 'Turns on a public, branded web form where customers can submit tickets directly — no channel message needed.' },
-              { term: 'Public intake URL', desc: 'The shareable link to that form. Share it or embed it on your client’s website.' },
-              { term: 'Availability', desc: 'Branding and the portal are an Agency-plan feature. On lower plans these controls are locked.' }
+              { term: 'Support forms', desc: 'Turns on public, branded web forms where customers can submit tickets directly — no channel message needed.' },
+              { term: 'Form link & embed', desc: 'Each form has a shareable link, plus embed code for a floating widget or an inline form on your website.' },
+              { term: 'Availability', desc: 'Branding and forms are an Agency-plan feature. On lower plans these controls are locked.' }
             ]}
           />
         )}
