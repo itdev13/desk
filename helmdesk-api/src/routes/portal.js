@@ -437,12 +437,32 @@ fRouter.get('/widget.js', (req, res) => {
   iframe.style.cssText = 'width:100%;height:100%;border:0;display:block';
   panel.appendChild(iframe);
 
-  function toggle(){
-    open = !open;
+  // A floating ✕ in the panel's top corner — a clear, conventional way to close.
+  var x = document.createElement('button');
+  x.type = 'button';
+  x.setAttribute('aria-label', 'Close');
+  x.style.cssText = 'position:absolute;top:10px;' + side + ':10px;z-index:1;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border:none;border-radius:50%;background:rgba(15,23,41,.55);color:#fff;cursor:pointer;backdrop-filter:blur(2px)';
+  x.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+  panel.appendChild(x);
+
+  function setOpen(v){
+    open = v;
     panel.style.display = open ? 'block' : 'none';
     btn.innerHTML = open ? (closeIco + labelSpan) : (chat + labelSpan);
   }
+  function toggle(){ setOpen(!open); }
   btn.onclick = toggle;
+  x.onclick = function(e){ e.stopPropagation(); setOpen(false); };
+
+  // Click anywhere outside the panel/launcher closes it. We can't see clicks INSIDE the iframe
+  // (cross-origin), so a click on the form itself never bubbles here — only clicks on the host page do.
+  document.addEventListener('click', function(e){
+    if (!open) return;
+    if (panel.contains(e.target) || btn.contains(e.target)) return;
+    setOpen(false);
+  });
+  // Esc closes too.
+  document.addEventListener('keydown', function(e){ if (open && e.key === 'Escape') setOpen(false); });
 
   // Mount once the <body> exists (the script may be placed in <head>). Guard against double-inject.
   function mount(){
