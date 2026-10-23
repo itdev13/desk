@@ -29,8 +29,12 @@ export default function AssigneeFilter({ value, onChange, isAdmin }) {
   ];
 
   return (
-    <div className="assignee-filter" title="Filter tickets by who they're assigned to">
-      <Icon name="users" size={14} />
+    <div className="assignee-filter">
+      {/* title lives on the icon, not the wrapper — a wrapper-level title shows a native tooltip over
+          the open dropdown's options. */}
+      <span title="Filter tickets by who they're assigned to" style={{ display: 'inline-flex' }}>
+        <Icon name="users" size={14} />
+      </span>
       <Select value={value || ''} onChange={onChange} options={options} placeholder="All agents" searchable />
     </div>
   );
