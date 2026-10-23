@@ -62,6 +62,7 @@ export default function Dashboard() {
             sub={kpis.inSlaPct >= 90 ? 'on target' : 'below target'} subTone={kpis.inSlaPct >= 90 ? 'good' : 'alert'} />
         </div>
 
+        {/* Row 1: the trend chart beside the status donut — the two "at a glance" visuals up top. */}
         <div className="dash-grid">
           <div className="card">
             <div className="section-title" style={{ marginBottom: 14 }}><h2>Created vs resolved</h2><span className="muted">14 days</span></div>
@@ -72,10 +73,25 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* Donut: ticket status breakdown */}
+          <div className="card">
+            <div className="section-title" style={{ marginBottom: 14 }}><h2>Ticket status</h2><span className="muted">breakdown</span></div>
+            <StatusDonut statusCounts={statusCounts} />
+          </div>
+        </div>
+
+        {/* Row 2: the status overview bars beside tickets-by-channel further down. */}
+        <div className="dash-grid">
+          {/* Status overview: each status with a count + mini bar (inspired by the "Board Overview") */}
+          <div className="card">
+            <div className="section-title" style={{ marginBottom: 14 }}><h2>Status overview</h2></div>
+            <StatusOverview statusCounts={statusCounts} />
+          </div>
+
+          {/* Open by agent — moved to the bottom row per request. */}
           <div className="card">
             <div className="section-title" style={{ marginBottom: 14 }}><h2>Open by agent</h2></div>
-            {/* Cap the height + scroll so a long roster doesn't stretch the grid row and leave the
-                neighbouring chart floating in empty space. */}
+            {/* Cap the height + scroll so a long roster doesn't stretch the grid row. */}
             <div style={{ maxHeight: 300, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
               {byAgent.length === 0 ? <div className="muted">No open tickets.</div> : byAgent.map((a) => (
                 <div key={a.agentId || 'none'} className="bar-row">
@@ -85,20 +101,6 @@ export default function Dashboard() {
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-
-        <div className="dash-grid">
-          {/* Donut: ticket status breakdown */}
-          <div className="card">
-            <div className="section-title" style={{ marginBottom: 14 }}><h2>Ticket status</h2><span className="muted">breakdown</span></div>
-            <StatusDonut statusCounts={statusCounts} />
-          </div>
-
-          {/* Status overview: each status with a count + mini bar (inspired by the "Board Overview") */}
-          <div className="card">
-            <div className="section-title" style={{ marginBottom: 14 }}><h2>Status overview</h2></div>
-            <StatusOverview statusCounts={statusCounts} />
           </div>
         </div>
 

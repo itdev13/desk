@@ -1079,18 +1079,16 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .form-card { border: 1px solid var(--line); border-radius: 12px; background: var(--paper); overflow: hidden; }
 .form-card.open { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent); }
 .form-card-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
-/* Wrapper sizes to its content (name + pencil) and sits on the left, so the pencil hugs the name text
-   instead of being pushed to the far right of the row. margin-right:auto keeps the other controls
-   (enable toggle, edit, delete) grouped on the right. */
-.form-name-wrap { flex: 0 1 auto; min-width: 0; max-width: 60%; margin-right: auto; display: inline-flex; align-items: center; gap: 2px; border: 1px solid transparent; border-radius: 7px; }
-.form-name-wrap:hover { border-color: var(--line); background: var(--panel); }
-.form-name-wrap:focus-within { border-color: var(--accent); background: var(--panel); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent); }
-/* The input's width comes from its `size` attribute (set in JSX to the name length), so it hugs the
-   text and the pencil sits right after — it no longer stretches to fill the row. */
-.form-name { flex: 0 1 auto; border: none; background: transparent; font-size: 14px; font-weight: 650; color: var(--ink); padding: 6px 8px; border-radius: 7px; }
-.form-name:focus { outline: none; }
-.form-name-edit { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: none; background: transparent; color: var(--slate); border-radius: 6px; cursor: pointer; transition: color .15s ease, background .15s ease; }
-.form-name-edit:hover { color: var(--accent-dk); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+/* Name + pencil read as one clean editable field on the left. One border, shown only on hover/focus;
+   no nested highlight boxes. margin-right:auto keeps the toggle/edit/delete grouped on the right. */
+.form-name-wrap { flex: 1 1 auto; min-width: 0; max-width: 360px; margin-right: auto; display: inline-flex; align-items: center; border: 1px solid transparent; border-radius: 8px; transition: border-color .12s, box-shadow .12s; }
+.form-name-wrap:hover { border-color: var(--line); }
+.form-name-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent); }
+.form-name { flex: 1 1 auto; min-width: 0; border: none; background: transparent; font-size: 14px; font-weight: 650; color: var(--ink); padding: 6px 8px; border-radius: 8px; outline: none; }
+/* Pencil is a quiet hint, no box of its own; it brightens on wrapper hover. */
+.form-name-edit { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; margin-right: 4px; border: none; background: transparent; color: var(--slate-2); border-radius: 6px; cursor: pointer; opacity: .5; transition: opacity .12s, color .12s; }
+.form-name-wrap:hover .form-name-edit, .form-name-wrap:focus-within .form-name-edit { opacity: 1; }
+.form-name-edit:hover { color: var(--accent-dk); }
 .form-enable { display: flex; align-items: center; flex: none; }
 .form-edit-btn { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--accent-dk); background: none; border: none; cursor: pointer; flex: none; }
 .form-del-btn { width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid var(--line); background: var(--panel); border-radius: 7px; cursor: pointer; color: var(--slate); flex: none; }
