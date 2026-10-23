@@ -192,17 +192,16 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
                 <div className="t-desc">
                   When on, incoming customer messages on your support channels become tickets automatically.
                   Off by default — portal forms and tickets you create yourself always work either way.
-                  {(ws.createKeywords?.length > 0) && <><br /><strong>Forced on</strong> because you have “only create if contains” keywords set below.</>}
+                  When off, nothing below applies and no inbound message becomes a ticket.
                 </div>
               </div>
               <Switch
-                checked={ws.autoCreateInbound === true || (ws.createKeywords?.length > 0)}
-                disabled={ws.createKeywords?.length > 0}
+                checked={ws.autoCreateInbound === true}
                 onChange={(v) => set({ autoCreateInbound: v })}
               />
             </div>
           </div>
-          {(() => { const autoOn = ws.autoCreateInbound === true || (ws.createKeywords?.length > 0); return (
+          {(() => { const autoOn = ws.autoCreateInbound === true; return (
           <fieldset className="card settings-fieldset" disabled={!autoOn} style={{ opacity: autoOn ? 1 : 0.55 }}>
             {!autoOn && <div className="disabled-note">Turn on <strong>Automatic ticket creation</strong> above to use these. Your settings are saved and will apply when you switch it on.</div>}
             <div className="section-head-row">

@@ -191,12 +191,11 @@ function applyRules(workspace, { channel, body }) {
 function shouldAccept(workspace, { channel, body, isAutomated }) {
   if (!workspace.setupComplete) return { accept: false, reason: 'setup_incomplete' };
 
-  // 0. Master switch: INBOUND auto-creation must be enabled. Default OFF, but treated as ON when the
-  //    agency has configured a createKeywords whitelist (they've opted into capturing matching
-  //    messages). This gates ONLY inbound messages — portal + manual tickets bypass shouldAccept.
-  const hasCreateKeywordsCfg = Array.isArray(workspace.createKeywords) && workspace.createKeywords.length > 0;
-  const autoCreateOn = workspace.autoCreateInbound === true || hasCreateKeywordsCfg;
-  if (!autoCreateOn) {
+  // 0. Master switch: INBOUND auto-creation must be explicitly ON (default OFF). This is authoritative
+  //    — when off, NO inbound message becomes a ticket regardless of channels/keywords. The
+  //    createKeywords whitelist is a *filter* applied only while this is on. Portal + manual tickets
+  //    bypass shouldAccept entirely, so they always work either way.
+  if (workspace.autoCreateInbound !== true) {
     return { accept: false, reason: 'auto_create_off' };
   }
 
@@ -215,7 +214,11 @@ function shouldAccept(workspace, { channel, body, isAutomated }) {
     return { accept: false, reason: 'channel_not_support' };
   }
 
-  const text = (body || '').toLowerCase();
+  // Keyword matching runs on the customer's ACTUAL typed text (quoted thread stripped), so a reply
+  // that merely quotes an earlier message containing a keyword doesn't falsely match. If stripping
+  // leaves nothing, the message was pure-quote (no new customer text) → match against empty, which
+  // correctly skips it under a create-keyword whitelist.
+  const text = stripQuotedReply(body).toLowerCase();
 
   // 2. Skip keywords WIN over everything. A message containing one never becomes a ticket
   //    (e.g. "unsubscribe", "stop") — this is the blacklist.
@@ -255,6 +258,36 @@ function matchesKeyword(text, keywords) {
     const k = String(kw).trim().toLowerCase();
     return k && text.includes(k);
   });
+}
+
+/**
+ * Strip the quoted/original portion from an email reply, so keyword matching sees only what the
+ * customer actually TYPED — not the whole thread they quoted. Without this, a bare "Sent from my iPad"
+ * reply that quotes our original (which may contain "refund", "call me back", …) wrongly matches a
+ * create-keyword whitelist and makes a ticket. We cut at the first common quote marker.
+ *
+ * Only used for FILTER decisions; the full body is still stored on the ticket so the agent sees it.
+ */
+function stripQuotedReply(body) {
+  if (!body) return '';
+  // Flatten HTML to text-ish first (quote markers live in the text, not the tags).
+  let t = String(body)
+    .replace(/<blockquote[\s\S]*$/i, '')          // everything from the first <blockquote> on is quoted
+    .replace(/<[^>]+>/g, ' ')                       // drop remaining tags
+    .replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>');
+  // Cut at the first quote header / reply boundary (case-insensitive, multi-line).
+  const markers = [
+    /^\s*On .+ wrote:/im,                            // "On Oct 22, 2026, at 3:11 PM, Diab Sara <…> wrote:"
+    /^\s*-{2,}\s*Original Message\s*-{2,}/im,         // "----- Original Message -----"
+    /^\s*From:\s.+$/im,                              // forwarded "From: …" header block
+    /^\s*>{1,}/m,                                     // classic ">" quoted lines
+    /^\s*_{5,}\s*$/m                                 // the "_____" divider some clients insert
+  ];
+  for (const re of markers) {
+    const m = t.match(re);
+    if (m && m.index != null) { t = t.slice(0, m.index); break; }
+  }
+  return t.trim();
 }
 
 // Default reopen window (days) if a workspace hasn't set one. Default 0 = always create a new
