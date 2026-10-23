@@ -55,6 +55,8 @@ export const api = {
   reply: (id, body) => request(`/api/tickets/${id}/reply`, { method: 'POST', body }),
   note: (id, body) => request(`/api/tickets/${id}/note`, { method: 'POST', body }),
   bulkDeleteTickets: (ids) => request('/api/tickets/bulk-delete', { method: 'POST', body: { ids } }),
+  bulkArchiveTickets: (ids) => request('/api/tickets/bulk-archive', { method: 'POST', body: { ids } }),
+  bulkUnarchiveTickets: (ids, status) => request('/api/tickets/bulk-unarchive', { method: 'POST', body: { ids, status } }),
   // Multiple intake forms (admin)
   forms: () => request('/api/forms'),
   createForm: (body) => request('/api/forms', { method: 'POST', body }),

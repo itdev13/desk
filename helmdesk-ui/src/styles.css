@@ -743,6 +743,31 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .msg.system { background: var(--paper); border-color: var(--line); border-left-color: var(--slate-2); }
 .msg.system .meta { color: var(--slate-2); }
 .msg.note .meta { color: var(--accent-dk); }
+
+/* ── Email message card (ported from PipelinePulse EmailBody) ─────────────────────
+   A full-width card: a clickable header (avatar, sender, preview line, time, chevron) and, when
+   expanded, a From/To block + the framed email body. */
+.email-card { width: 100%; align-self: stretch; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: hidden; }
+.email-card.open { box-shadow: var(--shadow); }
+.email-card-head {
+  display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
+  padding: 11px 14px; background: none; border: none; cursor: pointer;
+}
+.email-card-head:hover { background: var(--paper); }
+.email-card-id { flex: 1; min-width: 0; }
+.email-card-name { display: flex; align-items: center; gap: 7px; font-weight: 700; font-size: 13.5px; color: var(--ink); }
+.email-dir { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; }
+.email-dir.in { background: #e9f1fb; color: #3b6fb0; }
+.email-dir.out { background: #eaf6ee; color: #2f9e6b; }
+.email-card-sub { font-size: 12.5px; color: var(--slate); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.email-card-time { flex: none; font-size: 11.5px; color: var(--slate-2); font-family: var(--mono); }
+.email-card-chev { flex: none; color: var(--slate); display: inline-flex; }
+
+.email-card-body { padding: 0 16px 16px; border-top: 1px solid var(--line-soft); }
+.email-addr { padding: 12px 0; margin-bottom: 4px; border-bottom: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--ink-2); }
+.email-addr-k { display: inline-block; width: 44px; color: var(--slate); font-weight: 600; }
+.email-addr-v { color: var(--ink-2); }
+.email-nobody { font-size: 13px; color: var(--slate); font-style: italic; padding: 12px 0; margin: 0; }
 .composer { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 14px; box-shadow: var(--shadow); }
 .composer-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
 .composer-tab { padding: 6px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 600; background: var(--paper); border: 1px solid var(--line); color: var(--slate); }
@@ -947,6 +972,18 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   border-radius: 7px; padding: 5px 11px; cursor: pointer;
 }
 .inbox-bulk-del:hover { background: var(--crit); color: #fff; }
+.inbox-bulk-archive {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700;
+  color: var(--ink-2); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 7px; padding: 5px 11px; cursor: pointer; transition: background .15s, border-color .15s;
+}
+.inbox-bulk-archive:hover:not(:disabled) { background: var(--paper); border-color: var(--slate-2); }
+.inbox-bulk-archive:disabled { opacity: .6; cursor: default; }
+/* The bulkbar keeps "N selected" on the left and the action buttons grouped on the right. */
+.inbox-bulkbar > :first-child { margin-right: auto; }
+.inbox-bulk-restore { display: inline-flex; align-items: center; gap: 8px; }
+.inbox-bulk-restore-lbl { font-size: 12.5px; color: var(--slate); }
+.inbox-bulk-restore .hd-select { min-width: 130px; }
 .modal-actions { display: flex; gap: 10px; }
 .modal-actions .btn { flex: 1; }
 .btn-danger { background: var(--crit); border-color: var(--crit); color: #fff; }
@@ -1031,6 +1068,22 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .form-url-row { display: flex; gap: 8px; padding: 0 14px 12px; }
 .form-url-row input { flex: 1; min-width: 0; font-size: 12.5px; font-family: var(--mono); background: var(--panel); border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; color: var(--ink-2); }
 .form-filter-hint { padding: 0 14px 12px; font-size: 12px; line-height: 1.5; color: var(--slate); }
+
+/* Embed-code modal */
+.embed-modal { max-width: 560px; width: 100%; text-align: left; }
+.embed-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.embed-sub { margin: 4px 0 0; font-size: 13px; color: var(--slate); }
+.embed-x { flex: none; border: none; background: none; color: var(--slate); cursor: pointer; padding: 4px; border-radius: 6px; }
+.embed-x:hover { background: var(--paper); color: var(--ink); }
+.embed-tabs { display: inline-flex; gap: 4px; padding: 3px; background: var(--paper); border: 1px solid var(--line); border-radius: 999px; margin-bottom: 12px; }
+.embed-tab { border: none; background: none; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--slate); cursor: pointer; }
+.embed-tab.active { background: var(--accent); color: var(--on-accent, #fff); }
+.embed-desc { margin: 0 0 10px; font-size: 12.5px; color: var(--slate); line-height: 1.5; }
+.embed-code {
+  width: 100%; min-height: 120px; resize: vertical; font-family: var(--mono); font-size: 12px; line-height: 1.6;
+  padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink-2);
+}
+.embed-foot { display: flex; justify-content: flex-end; margin-top: 14px; }
 .form-filter-hint code { font-family: var(--mono); font-size: 11.5px; background: var(--panel); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; color: var(--ink-2); }
 .form-fields { padding: 4px 14px 16px; border-top: 1px solid var(--line-soft); }
 

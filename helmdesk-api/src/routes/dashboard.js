@@ -19,10 +19,11 @@ router.get('/', async (req, res) => {
     const since30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const OPEN = Ticket.OPEN_STATUSES;
 
-    // Non-admins see metrics for THEIR tickets only; admins see the whole workspace. Exclude deleted.
+    // Non-admins see metrics for THEIR tickets only; admins see the whole workspace. Exclude deleted
+    // AND archived (archived tickets are off the active books — they shouldn't count in KPIs/charts).
     const scope = req.auth.role !== 'admin'
-      ? { locationId, assigneeId: req.auth.userId, deleted: { $ne: true } }
-      : { locationId, deleted: { $ne: true } };
+      ? { locationId, assigneeId: req.auth.userId, deleted: { $ne: true }, archived: { $ne: true } }
+      : { locationId, deleted: { $ne: true }, archived: { $ne: true } };
 
     const [byStatus, openTotal, overdue, unassigned, mine, byAgent, slaAgg, resolveAgg, byChannel] = await Promise.all([
       // Counts by status.

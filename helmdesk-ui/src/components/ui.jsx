@@ -81,7 +81,15 @@ export function Icon({ name, size = 17 }) {
     'panel-right': <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M15 4v16" /></>,
     grip: <><circle cx="9" cy="6" r="1" /><circle cx="15" cy="6" r="1" /><circle cx="9" cy="12" r="1" /><circle cx="15" cy="12" r="1" /><circle cx="9" cy="18" r="1" /><circle cx="15" cy="18" r="1" /></>,
     eye: <><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></>,
-    pencil: <><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></>
+    pencil: <><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></>,
+    archive: <><rect x="3" y="4" width="18" height="4" rx="1" /><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8" /><path d="M10 12h4" /></>,
+    'chevron-down': <><path d="m6 9 6 6 6-6" /></>,
+    'chevron-up': <><path d="m18 15-6-6-6 6" /></>,
+    'arrow-down-left': <><path d="M17 7 7 17" /><path d="M17 17H7V7" /></>,
+    'arrow-up-right': <><path d="M7 17 17 7" /><path d="M7 7h10v10" /></>,
+    code: <><path d="m16 18 6-6-6-6" /><path d="m8 6-6 6 6 6" /></>,
+    x: <><path d="M18 6 6 18M6 6l12 12" /></>,
+    copy: <><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></>
   };
   return <svg {...p} className="ico">{paths[name] || null}</svg>;
 }

@@ -46,6 +46,14 @@ router.get('/', async (req, res) => {
 
     const query = { locationId, deleted: { $ne: true } };
 
+    // Archived is a shelf parallel to status: the 'archived' view shows ONLY archived tickets; every
+    // other view/tab excludes them. So archived tickets never appear under All/Open/etc.
+    if (view === 'archived') {
+      query.archived = true;
+    } else {
+      query.archived = { $ne: true };
+    }
+
     // 'mine' and 'unassigned' are scoped to OPEN tickets so the lists match the KPI counts
     // (a resolved/closed ticket isn't "waiting on me" or "needs picking up").
     if (view === 'mine') {
@@ -108,7 +116,7 @@ router.get('/board', async (req, res) => {
     const result = {};
     await Promise.all(
       columns.map(async (status) => {
-        result[status] = await Ticket.find({ locationId, status, deleted: { $ne: true }, ...scope })
+        result[status] = await Ticket.find({ locationId, status, deleted: { $ne: true }, archived: { $ne: true }, ...scope })
           .sort({ lastActivityAt: -1 })
           .limit(50)
           .lean();
@@ -268,6 +276,83 @@ router.post('/bulk-delete', requireAdmin, async (req, res) => {
   } catch (err) {
     logger.error('bulk-delete failed', { message: err.message });
     res.status(500).json({ success: false, error: 'Could not delete tickets.' });
+  }
+});
+
+/**
+ * POST /api/tickets/bulk-archive  (ADMIN only)
+ * Archive one or more tickets: body { ids: [...] }. Archived tickets keep their status but are hidden
+ * from every tab except Archived. An archived OPEN ticket frees its assignee's slot (it's off the
+ * active board). Admin-only, matching bulk-delete.
+ */
+router.post('/bulk-archive', requireAdmin, async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body.ids) ? req.body.ids.filter(Boolean).slice(0, 500) : [];
+    if (!ids.length) return res.status(400).json({ success: false, error: 'No tickets selected.' });
+
+    const tickets = await Ticket.find({ _id: { $in: ids }, locationId: req.auth.locationId, deleted: { $ne: true }, archived: { $ne: true } })
+      .select('_id assigneeId status').lean();
+    if (!tickets.length) return res.json({ success: true, archived: 0 });
+
+    await Ticket.updateMany(
+      { _id: { $in: tickets.map((t) => t._id) }, locationId: req.auth.locationId },
+      { $set: { archived: true, archivedAt: new Date(), archivedBy: req.auth.userId || null } }
+    );
+
+    // An archived OPEN ticket is off the active board → free the assignee's slot.
+    const OPEN = Ticket.OPEN_STATUSES;
+    for (const t of tickets) {
+      if (t.assigneeId && OPEN.includes(t.status)) await ticketService.bumpAgentLoad(req.auth.locationId, t.assigneeId, -1);
+    }
+
+    logger.info('📦 Tickets archived', { locationId: req.auth.locationId, count: tickets.length, by: req.auth.userId });
+    res.json({ success: true, archived: tickets.length });
+  } catch (err) {
+    logger.error('bulk-archive failed', { message: err.message });
+    res.status(500).json({ success: false, error: 'Could not archive tickets.' });
+  }
+});
+
+/**
+ * POST /api/tickets/bulk-unarchive  (ADMIN only)
+ * Restore one or more archived tickets: body { ids: [...], status? }. Clears `archived`, and optionally
+ * moves them to a chosen status (defaults to leaving each ticket's existing status). A restored OPEN
+ * ticket re-claims its assignee's slot. `archived` is never a valid status, so it's rejected here.
+ */
+router.post('/bulk-unarchive', requireAdmin, async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body.ids) ? req.body.ids.filter(Boolean).slice(0, 500) : [];
+    if (!ids.length) return res.status(400).json({ success: false, error: 'No tickets selected.' });
+
+    // Optional target status to move them to on restore. Must be a real status (archived isn't one).
+    const targetStatus = req.body.status || null;
+    if (targetStatus && !Ticket.STATUSES.includes(targetStatus)) {
+      return res.status(400).json({ success: false, error: 'Invalid status.' });
+    }
+
+    const tickets = await Ticket.find({ _id: { $in: ids }, locationId: req.auth.locationId, archived: true })
+      .select('_id assigneeId status').lean();
+    if (!tickets.length) return res.json({ success: true, unarchived: 0 });
+
+    const set = { archived: false, archivedAt: null, archivedBy: null };
+    if (targetStatus) set.status = targetStatus;
+    await Ticket.updateMany(
+      { _id: { $in: tickets.map((t) => t._id) }, locationId: req.auth.locationId },
+      { $set: set }
+    );
+
+    // Re-claim assignee slots for tickets that end up OPEN after restore.
+    const OPEN = Ticket.OPEN_STATUSES;
+    for (const t of tickets) {
+      const finalStatus = targetStatus || t.status;
+      if (t.assigneeId && OPEN.includes(finalStatus)) await ticketService.bumpAgentLoad(req.auth.locationId, t.assigneeId, +1);
+    }
+
+    logger.info('♻️ Tickets unarchived', { locationId: req.auth.locationId, count: tickets.length, toStatus: targetStatus || '(unchanged)', by: req.auth.userId });
+    res.json({ success: true, unarchived: tickets.length });
+  } catch (err) {
+    logger.error('bulk-unarchive failed', { message: err.message });
+    res.status(500).json({ success: false, error: 'Could not restore tickets.' });
   }
 });
 

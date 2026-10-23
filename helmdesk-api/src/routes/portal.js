@@ -7,9 +7,20 @@ const ghlService = require('../services/ghlService');
 const logger = require('../utils/logger');
 const rateLimit = require('express-rate-limit');
 
+// frame-ancestors * lets agencies EMBED the form on their own website (the widget/iframe embed). The
+// form is a public, rate-limited contact form with no session/auth and no sensitive data, so allowing
+// it to be framed anywhere is safe — it can't be used to clickjack anything privileged. (This overrides
+// helmet's global GHL-only frame-ancestors for the portal pages only.)
 const PORTAL_CSP =
   "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; " +
-  "connect-src 'self'; img-src 'self' data: https:; base-uri 'self'; form-action 'self'";
+  "connect-src 'self'; img-src 'self' data: https:; base-uri 'self'; form-action 'self'; frame-ancestors *";
+
+/** Apply the portal CSP AND drop helmet's X-Frame-Options (which is SAMEORIGIN and would otherwise
+ *  block embedding on an agency's site — frame-ancestors in the CSP is the modern replacement). */
+function setPortalFrameHeaders(res) {
+  res.set('Content-Security-Policy', PORTAL_CSP);
+  res.removeHeader('X-Frame-Options');
+}
 
 /**
  * Public client-portal intake. NO session auth — this is the customer-facing "Submit a request"
@@ -37,9 +48,9 @@ router.get('/:slug', async (req, res) => {
   const ws = await Workspace.findOne({ portalSlug: req.params.slug, portalEnabled: true });
   if (!ws) return res.status(404).send(renderPortalNotFound());
   // Relax CSP so this self-contained page's inline script/styles run (global CSP blocks inline).
-  res.set('Content-Security-Policy', PORTAL_CSP);
+  setPortalFrameHeaders(res);
   const legacyForm = { name: 'Submit a request', fields: ws.portalFields };
-  res.send(renderPortalForm(ws, legacyForm, `/portal/${esc(req.params.slug)}/submit`));
+  res.send(renderPortalForm(ws, legacyForm, `/portal/${esc(req.params.slug)}/submit`, { embed: req.query.embed === '1' }));
 });
 
 function esc(s) {
@@ -99,7 +110,8 @@ function contrastText(hex) {
  * Render the public intake page. `ws` supplies branding; `form` supplies the fields/title/slug and
  * `submitPath` is where the form POSTs (so legacy /portal/:slug and new /f/:slug can both reuse this).
  */
-function renderPortalForm(ws, form, submitPath) {
+function renderPortalForm(ws, form, submitPath, opts = {}) {
+  const embed = opts.embed === true; // trim outer chrome so it fits snugly inside an embed iframe
   const accent = esc(ws.brand?.primaryColor || '#E0A24A');
   const onAccent = contrastText(ws.brand?.primaryColor || '#E0A24A');
   const brandName = esc(ws.brand?.name || 'Support');
@@ -115,9 +127,10 @@ function renderPortalForm(ws, form, submitPath) {
 <style>
   :root{--accent:${accent};--on-accent:${onAccent}}
   *{box-sizing:border-box}
-  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#f5f7fa;color:#0f1729;line-height:1.55}
-  .wrap{max-width:560px;margin:0 auto;padding:40px 20px}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:${embed ? '#fff' : '#f5f7fa'};color:#0f1729;line-height:1.55}
+  .wrap{max-width:560px;margin:0 auto;padding:${embed ? '16px' : '40px 20px'}}
   .card{background:#fff;border:1px solid #dde3ec;border-radius:16px;padding:32px;box-shadow:0 8px 30px -22px rgba(15,23,41,.4)}
+  ${embed ? '.card{border:none;box-shadow:none;padding:20px}' : ''}
   .head{display:flex;align-items:center;gap:12px;margin-bottom:6px}
   .badge{width:44px;height:44px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-weight:800;font-size:20px}
   /* Fixed circular frame so any logo dimensions (wide, tall, square) look uniform. object-fit:cover
@@ -354,12 +367,72 @@ module.exports = router;
  * Submit paths therefore also live under /f. */
 const fRouter = express.Router();
 
+/**
+ * GET /f/widget.js — the embeddable widget loader. An agency pastes a one-line <script> tag on their
+ * site; this script injects a floating launcher button that opens the form (/f/<slug>) in a popup
+ * iframe. Config comes from data- attributes on the script tag:
+ *   data-form   = the form slug (required)
+ *   data-label  = launcher button text (default "Support")
+ *   data-color  = launcher background color (default the brand color passed in, or a sensible default)
+ *   data-position = "right" (default) | "left"
+ * Must be defined BEFORE the /:slug route so "widget.js" isn't parsed as a form slug.
+ */
+fRouter.get('/widget.js', (req, res) => {
+  const base = (process.env.PORTAL_PUBLIC_BASE || process.env.BASE_URL || '').replace(/\/$/, '');
+  res.set('Content-Type', 'application/javascript; charset=utf-8');
+  res.set('Cache-Control', 'public, max-age=300');
+  res.send(`(function(){
+  var s = document.currentScript;
+  if (!s) { var all = document.getElementsByTagName('script'); s = all[all.length - 1]; }
+  var slug = s.getAttribute('data-form');
+  if (!slug) { console.error('[HelmDesk widget] missing data-form'); return; }
+  var label = s.getAttribute('data-label') || 'Support';
+  var color = s.getAttribute('data-color') || '#E0A24A';
+  var side = (s.getAttribute('data-position') === 'left') ? 'left' : 'right';
+  var base = ${JSON.stringify(base)};
+  var formUrl = base + '/f/' + encodeURIComponent(slug) + '?embed=1';
+  if (document.getElementById('hd-widget-' + slug)) return; // don't double-inject
+
+  var open = false;
+  var btn = document.createElement('button');
+  btn.id = 'hd-widget-' + slug;
+  btn.type = 'button';
+  btn.setAttribute('aria-label', label);
+  btn.style.cssText = 'position:fixed;bottom:20px;' + side + ':20px;z-index:2147483646;display:flex;align-items:center;gap:8px;padding:12px 18px;border:none;border-radius:999px;background:' + color + ';color:#fff;font:600 14px -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.25);cursor:pointer;transition:transform .15s';
+  btn.onmouseenter = function(){ btn.style.transform = 'translateY(-2px)'; };
+  btn.onmouseleave = function(){ btn.style.transform = 'none'; };
+
+  var chat = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
+  var closeIco = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+  var labelSpan = '<span>' + label.replace(/</g,'&lt;') + '</span>';
+  btn.innerHTML = chat + labelSpan;
+
+  var panel = document.createElement('div');
+  panel.style.cssText = 'position:fixed;bottom:84px;' + side + ':20px;z-index:2147483646;width:400px;max-width:calc(100vw - 32px);height:620px;max-height:calc(100vh - 120px);border-radius:16px;overflow:hidden;box-shadow:0 16px 48px rgba(0,0,0,.3);background:#fff;display:none';
+  var iframe = document.createElement('iframe');
+  iframe.src = formUrl;
+  iframe.title = label;
+  iframe.style.cssText = 'width:100%;height:100%;border:0;display:block';
+  panel.appendChild(iframe);
+
+  function toggle(){
+    open = !open;
+    panel.style.display = open ? 'block' : 'none';
+    btn.innerHTML = open ? (closeIco + labelSpan) : (chat + labelSpan);
+  }
+  btn.onclick = toggle;
+
+  document.body.appendChild(panel);
+  document.body.appendChild(btn);
+})();`);
+});
+
 /** GET /f/:slug — a specific multi-form intake page (plain short URL). */
 fRouter.get('/:slug', async (req, res) => {
   const found = await loadFormAndWs(req.params.slug);
   if (!found) return res.status(404).send(renderPortalNotFound());
-  res.set('Content-Security-Policy', PORTAL_CSP);
-  res.send(renderPortalForm(found.ws, found.form, `/f/${esc(req.params.slug)}/submit`));
+  setPortalFrameHeaders(res);
+  res.send(renderPortalForm(found.ws, found.form, `/f/${esc(req.params.slug)}/submit`, { embed: req.query.embed === '1' }));
 });
 
 /** POST /f/:slug/submit */
@@ -373,8 +446,8 @@ fRouter.post('/:slug/submit', intakeLimiter, async (req, res) => {
 fRouter.get('/:nameSlug/:slug', async (req, res) => {
   const found = await loadFormAndWs(req.params.slug);
   if (!found) return res.status(404).send(renderPortalNotFound());
-  res.set('Content-Security-Policy', PORTAL_CSP);
-  res.send(renderPortalForm(found.ws, found.form, `/f/${esc(req.params.nameSlug)}/${esc(req.params.slug)}/submit`));
+  setPortalFrameHeaders(res);
+  res.send(renderPortalForm(found.ws, found.form, `/f/${esc(req.params.nameSlug)}/${esc(req.params.slug)}/submit`, { embed: req.query.embed === '1' }));
 });
 
 /** POST /f/:nameSlug/:slug/submit */

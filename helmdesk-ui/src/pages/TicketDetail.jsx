@@ -3,6 +3,7 @@ import { api } from '../lib/api.js';
 import { ago, slaDisplay, STATUS_LABEL, PRIORITY_LABEL, labelChannel, isCustomProviderChannel, cleanMessageText } from '../lib/format.js';
 import { looksLikeHtml } from '../lib/sanitizeHtml.js';
 import EmailFrame from '../components/EmailFrame.jsx';
+import MessageEmail from '../components/MessageEmail.jsx';
 import { Icon, PriorityPill, Avatar, Select } from '../components/ui.jsx';
 import { track } from '../lib/analytics.js';
 
@@ -25,11 +26,15 @@ export default function TicketDetail({ id, onBack, user, notify, onChange }) {
       const res = await api.getTicket(id);
       setData(res);
     } catch (err) {
+      // Ticket is gone (deleted, or no longer visible) — don't strand the user on a blank detail;
+      // fall back to the list. This is what makes a persisted open-ticket safe: if it was deleted
+      // while the user was on another tab, returning to Inbox cleanly drops back to the list.
       notify(err.message, true);
+      onBack?.();
     } finally {
       setLoading(false);
     }
-  }, [id, notify]);
+  }, [id, notify, onBack]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { api.assignableAgents().then((r) => setAgents(r.agents || [])).catch(() => {}); }, []);
@@ -119,15 +124,16 @@ export default function TicketDetail({ id, onBack, user, notify, onChange }) {
                   : c.kind === 'customer' ? (c.authorName || 'Customer')
                   : c.kind === 'note' ? `${c.authorName || 'Agent'} · internal note`
                   : (c.authorName || 'Agent');
+                // Emails render as an expandable card (sender, preview, From/To, framed body).
+                if (c.channel === 'Email' && looksLikeHtml(c.body)) {
+                  return <MessageEmail key={c._id} c={c} onResize={scrollToBottom} />;
+                }
                 return (
                 <div key={c._id} className={`msg ${c.kind} ${c.authorType === 'system' ? 'system' : ''}`}>
                   <div className="meta">
                     {author}{' · '}{ago(c.createdAt)}
                   </div>
-                  {/* HTML emails render in a sandboxed frame (keeps their look); else clean text. */}
-                  {c.channel === 'Email' && looksLikeHtml(c.body)
-                    ? <EmailFrame html={c.body} onResize={scrollToBottom} />
-                    : <div style={{ whiteSpace: 'pre-wrap' }}>{cleanMessageText(c.body)}</div>}
+                  <div style={{ whiteSpace: 'pre-wrap' }}>{cleanMessageText(c.body)}</div>
                 </div>
                 );
               })}

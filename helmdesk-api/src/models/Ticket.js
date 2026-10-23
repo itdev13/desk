@@ -55,6 +55,13 @@ const ticketSchema = new mongoose.Schema(
     deleted: { type: Boolean, default: false, index: true }, // soft-deleted (hidden from lists, kept in DB)
     deletedAt: { type: Date, default: null },
     deletedBy: { type: String, default: null }, // ghlUserId of the admin who deleted it
+    // Archived: a shelf parallel to `status`, NOT a status value. An archived ticket keeps its status
+    // but is hidden from every normal list/tab and shows only under the Archived tab. Un-archiving
+    // restores it to whatever status it's moved to. (Kept separate from `deleted` so archive is a
+    // reversible "put away", not a removal.)
+    archived: { type: Boolean, default: false, index: true },
+    archivedAt: { type: Date, default: null },
+    archivedBy: { type: String, default: null }, // ghlUserId of the agent who archived it
     slaPaused: { type: Boolean, default: false }, // true while waiting on customer (pending/on_hold)
     slaPausedAt: { type: Date, default: null }, // when the current pause began; used to push due dates
 

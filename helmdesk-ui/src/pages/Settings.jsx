@@ -130,6 +130,7 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
     setSaving(true);
     try {
       const res = await api.updateSettings({
+        autoCreateInbound: ws.autoCreateInbound === true,
         supportChannels: ws.supportChannels,
         acceptConversationProviders: ws.acceptConversationProviders,
         ignoreAutomatedReplies: ws.ignoreAutomatedReplies,
@@ -139,6 +140,7 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
         assignmentMode: ws.assignmentMode,
         defaultAssigneeId: ws.defaultAssigneeId,
         roundRobinPerPriority: ws.roundRobinPerPriority,
+        slaEnabled: ws.slaEnabled === true,
         slaTargets: ws.slaTargets,
         autoCloseResolvedDays: ws.autoCloseResolvedDays,
         reopenWindowDays: ws.reopenWindowDays,
@@ -182,6 +184,24 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
         </div>
 
         {tab === 'channels' && (
+          <>
+          <div className="card">
+            <div className="toggle-row" style={{ borderBottom: 'none', paddingTop: 0 }}>
+              <div>
+                <div className="t-label">Automatic ticket creation</div>
+                <div className="t-desc">
+                  When on, incoming customer messages on your support channels become tickets automatically.
+                  Off by default — portal forms and tickets you create yourself always work either way.
+                  {(ws.createKeywords?.length > 0) && <><br /><strong>Forced on</strong> because you have “only create if contains” keywords set below.</>}
+                </div>
+              </div>
+              <Switch
+                checked={ws.autoCreateInbound === true || (ws.createKeywords?.length > 0)}
+                disabled={ws.createKeywords?.length > 0}
+                onChange={(v) => set({ autoCreateInbound: v })}
+              />
+            </div>
+          </div>
           <div className="card">
             <div className="section-head-row">
               <SectionHeader icon="filter" title="Support channels"
@@ -262,6 +282,7 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
               </div>
             </div>
           </div>
+          </>
         )}
 
 
@@ -308,7 +329,16 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
               </div>
             )}
 
-            <div style={{ marginTop: 24 }}>
+            <div className="toggle-row" style={{ marginTop: 24 }}>
+              <div>
+                <div className="t-label">SLA tracking</div>
+                <div className="t-desc">Set response &amp; resolve targets per priority and flag tickets that run late. Off by default — when off, no SLA is applied to tickets.</div>
+              </div>
+              <Switch checked={ws.slaEnabled === true} onChange={(v) => set({ slaEnabled: v })} />
+            </div>
+            {ws.slaEnabled === true && (
+            <>
+            <div style={{ marginTop: 20 }}>
               <SectionHeader icon="clock" title="Response targets (SLA)"
                 description="How fast you aim to reply and resolve, per priority. Tickets turn red when a target is about to be missed. Values are in minutes." />
             </div>
@@ -332,6 +362,8 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
                 </div>
               ))}
             </div>
+            </>
+            )}
             <div style={{ marginTop: 24 }}>
               <SectionHeader icon="hash" title="Ticket lifecycle"
                 description="What happens after a ticket is resolved, and how ticket numbers look." />
@@ -422,7 +454,7 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
             ]}
           />
         )}
-        {tab === 'assignment' && <SlaPreview targets={ws.slaTargets} />}
+        {tab === 'assignment' && ws.slaEnabled === true && <SlaPreview targets={ws.slaTargets} />}
         {tab === 'brand' && (
           <InfoPanel
             title="What each setting does"

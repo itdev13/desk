@@ -12,6 +12,7 @@ router.use(requireAuth);
 
 /** Fields the agency may set via the wizard / settings screen. */
 const ALLOWED = [
+  'autoCreateInbound',
   'supportChannels',
   'acceptConversationProviders',
   'ignoreAutomatedReplies',
@@ -21,6 +22,7 @@ const ALLOWED = [
   'assignmentMode',
   'defaultAssigneeId',
   'roundRobinPerPriority',
+  'slaEnabled',
   'slaTargets',
   'autoCloseResolvedDays',
   'reopenWindowDays',

@@ -52,6 +52,13 @@ const workspaceSchema = new mongoose.Schema(
     needsReconnect: { type: Boolean, default: false },
     needsReconnectReason: { type: String, default: null },
 
+    // Master switch for turning INBOUND customer messages into tickets. Default OFF: an agency opts in
+    // deliberately, so a fresh install doesn't start capturing every SMS/email as a ticket. It gates
+    // ONLY the inbound-message path — portal form submissions and manually-created tickets always work
+    // regardless. When an agency has configured createKeywords (a "contains" whitelist), this is
+    // treated as ON by default (they've clearly expressed intent to capture matching messages).
+    autoCreateInbound: { type: Boolean, default: false },
+
     // Step 1 — which channels create tickets. Empty = none (safe default until configured).
     // Valid values mirror GHL messageType: SMS, Email, WhatsApp, FB, IG, Live_Chat, Call, GMB.
     supportChannels: { type: [String], default: [] },
@@ -83,6 +90,10 @@ const workspaceSchema = new mongoose.Schema(
     roundRobinCursorByPriority: { type: Map, of: Number, default: {} },
 
     // Step 4 — SLA + lifecycle.
+    // Master switch for SLA tracking. Default OFF: when off, tickets get NO first-response/resolve due
+    // dates and are never flagged breached, and the SLA targets UI is hidden. Turn on to apply the
+    // per-priority targets below.
+    slaEnabled: { type: Boolean, default: false },
     slaTargets: {
       type: [slaTargetSchema],
       default: () => [

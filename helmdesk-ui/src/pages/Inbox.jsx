@@ -3,6 +3,7 @@ import { api } from '../lib/api.js';
 import { ago, slaDisplay, STATUS_LABEL, PRIORITY_LABEL, labelChannel, isCustomProviderChannel, cleanMessageText } from '../lib/format.js';
 import { looksLikeHtml } from '../lib/sanitizeHtml.js';
 import EmailFrame from '../components/EmailFrame.jsx';
+import MessageEmail from '../components/MessageEmail.jsx';
 import AssigneeFilter from '../components/AssigneeFilter.jsx';
 import { Icon, PriorityPill, Avatar, Select } from '../components/ui.jsx';
 import { useAutoRefresh, useDebounce } from '../lib/useAutoRefresh.js';
@@ -24,7 +25,8 @@ const TABS = [
   { key: 'open', label: 'Open' },
   { key: 'pending', label: 'Waiting' },
   { key: 'resolved', label: 'Resolved' },
-  { key: 'closed', label: 'Closed' }
+  { key: 'closed', label: 'Closed' },
+  { key: 'archived', label: 'Archived' }
 ];
 
 export default function Inbox({ user, notify, onChange }) {
@@ -40,6 +42,8 @@ export default function Inbox({ user, notify, onChange }) {
   const [checked, setChecked] = useState(() => new Set());
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [restoreStatus, setRestoreStatus] = useState('open'); // target status when restoring from Archived
   const [assignee, setAssignee] = useState(''); // admin filter: '' all, 'none' unassigned, else ghlUserId
 
   const toggleCheck = (id) => setChecked((prev) => {
@@ -52,6 +56,7 @@ export default function Inbox({ user, notify, onChange }) {
   // Map a status tab → the listTickets `view`/status params we already support.
   const listParams = useCallback(() => {
     const base = { q: debouncedQ || undefined, assigneeId: assignee || undefined, limit: 50 };
+    if (tab === 'archived') return { ...base, view: 'archived' }; // archived shelf — only here
     if (tab === 'all') return { ...base, view: 'all' };
     if (tab === 'open') return { ...base, view: 'open' };
     return { ...base, view: 'all', status: tab }; // pending/resolved/closed filtered by status
@@ -110,6 +115,46 @@ export default function Inbox({ user, notify, onChange }) {
       notify?.(err.message || 'Could not delete tickets.', true);
     } finally {
       setDeleting(false);
+    }
+  };
+
+  // Archive the checked tickets (from any non-archived tab) → they move to the Archived tab.
+  const doBulkArchive = async () => {
+    const ids = [...checked];
+    if (!ids.length) return;
+    setArchiving(true);
+    try {
+      const r = await api.bulkArchiveTickets(ids);
+      notify?.(`Archived ${r.archived} ticket${r.archived === 1 ? '' : 's'}.`);
+      track('tickets_bulk_archive', { count: r.archived });
+      if (selectedId && checked.has(selectedId)) setSelectedId(null);
+      clearChecks();
+      loadList({ silent: true });
+      onChange?.();
+    } catch (err) {
+      notify?.(err.message || 'Could not archive tickets.', true);
+    } finally {
+      setArchiving(false);
+    }
+  };
+
+  // Restore the checked tickets out of the Archived tab, moving them to the chosen status.
+  const doBulkUnarchive = async () => {
+    const ids = [...checked];
+    if (!ids.length) return;
+    setArchiving(true);
+    try {
+      const r = await api.bulkUnarchiveTickets(ids, restoreStatus);
+      notify?.(`Restored ${r.unarchived} ticket${r.unarchived === 1 ? '' : 's'} to ${STATUS_LABEL[restoreStatus] || restoreStatus}.`);
+      track('tickets_bulk_unarchive', { count: r.unarchived, status: restoreStatus });
+      if (selectedId && checked.has(selectedId)) setSelectedId(null);
+      clearChecks();
+      loadList({ silent: true });
+      onChange?.();
+    } catch (err) {
+      notify?.(err.message || 'Could not restore tickets.', true);
+    } finally {
+      setArchiving(false);
     }
   };
 
@@ -180,9 +225,26 @@ export default function Inbox({ user, notify, onChange }) {
               <span>{checked.size > 0 ? `${checked.size} selected` : 'Select all'}</span>
             </label>
             {checked.size > 0 && (
-              <button type="button" className="inbox-bulk-del" onClick={() => setConfirmDelete(true)}>
-                <Icon name="trash" size={14} /> Delete
-              </button>
+              tab === 'archived' ? (
+                // Archived tab: restore the selection to a chosen status.
+                <div className="inbox-bulk-restore">
+                  <span className="inbox-bulk-restore-lbl">Move to</span>
+                  <Select value={restoreStatus} onChange={setRestoreStatus}
+                    options={Object.entries(STATUS_LABEL).map(([k, v]) => ({ value: k, label: v }))} />
+                  <button type="button" className="inbox-bulk-archive" disabled={archiving} onClick={doBulkUnarchive}>
+                    <Icon name="inbox" size={14} /> {archiving ? 'Restoring…' : `Restore ${checked.size}`}
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <button type="button" className="inbox-bulk-archive" disabled={archiving} onClick={doBulkArchive}>
+                    <Icon name="archive" size={14} /> {archiving ? 'Archiving…' : 'Archive'}
+                  </button>
+                  <button type="button" className="inbox-bulk-del" onClick={() => setConfirmDelete(true)}>
+                    <Icon name="trash" size={14} /> Delete
+                  </button>
+                </>
+              )
             )}
           </div>
         )}
@@ -359,14 +421,14 @@ function TicketPanes({ id, isAdmin, notify, onChanged, rightOpen = true, toggleR
               : c.kind === 'customer' ? (c.authorName || 'Customer')
               : c.kind === 'note' ? `${c.authorName || 'Agent'} · internal note`
               : (c.authorName || 'Agent');
+            // Emails render as their own expandable card (sender, preview, From/To, framed body).
+            if (c.channel === 'Email' && looksLikeHtml(c.body)) {
+              return <MessageEmail key={c._id} c={c} />;
+            }
             return (
               <div key={c._id} className={`msg ${c.kind} ${c.authorType === 'system' ? 'system' : ''}`}>
                 <div className="meta">{author} · {ago(c.createdAt)}</div>
-                {/* Emails arrive as HTML — render the real email in a sandboxed frame so it keeps its
-                    own look without breaking the thread. Everything else shows as clean text. */}
-                {c.channel === 'Email' && looksLikeHtml(c.body)
-                  ? <EmailFrame html={c.body} />
-                  : <div style={{ whiteSpace: 'pre-wrap' }}>{cleanMessageText(c.body)}</div>}
+                <div style={{ whiteSpace: 'pre-wrap' }}>{cleanMessageText(c.body)}</div>
               </div>
             );
           })}

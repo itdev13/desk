@@ -16,6 +16,8 @@ export default function FormsManager({ brand, notify }) {
   const [openId, setOpenId] = useState(null);   // which form is expanded for field editing
   const [busy, setBusy] = useState(false);
   const [confirmId, setConfirmId] = useState(null);
+  const [embedForm, setEmbedForm] = useState(null); // form whose embed-code modal is open
+  const [embedTab, setEmbedTab] = useState('widget'); // widget | inline
 
   const load = () => api.forms().then((r) => setForms(r.forms || [])).catch((e) => notify?.(e.message, true)).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
@@ -46,6 +48,7 @@ export default function FormsManager({ brand, notify }) {
   };
 
   const copyUrl = (url) => { navigator.clipboard?.writeText(url).then(() => notify?.('Form link copied.')); };
+  const copyCode = (code) => { navigator.clipboard?.writeText(code).then(() => notify?.('Embed code copied.')); };
 
   if (loading) return <div className="empty"><div className="spinner" style={{ margin: '16px auto' }} /></div>;
 
@@ -88,6 +91,9 @@ export default function FormsManager({ brand, notify }) {
             <div className="form-url-row">
               <input type="text" readOnly value={form.url || ''} onFocus={(e) => e.target.select()} />
               <button type="button" className="btn btn-ghost" onClick={() => copyUrl(form.url)}>Copy link</button>
+              <button type="button" className="btn btn-ghost" onClick={() => { setEmbedForm(form); setEmbedTab('widget'); }}>
+                <Icon name="code" size={14} /> Embed
+              </button>
             </div>
             {/* Tells the agency the exact value to match in a workflow filter. The portal trigger sends
                 this as `formName`, so "Form name equals <name>" targets submissions of this form. */}
@@ -120,6 +126,37 @@ export default function FormsManager({ brand, notify }) {
           </div>
         );
       })}
+
+      {/* Embed-code modal: Widget (floating launcher) vs Inline (iframe) snippets to copy. */}
+      {embedForm && (() => {
+        const code = embedForm.embed?.[embedTab] || '';
+        return (
+          <div className="modal-overlay" onClick={() => setEmbedForm(null)}>
+            <div className="modal-card embed-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="embed-head">
+                <div>
+                  <h3 style={{ margin: 0 }}>Embed “{embedForm.name}”</h3>
+                  <p className="embed-sub">Paste this where you want the form on your website.</p>
+                </div>
+                <button type="button" className="embed-x" onClick={() => setEmbedForm(null)} aria-label="Close"><Icon name="x" size={16} /></button>
+              </div>
+              <div className="embed-tabs">
+                <button type="button" className={`embed-tab ${embedTab === 'widget' ? 'active' : ''}`} onClick={() => setEmbedTab('widget')}>Floating widget</button>
+                <button type="button" className={`embed-tab ${embedTab === 'inline' ? 'active' : ''}`} onClick={() => setEmbedTab('inline')}>Inline on page</button>
+              </div>
+              <p className="embed-desc">
+                {embedTab === 'widget'
+                  ? 'Adds a “Support” button in the bottom corner of every page. Clicking it opens the form in a popup. Paste once, before </body>.'
+                  : 'Drops the form directly into a page section (e.g. a “Contact us” page). Paste where you want it to appear.'}
+              </p>
+              <textarea className="embed-code" readOnly value={code} onFocus={(e) => e.target.select()} />
+              <div className="embed-foot">
+                <button type="button" className="btn btn-accent" onClick={() => copyCode(code)}><Icon name="copy" size={14} /> Copy code</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

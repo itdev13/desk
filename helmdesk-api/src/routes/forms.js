@@ -27,12 +27,24 @@ function slugifyName(name) {
 // The public base for form URLs. Set PORTAL_PUBLIC_BASE to a short/branded domain (e.g.
 // https://forms.yourbrand.com) that proxies to this API's /portal path, so the UI never discloses the
 // raw API domain. Falls back to BASE_URL. The short form URL is `${base}/f/${slug}`.
+function portalBase() {
+  return (process.env.PORTAL_PUBLIC_BASE || process.env.BASE_URL || '').replace(/\/$/, '');
+}
 function publicFormUrl(slug, workspaceSlug) {
-  const base = (process.env.PORTAL_PUBLIC_BASE || process.env.BASE_URL || '').replace(/\/$/, '');
+  const base = portalBase();
   // Pretty: /f/<workspace-name>/<slug> when we have a name; plain /f/<slug> otherwise.
   return workspaceSlug ? `${base}/f/${workspaceSlug}/${slug}` : `${base}/f/${slug}`;
 }
-const withUrl = (f) => ({ ...f, url: publicFormUrl(f.slug, f.workspaceSlug) });
+// Embed snippets an agency pastes on their own site. `widget` = floating launcher; `inline` = iframe.
+function embedCode(slug, brandColor) {
+  const base = portalBase();
+  const color = brandColor || '#E0A24A';
+  return {
+    widget: `<script src="${base}/f/widget.js" data-form="${slug}" data-label="Support" data-color="${color}"></script>`,
+    inline: `<iframe src="${base}/f/${slug}?embed=1" title="Support form" style="width:100%;max-width:560px;height:640px;border:0;border-radius:16px" loading="lazy"></iframe>`
+  };
+}
+const withUrl = (f) => ({ ...f, url: publicFormUrl(f.slug, f.workspaceSlug), embed: embedCode(f.slug) });
 
 /** The workspace's name slug (brand name, else location name), for the pretty URL. */
 async function workspaceSlugFor(locationId) {

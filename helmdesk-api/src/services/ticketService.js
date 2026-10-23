@@ -104,6 +104,10 @@ async function agentNameFor(locationId, userId, fallbackName) {
 
 /** Compute SLA due dates from the workspace policy and a creation time. */
 function computeSla(workspace, priority, from = new Date()) {
+  // SLA off → no due dates at all (the monitor never flags a ticket with null due dates).
+  if (workspace.slaEnabled !== true) {
+    return { slaFirstResponseDueAt: null, slaResolveDueAt: null };
+  }
   const policy = workspace.slaFor(priority);
   return {
     slaFirstResponseDueAt: new Date(from.getTime() + policy.firstResponseMins * 60 * 1000),
@@ -186,6 +190,15 @@ function applyRules(workspace, { channel, body }) {
  */
 function shouldAccept(workspace, { channel, body, isAutomated }) {
   if (!workspace.setupComplete) return { accept: false, reason: 'setup_incomplete' };
+
+  // 0. Master switch: INBOUND auto-creation must be enabled. Default OFF, but treated as ON when the
+  //    agency has configured a createKeywords whitelist (they've opted into capturing matching
+  //    messages). This gates ONLY inbound messages — portal + manual tickets bypass shouldAccept.
+  const hasCreateKeywordsCfg = Array.isArray(workspace.createKeywords) && workspace.createKeywords.length > 0;
+  const autoCreateOn = workspace.autoCreateInbound === true || hasCreateKeywordsCfg;
+  if (!autoCreateOn) {
+    return { accept: false, reason: 'auto_create_off' };
+  }
 
   // 1. Channel gate — always applies. The message must be on a designated support channel.
   //    Custom-conversation-provider messages (Custom / CustomSMS / CustomEmail) are accepted when

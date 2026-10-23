@@ -121,7 +121,9 @@ export default function App() {
     notify('Setup complete — HelmDesk is live.');
   };
 
-  const goTicket = (id) => { track('ticket_open', { id }); setOpenTicketId(id); };
+  // Opening a ticket always lands in the inbox view, which is where the detail renders. This keeps a
+  // single home for the open ticket so returning from another tab (Settings, …) restores it.
+  const goTicket = (id) => { track('ticket_open', { id }); setOpenTicketId(id); setView('inbox'); };
   const closeTicket = () => { setOpenTicketId(null); refreshCounts(); };
 
   if (phase === 'loading') return <Spinner />;
@@ -141,13 +143,24 @@ export default function App() {
         queueView={queueView}
         counts={counts}
         isAdmin={user?.role === 'admin'}
-        onNav={(v, qv) => { setOpenTicketId(null); setView(v); if (qv) setQueueView(qv); }}
+        onNav={(v, qv) => {
+          // Clicking the Inbox tab while ALREADY on Inbox means "show me the list" → close the open
+          // ticket. Navigating in from another tab (cross-tab) preserves the open ticket so you return
+          // to where you were.
+          if (v === 'inbox' && view === 'inbox') setOpenTicketId(null);
+          setView(v);
+          if (qv) setQueueView(qv);
+        }}
       />
       <div className="main">
-        {view === 'inbox' && !openTicketId ? (
-          <Inbox user={user} notify={notify} onChange={refreshCounts} />
-        ) : openTicketId ? (
+        {/* The open ticket lives in the inbox view. Navigating to another tab (Settings, Board, …) and
+            back to Inbox returns to the same ticket — it's only cleared when the user backs out, or
+            when the ticket no longer exists (TicketDetail calls onBack on a 404). Opening a ticket from
+            Queue/Board switches to the inbox view (see goTicket). */}
+        {view === 'inbox' && openTicketId ? (
           <TicketDetail id={openTicketId} onBack={closeTicket} user={user} notify={notify} onChange={refreshCounts} />
+        ) : view === 'inbox' ? (
+          <Inbox user={user} notify={notify} onChange={refreshCounts} />
         ) : view === 'queue' ? (
           <Queue onOpen={goTicket} user={user} notify={notify} onChange={refreshCounts} viewOverride={queueView} />
         ) : view === 'board' ? (
