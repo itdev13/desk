@@ -168,6 +168,27 @@ export default function Inbox({ user, notify, onChange }) {
     .filter(Boolean).join(' ');
 
   return (
+    <div className="inbox-shell">
+      {/* ── Top bar: status tabs, search, and (admin) agent filter span the full width above both
+          the list and the ticket panes. ── */}
+      <div className="inbox-topbar">
+        <div className="inbox-tabs">
+          {TABS.map((t) => (
+            <button key={t.key} className={`inbox-tab ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>
+              {t.label}
+              {counts[t.key] != null && <span className="inbox-tab-n">{counts[t.key]}</span>}
+            </button>
+          ))}
+        </div>
+        <div className="inbox-search">
+          <Icon name="search" size={14} />
+          <input placeholder="Search subject, contact, #ref…" value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+        {isAdmin && (
+          <AssigneeFilter value={assignee} onChange={setAssignee} isAdmin={isAdmin} />
+        )}
+      </div>
+
     <div className="inbox" style={{ gridTemplateColumns: gridCols }}>
       {/* Drag handles on the pane boundaries — drag to resize, double-click to reset. Hidden when
           the adjacent pane is collapsed. */}
@@ -196,26 +217,6 @@ export default function Inbox({ user, notify, onChange }) {
       {/* ── Left: list ── */}
       {leftOpen && (
       <aside className="inbox-list">
-        <div className="inbox-list-head">
-          <div className="inbox-tabs">
-            {TABS.map((t) => (
-              <button key={t.key} className={`inbox-tab ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>
-                {t.label}
-                {counts[t.key] != null && <span className="inbox-tab-n">{counts[t.key]}</span>}
-              </button>
-            ))}
-          </div>
-          <div className="inbox-search">
-            <Icon name="search" size={14} />
-            <input placeholder="Search subject, contact, #ref…" value={q} onChange={(e) => setQ(e.target.value)} />
-          </div>
-          {isAdmin && (
-            <div style={{ marginTop: 8 }}>
-              <AssigneeFilter value={assignee} onChange={setAssignee} isAdmin={isAdmin} />
-            </div>
-          )}
-        </div>
-
         {/* Bulk-select toolbar (admins only) — appears when tickets exist. */}
         {isAdmin && !loadingList && tickets.length > 0 && (
           <div className="inbox-bulkbar">
@@ -317,6 +318,7 @@ export default function Inbox({ user, notify, onChange }) {
         ? <TicketPanes key={selectedId} id={selectedId} isAdmin={isAdmin} notify={notify} onChanged={onTicketChanged}
             rightOpen={rightOpen} toggleRight={toggleRight} />
         : <InboxEmptyMain hasTickets={tickets.length > 0} loading={loadingList} />}
+    </div>
     </div>
   );
 }

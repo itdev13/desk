@@ -202,7 +202,9 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
               />
             </div>
           </div>
-          <div className="card">
+          {(() => { const autoOn = ws.autoCreateInbound === true || (ws.createKeywords?.length > 0); return (
+          <fieldset className="card settings-fieldset" disabled={!autoOn} style={{ opacity: autoOn ? 1 : 0.55 }}>
+            {!autoOn && <div className="disabled-note">Turn on <strong>Automatic ticket creation</strong> above to use these. Your settings are saved and will apply when you switch it on.</div>}
             <div className="section-head-row">
               <SectionHeader icon="filter" title="Support channels"
                 description="Only messages on the channels you pick become tickets — everything else stays in your inbox untouched." />
@@ -281,7 +283,8 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
                 <span className="hint">Press Enter to add each keyword. These win over everything — no ticket is created.</span>
               </div>
             </div>
-          </div>
+          </fieldset>
+          ); })()}
           </>
         )}
 

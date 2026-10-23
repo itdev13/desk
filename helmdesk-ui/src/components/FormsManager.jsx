@@ -17,7 +17,7 @@ export default function FormsManager({ brand, notify }) {
   const [busy, setBusy] = useState(false);
   const [confirmId, setConfirmId] = useState(null);
   const [embedForm, setEmbedForm] = useState(null); // form whose embed-code modal is open
-  const [embedTab, setEmbedTab] = useState('widget'); // widget | inline
+  const [embedTab, setEmbedTab] = useState('inline'); // widget | inline
 
   const load = () => api.forms().then((r) => setForms(r.forms || [])).catch((e) => notify?.(e.message, true)).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
@@ -91,7 +91,7 @@ export default function FormsManager({ brand, notify }) {
             <div className="form-url-row">
               <input type="text" readOnly value={form.url || ''} onFocus={(e) => e.target.select()} />
               <button type="button" className="btn btn-ghost" onClick={() => copyUrl(form.url)}>Copy link</button>
-              <button type="button" className="btn btn-ghost" onClick={() => { setEmbedForm(form); setEmbedTab('widget'); }}>
+              <button type="button" className="btn btn-ghost" onClick={() => { setEmbedForm(form); setEmbedTab('inline'); }}>
                 <Icon name="code" size={14} /> Embed
               </button>
             </div>
@@ -141,8 +141,8 @@ export default function FormsManager({ brand, notify }) {
                 <button type="button" className="embed-x" onClick={() => setEmbedForm(null)} aria-label="Close"><Icon name="x" size={16} /></button>
               </div>
               <div className="embed-tabs">
-                <button type="button" className={`embed-tab ${embedTab === 'widget' ? 'active' : ''}`} onClick={() => setEmbedTab('widget')}>Floating widget</button>
                 <button type="button" className={`embed-tab ${embedTab === 'inline' ? 'active' : ''}`} onClick={() => setEmbedTab('inline')}>Inline on page</button>
+                <button type="button" className={`embed-tab ${embedTab === 'widget' ? 'active' : ''}`} onClick={() => setEmbedTab('widget')}>Floating widget</button>
               </div>
               <p className="embed-desc">
                 {embedTab === 'widget'

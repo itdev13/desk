@@ -214,6 +214,20 @@ function renderPortalForm(ws, form, submitPath, opts = {}) {
     }catch(ex){err.textContent=ex.message;err.style.display='block';}
     finally{btn.disabled=false;btn.textContent='Submit request';}
   });
+${embed ? `
+  // EMBED auto-resize: tell the parent page our real height so the host iframe can grow/shrink with
+  // the form (fields added/removed, validation errors, success panel). The parent's inline embed
+  // snippet listens for this message. postMessage target is '*' because we don't know the host origin
+  // and we only ever send a plain number — no sensitive data.
+  (function(){
+    function h(){ return Math.ceil(document.documentElement.getBoundingClientRect().height); }
+    function post(){ try{ parent.postMessage({ hdForm: true, slug: ${JSON.stringify(form?.slug || '')}, height: h() }, '*'); }catch(e){} }
+    window.addEventListener('load', post);
+    post();
+    if (window.ResizeObserver) { new ResizeObserver(post).observe(document.body); }
+    else { window.addEventListener('resize', post); }
+  })();
+` : ''}
 </script>
 </body></html>`;
 }
@@ -384,14 +398,16 @@ fRouter.get('/widget.js', (req, res) => {
   res.send(`(function(){
   var s = document.currentScript;
   if (!s) { var all = document.getElementsByTagName('script'); s = all[all.length - 1]; }
-  var slug = s.getAttribute('data-form');
-  if (!slug) { console.error('[HelmDesk widget] missing data-form'); return; }
+  var slug = s && s.getAttribute('data-form');
+  if (!slug) { console.error('[HelmDesk widget] missing data-form on the script tag'); return; }
   var label = s.getAttribute('data-label') || 'Support';
   var color = s.getAttribute('data-color') || '#E0A24A';
   var side = (s.getAttribute('data-position') === 'left') ? 'left' : 'right';
+  // Absolute base: the configured host, else derive it from the script's own src so the form always
+  // loads from OUR domain, never the agency's (a relative URL would 404 on their site).
   var base = ${JSON.stringify(base)};
+  if (!base && s.src) { try { base = new URL(s.src).origin; } catch(e){} }
   var formUrl = base + '/f/' + encodeURIComponent(slug) + '?embed=1';
-  if (document.getElementById('hd-widget-' + slug)) return; // don't double-inject
 
   var open = false;
   var btn = document.createElement('button');
@@ -422,8 +438,15 @@ fRouter.get('/widget.js', (req, res) => {
   }
   btn.onclick = toggle;
 
-  document.body.appendChild(panel);
-  document.body.appendChild(btn);
+  // Mount once the <body> exists (the script may be placed in <head>). Guard against double-inject.
+  function mount(){
+    if (!document.body) { return setTimeout(mount, 50); }
+    if (document.getElementById('hd-widget-' + slug)) return;
+    document.body.appendChild(panel);
+    document.body.appendChild(btn);
+  }
+  if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', mount); }
+  else { mount(); }
 })();`);
 });
 

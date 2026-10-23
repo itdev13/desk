@@ -41,7 +41,11 @@ function embedCode(slug, brandColor) {
   const color = brandColor || '#E0A24A';
   return {
     widget: `<script src="${base}/f/widget.js" data-form="${slug}" data-label="Support" data-color="${color}"></script>`,
-    inline: `<iframe src="${base}/f/${slug}?embed=1" title="Support form" style="width:100%;max-width:560px;height:640px;border:0;border-radius:16px" loading="lazy"></iframe>`
+    // Inline iframe + a tiny listener that auto-resizes it to the form's real height. So if the agency
+    // later adds/removes fields, the embed adjusts itself — they never edit the snippet again. The
+    // iframe starts at a sensible height and the script updates it once the form reports its size.
+    inline: `<iframe id="hd-form-${slug}" src="${base}/f/${slug}?embed=1" title="Support form" style="width:100%;max-width:560px;height:640px;border:0;border-radius:16px" loading="lazy"></iframe>
+<script>window.addEventListener('message',function(e){var d=e.data;if(d&&d.hdForm&&d.slug==='${slug}'){var f=document.getElementById('hd-form-${slug}');if(f&&d.height){f.style.height=d.height+'px';}}});</script>`
   };
 }
 const withUrl = (f) => ({ ...f, url: publicFormUrl(f.slug, f.workspaceSlug), embed: embedCode(f.slug) });

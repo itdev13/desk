@@ -444,6 +444,11 @@ button { font-family: inherit; cursor: pointer; }
 
 /* ── Cards ── */
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 22px; box-shadow: var(--shadow); }
+/* A <fieldset> used as a card: strip the native fieldset chrome and disable-greys so it reads as a
+   normal card that dims when disabled (keeping values, just inactive). min-width:0 stops fieldset's
+   intrinsic min-content width from blowing out grids inside it. */
+.settings-fieldset { min-width: 0; transition: opacity .15s ease; }
+.disabled-note { font-size: 12.5px; line-height: 1.5; color: var(--slate); background: var(--paper); border: 1px solid var(--line); border-radius: 9px; padding: 9px 12px; margin-bottom: 16px; }
 .card h3 { margin: 0 0 4px; font-size: 15px; }
 .card .muted { color: var(--slate); font-size: 13px; }
 
@@ -747,7 +752,11 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 /* ── Email message card (ported from PipelinePulse EmailBody) ─────────────────────
    A full-width card: a clickable header (avatar, sender, preview line, time, chevron) and, when
    expanded, a From/To block + the framed email body. */
-.email-card { width: 100%; align-self: stretch; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: hidden; }
+.email-card { width: 100%; align-self: stretch; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+/* The head is the only part that needs its corners clipped (its hover bg). The body must NOT be
+   clipped or a tall email gets cut off — the EmailFrame sizes to its full content, so the card grows. */
+.email-card-head:first-child { border-radius: 12px 12px 0 0; }
+.email-card:not(.open) .email-card-head { border-radius: 12px; }
 .email-card.open { box-shadow: var(--shadow); }
 .email-card-head {
   display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
@@ -881,6 +890,19 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 @media (max-width: 860px) { .support-grid { grid-template-columns: 1fr; } }
 
 /* ══ Inbox: 3-pane ticket workspace (list │ thread │ details) ══ */
+/* Flex column: full-width filter bar on top, then the resizable grid fills the rest. */
+.inbox-shell { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+/* Full-width top bar: status tabs (left), search (grows), agent filter (right). */
+.inbox-topbar {
+  flex: none; display: flex; align-items: center; gap: 14px;
+  padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--panel);
+}
+.inbox-topbar .inbox-search { flex: 1; max-width: 420px; }
+.inbox-topbar > :last-child { margin-left: auto; }
+@media (max-width: 720px) {
+  .inbox-topbar { flex-wrap: wrap; }
+  .inbox-topbar .inbox-search { max-width: none; }
+}
 .inbox {
   flex: 1; min-height: 0; display: grid;
   grid-template-columns: 340px minmax(0, 1fr) 300px; /* overridden inline by the resizer */
@@ -925,8 +947,11 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 
 /* Left: ticket list */
 .inbox-list { display: flex; flex-direction: column; border-right: 1px solid var(--line); background: var(--panel); }
-.inbox-list-head { padding: 12px 14px; border-bottom: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 10px; }
-.inbox-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+/* One row, horizontally scrollable if the tabs overflow the available width (6 tabs don't always
+   fit) — keeps them on a single line instead of wrapping to two rows. */
+.inbox-tabs { display: flex; gap: 4px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.inbox-tabs::-webkit-scrollbar { display: none; }
+.inbox-tab { flex: none; }
 .inbox-tab {
   display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 7px;
   font-size: 12px; font-weight: 600; color: var(--slate); background: none; border: none; cursor: pointer;
