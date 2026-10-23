@@ -20,6 +20,9 @@ const PORTAL_CSP =
 function setPortalFrameHeaders(res) {
   res.set('Content-Security-Policy', PORTAL_CSP);
   res.removeHeader('X-Frame-Options');
+  // Allow cross-origin embedding: helmet defaults CORP to same-origin, which browsers enforce as
+  // ERR_BLOCKED_BY_RESPONSE.NotSameOrigin when another site loads this in an iframe.
+  res.set('Cross-Origin-Resource-Policy', 'cross-origin');
 }
 
 /**
@@ -395,6 +398,9 @@ fRouter.get('/widget.js', (req, res) => {
   const base = (process.env.PORTAL_PUBLIC_BASE || process.env.BASE_URL || '').replace(/\/$/, '');
   res.set('Content-Type', 'application/javascript; charset=utf-8');
   res.set('Cache-Control', 'public, max-age=300');
+  // This script is loaded from OTHER sites, so it must be cross-origin fetchable (helmet's default
+  // CORP:same-origin makes the browser block it with ERR_BLOCKED_BY_RESPONSE.NotSameOrigin).
+  res.set('Cross-Origin-Resource-Policy', 'cross-origin');
   res.send(`(function(){
   var s = document.currentScript;
   if (!s) { var all = document.getElementsByTagName('script'); s = all[all.length - 1]; }
