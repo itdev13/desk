@@ -478,13 +478,18 @@ button { font-family: inherit; cursor: pointer; }
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
   box-shadow: var(--shadow-lg); overflow: hidden;
 }
+/* Search row sits flush at the top of the dropdown, separated by a hairline. The row itself is a
+   plain filled field (no second border/ring) so it reads as part of the menu, not a nested box. */
 .hd-select-search {
   display: flex; align-items: center; gap: 7px;
-  padding: 8px 10px; border-bottom: 1px solid var(--line-soft); color: var(--slate);
+  margin: 6px; padding: 7px 10px;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 8px;
+  color: var(--slate); transition: border-color .12s;
 }
+.hd-select-search:focus-within { border-color: var(--accent); }
 .hd-select-search input {
-  flex: 1; min-width: 0; border: none; background: transparent; outline: none;
-  font-size: 13.5px; color: var(--ink);
+  flex: 1; min-width: 0; border: none; background: transparent; outline: none; box-shadow: none;
+  padding: 0; font-size: 13.5px; color: var(--ink);
 }
 .hd-select-search input::placeholder { color: var(--slate); }
 .hd-select-menu {
@@ -643,6 +648,15 @@ input[type="text"], input[type="email"], input[type="tel"], input[type="number"]
 input::placeholder, textarea::placeholder { color: var(--slate-2); }
 textarea { resize: vertical; min-height: 90px; }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+/* Inputs that live INSIDE a bordered search/select wrapper must not draw their own border or focus
+   ring — the wrapper owns those. Without this, the global input styles above paint a second, inset
+   box (the "box inside the border"). */
+.inbox-search input, .search input, .hd-select-search input {
+  border: none; background: none; box-shadow: none; padding: 0; border-radius: 0;
+}
+.inbox-search input:focus, .search input:focus, .hd-select-search input:focus {
+  border: none; box-shadow: none; outline: none;
+}
 
 .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 0; border-bottom: 1px solid var(--line-soft); }
 .toggle-row:last-child { border-bottom: none; }
@@ -897,7 +911,11 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .inbox-tab-n { font-size: 10.5px; font-weight: 700; opacity: 0.7; }
 .inbox-tab.active .inbox-tab-n { opacity: 0.85; }
 .inbox-search { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 9px; color: var(--slate); }
-.inbox-search input { border: none; outline: none; background: none; font-size: 13px; width: 100%; color: var(--ink); }
+.inbox-search input {
+  border: none; outline: none; background: none; box-shadow: none; appearance: none;
+  font-size: 13px; width: 100%; min-width: 0; margin: 0; padding: 0; color: var(--ink);
+}
+.inbox-search input:focus, .inbox-search input:focus-visible { outline: none; box-shadow: none; }
 .inbox-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
 /* Card list: each conversation is its own rounded card with breathing room, not a flush row.
