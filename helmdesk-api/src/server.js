@@ -38,40 +38,35 @@ class HelmDeskApp {
       })
     );
 
-    // The contact-page script runs on each agency's OWN (white-label) GHL domain — which we can't
-    // enumerate — so this one public, ownership-verified, cookie-less endpoint allows ANY origin.
-    // It handles its own CORS and then SHORT-CIRCUITS, so the strict global CORS below never runs for
-    // it (the global one would throw "Not allowed by CORS" on a white-label origin and 500 the request).
-    const openCors = cors({ origin: true, credentials: false, methods: ['GET', 'OPTIONS'] });
-    this.app.use('/api/contact-tickets', (req, res, next) => {
-      openCors(req, res, () => {
-        if (req.method === 'OPTIONS') return res.sendStatus(204); // preflight handled, don't fall through
-        next('route'); // skip remaining app-level middleware isn't valid here; use a flag instead
-      });
+    // CORS. Most routes use a strict allow-list (our own GHL/Vercel/Vaultsuite domains, with
+    // credentials). But the contact-page script runs on each agency's OWN (white-label) GHL domain,
+    // which we can't enumerate — so those public, ownership-verified, cookie-less endpoints get an
+    // OPEN CORS (any origin, no credentials) instead. We pick per request so the strict policy never
+    // throws "Not allowed by CORS" on a legit white-label origin for those paths.
+    const OPEN_CORS_PREFIXES = ['/api/contact-tickets'];
+    const openCors = cors({ origin: true, credentials: false });
+    const strictCors = cors({
+      origin(origin, callback) {
+        if (!origin) return callback(null, true);
+        // Match on the actual HOSTNAME, not a substring — a substring check would let
+        // evil-gohighlevel.com.attacker.io or attacker-vercel.app through. We allow a domain and its
+        // subdomains only (host === base OR host endsWith "." + base).
+        let host;
+        try { host = new URL(origin).hostname.toLowerCase(); } catch { return callback(new Error('Bad origin')); }
+        const allowedBases = ['gohighlevel.com', 'leadconnectorhq.com', 'trycloudflare.com', 'vercel.app', 'vaultsuite.store'];
+        const allowedExact = ['localhost', '127.0.0.1'];
+        const ok =
+          allowedExact.includes(host) ||
+          host.endsWith('.ngrok.io') || host.endsWith('.ngrok-free.app') ||
+          allowedBases.some((b) => host === b || host.endsWith('.' + b));
+        return ok ? callback(null, true) : callback(new Error('Not allowed by CORS'));
+      },
+      credentials: true
     });
-
-    this.app.use(
-      cors({
-        origin(origin, callback) {
-          // Let the open-CORS endpoint through without the strict check (it set its own CORS headers).
-          if (origin && this && false) return callback(null, true);
-          if (!origin) return callback(null, true);
-          // Match on the actual HOSTNAME, not a substring — a substring check would let
-          // evil-gohighlevel.com.attacker.io or attacker-vercel.app through. We allow a domain and its
-          // subdomains only (host === base OR host endsWith "." + base).
-          let host;
-          try { host = new URL(origin).hostname.toLowerCase(); } catch { return callback(new Error('Bad origin')); }
-          const allowedBases = ['gohighlevel.com', 'leadconnectorhq.com', 'trycloudflare.com', 'vercel.app', 'vaultsuite.store'];
-          const allowedExact = ['localhost', '127.0.0.1'];
-          const ok =
-            allowedExact.includes(host) ||
-            host.endsWith('.ngrok.io') || host.endsWith('.ngrok-free.app') ||
-            allowedBases.some((b) => host === b || host.endsWith('.' + b));
-          return ok ? callback(null, true) : callback(new Error('Not allowed by CORS'));
-        },
-        credentials: true
-      })
-    );
+    this.app.use((req, res, next) => {
+      const open = OPEN_CORS_PREFIXES.some((p) => req.path.startsWith(p));
+      return (open ? openCors : strictCors)(req, res, next);
+    });
 
     this.app.use(express.json({ limit: '2mb' }));
     this.app.use(express.urlencoded({ extended: true }));
