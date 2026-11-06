@@ -30,10 +30,12 @@ export default function SetupWizard({ workspace, onDone, notify }) {
     // The user unticks what they don't want. (On reinstall this is overridden by saved settings.)
     supportChannels: CHANNELS.map((c) => c.key),
     acceptConversationProviders: true,
+    autoCreateInbound: true, // wizard turns inbound capture on by default (they're configuring channels now)
     ignoreAutomatedReplies: true,
     ignoreShortMessages: false,
     assignmentMode: 'round_robin',
     defaultAssigneeId: null,
+    slaEnabled: true, // wizard is where they set targets, so SLA is on by default here
     slaTargets: Object.entries(SLA_PRESETS).map(([priority, v]) => ({ priority, ...v })),
     autoCloseResolvedDays: 7,
     reopenWindowDays: 0,
@@ -78,10 +80,12 @@ export default function SetupWizard({ workspace, onDone, notify }) {
           ...f,
           supportChannels: w.supportChannels?.length ? w.supportChannels : f.supportChannels,
           acceptConversationProviders: w.acceptConversationProviders ?? f.acceptConversationProviders,
+          autoCreateInbound: w.autoCreateInbound ?? f.autoCreateInbound,
           ignoreAutomatedReplies: w.ignoreAutomatedReplies ?? f.ignoreAutomatedReplies,
           ignoreShortMessages: w.ignoreShortMessages ?? f.ignoreShortMessages,
           assignmentMode: w.assignmentMode || f.assignmentMode,
           defaultAssigneeId: w.defaultAssigneeId ?? f.defaultAssigneeId,
+          slaEnabled: w.slaEnabled ?? f.slaEnabled,
           slaTargets: w.slaTargets?.length ? w.slaTargets : f.slaTargets,
           autoCloseResolvedDays: w.autoCloseResolvedDays ?? f.autoCloseResolvedDays,
           reopenWindowDays: w.reopenWindowDays ?? f.reopenWindowDays,
@@ -166,6 +170,14 @@ export default function SetupWizard({ workspace, onDone, notify }) {
                     <span className="check">{form.acceptConversationProviders && <Icon name="check" size={13} />}</span>
                     Conversation Providers
                   </button>
+                </div>
+
+                <div className="toggle-row" style={{ marginTop: 16 }}>
+                  <div>
+                    <div className="t-label">Automatic ticket creation</div>
+                    <div className="t-desc">Turn inbound messages on the channels above into tickets. Off = nothing is auto-captured (forms &amp; manual tickets still work). You can change this anytime.</div>
+                  </div>
+                  <Switch checked={form.autoCreateInbound === true} onChange={(v) => set({ autoCreateInbound: v })} />
                 </div>
               </>
             )}
@@ -262,7 +274,17 @@ export default function SetupWizard({ workspace, onDone, notify }) {
             {step === 3 && (
               <>
                 <h2>Response targets &amp; lifecycle</h2>
-                <p className="lead">How fast you aim to reply and resolve, per priority (in minutes). Tickets turn red when a target is about to be missed.</p>
+                <p className="lead">Set how fast you aim to reply and resolve, per priority. Tickets turn red when a target is about to be missed.</p>
+
+                <div className="toggle-row" style={{ marginTop: 14 }}>
+                  <div>
+                    <div className="t-label">SLA tracking</div>
+                    <div className="t-desc">Track response &amp; resolve targets and flag late tickets. You can turn this off anytime.</div>
+                  </div>
+                  <Switch checked={form.slaEnabled === true} onChange={(v) => set({ slaEnabled: v })} />
+                </div>
+
+                {form.slaEnabled && (
                 <div className="sla-grid" style={{ marginTop: 16 }}>
                   <div className="sla-grid-head">
                     <span className="col-lbl">Priority</span>
@@ -287,6 +309,7 @@ export default function SetupWizard({ workspace, onDone, notify }) {
                     </div>
                   ))}
                 </div>
+                )}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginTop: 18 }}>
                   <div className="field" style={{ margin: 0 }}>
                     <label>Auto-close resolved after (days)</label>
@@ -311,14 +334,14 @@ export default function SetupWizard({ workspace, onDone, notify }) {
                     <input type="text" value={form.ticketNumberPrefix} onChange={(e) => set({ ticketNumberPrefix: e.target.value })} />
                   </div>
                 </div>
-                <SlaPreview targets={form.slaTargets} collapsible />
+                {form.slaEnabled && <SlaPreview targets={form.slaTargets} collapsible />}
                 <div className="toggle-row" style={{ marginTop: 10, opacity: whiteLabel ? 1 : 0.55 }}>
                   <div>
                     <div className="t-label">
-                      Enable client portal intake
+                      Enable support forms
                       {!whiteLabel && <span className="opt-tag" style={{ marginLeft: 8 }}>Agency plan</span>}
                     </div>
-                    <div className="t-desc">Let customers submit tickets from a branded web form.</div>
+                    <div className="t-desc">Let customers submit tickets from a branded web form, shareable link, or embeddable widget.</div>
                   </div>
                   <Switch checked={whiteLabel && form.portalEnabled} disabled={!whiteLabel}
                     onChange={(v) => whiteLabel && set({ portalEnabled: v })} />

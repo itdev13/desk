@@ -695,7 +695,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 
 /* ── Wizard ── */
 .wizard-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 32px; background: radial-gradient(1200px 600px at 50% -10%, #fff, var(--paper)); overflow-y: auto; }
-.wizard { width: 100%; max-width: 620px; }
+.wizard { width: 100%; max-width: 760px; }
 /* No overflow:hidden — it would clip dropdown menus (e.g. the assignee Select) that extend past
    the card. Inner elements round their own corners instead. */
 .wizard-card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow-lg); }
