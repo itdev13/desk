@@ -183,9 +183,21 @@ router.get('/', limiter, async (req, res) => {
     const accent = ws?.brand?.primaryColor || '#E0A24A';
 
     // The GHL location's timezone (fetched at install, stored on the token) so dates render in the
-    // location's zone instead of the server's. Null is fine — renderTicketsHtml falls back gracefully.
+    // location's zone instead of the server's. Older installs predate this field — if it's missing,
+    // lazily fetch it from GHL once and persist it, so the fallback-to-UTC only ever happens once.
     const tok = await OAuthToken.findOne({ locationId }).select('locationTimezone').lean();
-    const timeZone = tok?.locationTimezone || null;
+    let timeZone = tok?.locationTimezone || null;
+    if (!timeZone) {
+      try {
+        const details = await ghlService.getLocationDetails(locationId);
+        if (details.locationTimezone) {
+          timeZone = details.locationTimezone;
+          await OAuthToken.updateOne({ locationId }, { $set: { locationTimezone: timeZone } });
+        }
+      } catch (e) {
+        logger.info('[contact-tickets] timezone backfill skipped', { locationId, message: e.message });
+      }
+    }
 
     // Render the whole ticket list to HTML HERE, server-side. The custom JS just injects it — so any
     // future form field type (date, file, number, …) renders correctly without touching the script.
