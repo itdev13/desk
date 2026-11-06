@@ -202,17 +202,23 @@ router.get('/', limiter, async (req, res) => {
     // lazily fetch it from GHL once and persist it, so the fallback-to-UTC only ever happens once.
     const tok = await OAuthToken.findOne({ locationId }).select('locationTimezone').lean();
     let timeZone = tok?.locationTimezone || null;
+    logger.info('[contact-tickets][TZ] stored timezone on token', { locationId, stored: timeZone });
     if (!timeZone) {
       try {
         const details = await ghlService.getLocationDetails(locationId);
+        logger.info('[contact-tickets][TZ] getLocationDetails result', { locationId, details });
         if (details.locationTimezone) {
           timeZone = details.locationTimezone;
           await OAuthToken.updateOne({ locationId }, { $set: { locationTimezone: timeZone } });
+          logger.info('[contact-tickets][TZ] backfilled + saved timezone', { locationId, timeZone });
+        } else {
+          logger.warn('[contact-tickets][TZ] GHL returned NO timezone for location', { locationId });
         }
       } catch (e) {
-        logger.info('[contact-tickets] timezone backfill skipped', { locationId, message: e.message });
+        logger.warn('[contact-tickets][TZ] getLocationDetails FAILED', { locationId, status: e.response?.status, message: e.message });
       }
     }
+    logger.info('[contact-tickets][TZ] final timezone used for render', { locationId, timeZone: timeZone || '(none → UTC/server)' });
 
     // Render the whole ticket list to HTML HERE, server-side. The custom JS just injects it — so any
     // future form field type (date, file, number, …) renders correctly without touching the script.
