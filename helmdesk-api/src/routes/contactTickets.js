@@ -78,7 +78,9 @@ function renderTicketsHtml({ brandName, accent, contact, tickets }) {
         ${formFields || '<div style="color:#8a94a6;font-size:13px">No fields captured.</div>'}
         <div style="display:flex;justify-content:flex-end;margin-top:14px">
           <button type="button" class="hd-open" data-open-ticket="${e(t._id)}"
-            style="display:none;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:${accent};background:${accent}14;border:1px solid ${accent}40;border-radius:8px;padding:7px 13px;cursor:pointer">
+            style="display:none;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:#475467;background:#f7f8fa;border:1px solid #e4e7ec;border-radius:9px;padding:8px 14px;cursor:pointer;transition:background .12s,border-color .12s,color .12s"
+            onmouseover="this.style.background='#fff';this.style.borderColor='${accent}';this.style.color='${accent}'"
+            onmouseout="this.style.background='#f7f8fa';this.style.borderColor='#e4e7ec';this.style.color='#475467'">
             Open full ticket →
           </button>
         </div>
