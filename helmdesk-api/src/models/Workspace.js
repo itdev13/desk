@@ -68,8 +68,8 @@ const workspaceSchema = new mongoose.Schema(
     // needing to enumerate or select individual providers.
     acceptConversationProviders: { type: Boolean, default: false },
 
-    // Step 2 — ignore rules.
-    ignoreAutomatedReplies: { type: Boolean, default: true }, // skip replies to workflow/campaign sends
+    // Ignore rules — all default OFF; the agency opts into filtering from Settings if they want it.
+    ignoreAutomatedReplies: { type: Boolean, default: false }, // skip replies to workflow/campaign sends
     ignoreShortMessages: { type: Boolean, default: false }, // skip one-word acks ("ok", "thanks")
 
     // Keyword overrides (case-insensitive substring match on the message body).
@@ -108,7 +108,7 @@ const workspaceSchema = new mongoose.Schema(
     // beyond the window, a new ticket is created. Default 0 = always create a new ticket (never
     // reopen); an agency can opt into a reopen window (3/7/14/30) in setup or Settings.
     reopenWindowDays: { type: Number, default: 0 },
-    autoReplyEnabled: { type: Boolean, default: true },
+    autoReplyEnabled: { type: Boolean, default: false },
     autoReplyMessage: {
       type: String,
       default: "Thanks for reaching out — we've received your message and a team member will get back to you shortly."

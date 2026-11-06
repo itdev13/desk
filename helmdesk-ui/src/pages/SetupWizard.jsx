@@ -31,7 +31,7 @@ export default function SetupWizard({ workspace, onDone, notify }) {
     supportChannels: CHANNELS.map((c) => c.key),
     acceptConversationProviders: true,
     autoCreateInbound: true, // wizard turns inbound capture on by default (they're configuring channels now)
-    ignoreAutomatedReplies: true,
+    ignoreAutomatedReplies: false,
     ignoreShortMessages: false,
     assignmentMode: 'round_robin',
     defaultAssigneeId: null,
@@ -39,7 +39,7 @@ export default function SetupWizard({ workspace, onDone, notify }) {
     slaTargets: Object.entries(SLA_PRESETS).map(([priority, v]) => ({ priority, ...v })),
     autoCloseResolvedDays: 7,
     reopenWindowDays: 0,
-    autoReplyEnabled: true,
+    autoReplyEnabled: false,
     autoReplyMessage: "Thanks for reaching out — we've received your message and a team member will get back to you shortly.",
     ticketNumberPrefix: 'HD-',
     portalEnabled: true // on by default (only applies on plans that allow forms; gated below by whiteLabel)
@@ -102,7 +102,7 @@ export default function SetupWizard({ workspace, onDone, notify }) {
   const toggleChannel = (key) =>
     set({ supportChannels: form.supportChannels.includes(key) ? form.supportChannels.filter((c) => c !== key) : [...form.supportChannels, key] });
 
-  const steps = ['Channels', 'Filters', 'Assignment', 'SLA & Lifecycle'];
+  const steps = ['Channels', 'Assignment', 'SLA & Lifecycle'];
   // No longer require a channel: forms + manual tickets work regardless, so a workspace with zero
   // channels (auto-capture off) is a valid setup. Continue is never blocked.
   const canNext = true;
@@ -207,45 +207,6 @@ export default function SetupWizard({ workspace, onDone, notify }) {
 
             {step === 1 && (
               <>
-                <h2>What should we ignore?</h2>
-                <p className="lead">Keep the queue clean by filtering out noise that isn't a real support request.</p>
-                <div style={{ marginTop: 16 }}>
-                  <div className="toggle-row">
-                    <div>
-                      <div className="t-label">Ignore replies to marketing &amp; automations</div>
-                      <div className="t-desc">Recommended. Skips campaign and workflow replies.</div>
-                    </div>
-                    <Switch checked={form.ignoreAutomatedReplies} onChange={(v) => set({ ignoreAutomatedReplies: v })} />
-                  </div>
-                  <div className="toggle-row">
-                    <div>
-                      <div className="t-label">Ignore one-word messages</div>
-                      <div className="t-desc">Skips "ok", "thanks", "👍" and similar acknowledgements.</div>
-                    </div>
-                    <Switch checked={form.ignoreShortMessages} onChange={(v) => set({ ignoreShortMessages: v })} />
-                  </div>
-                  <div className="toggle-row">
-                    <div>
-                      <div className="t-label">Auto-reply on new tickets</div>
-                      <div className="t-desc">Send "we received your request" to the customer automatically.</div>
-                    </div>
-                    <Switch checked={form.autoReplyEnabled} onChange={(v) => set({ autoReplyEnabled: v })} />
-                  </div>
-                  {form.autoReplyEnabled && (
-                    <div className="field" style={{ marginTop: 14 }}>
-                      <label>Auto-reply message</label>
-                      <textarea value={form.autoReplyMessage}
-                        onChange={(e) => set({ autoReplyMessage: e.target.value })}
-                        placeholder="Thanks for reaching out — we've received your message and will get back to you shortly." />
-                      <span className="hint">Sent automatically to the customer when a new ticket is created.</span>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-
-            {step === 2 && (
-              <>
                 <h2>How should tickets be assigned?</h2>
                 <p className="lead">Pick how new tickets get an owner. You can change this any time in Settings.</p>
                 <div className="opt-grid" style={{ gridTemplateColumns: '1fr', marginTop: 16 }}>
@@ -294,7 +255,7 @@ export default function SetupWizard({ workspace, onDone, notify }) {
               </>
             )}
 
-            {step === 3 && (
+            {step === 2 && (
               <>
                 <h2>Response targets &amp; lifecycle</h2>
                 <p className="lead">Set how fast you aim to reply and resolve, per priority. Tickets turn red when a target is about to be missed.</p>
