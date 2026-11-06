@@ -103,7 +103,9 @@ export default function SetupWizard({ workspace, onDone, notify }) {
     set({ supportChannels: form.supportChannels.includes(key) ? form.supportChannels.filter((c) => c !== key) : [...form.supportChannels, key] });
 
   const steps = ['Channels', 'Filters', 'Assignment', 'SLA & Lifecycle'];
-  const canNext = step === 0 ? form.supportChannels.length > 0 : true;
+  // No longer require a channel: forms + manual tickets work regardless, so a workspace with zero
+  // channels (auto-capture off) is a valid setup. Continue is never blocked.
+  const canNext = true;
 
   const finish = async () => {
     setSaving(true);
@@ -177,20 +179,26 @@ export default function SetupWizard({ workspace, onDone, notify }) {
                 {(() => {
                   const noChannels = form.supportChannels.length === 0 && !form.acceptConversationProviders;
                   return (
-                    <div className="toggle-row" style={{ marginTop: 16, opacity: noChannels ? 0.55 : 1 }}>
-                      <div>
-                        <div className="t-label">Automatic ticket creation</div>
-                        <div className="t-desc">
-                          {noChannels
-                            ? 'Pick at least one channel above to turn this on — it creates tickets from those channels.'
-                            : 'Turn inbound messages on the channels above into tickets. Off = nothing is auto-captured (forms & manual tickets still work). You can change this anytime.'}
+                    <div>
+                      <div className="toggle-row" style={{ marginTop: 16, opacity: noChannels ? 0.55 : 1, borderBottom: 'none' }}>
+                        <div>
+                          <div className="t-label">Automatic ticket creation</div>
+                          <div className="t-desc">
+                            {noChannels
+                              ? 'Pick at least one channel above to turn this on — it creates tickets from those channels.'
+                              : 'Turn inbound messages on the channels above into tickets. You can change this anytime.'}
+                          </div>
                         </div>
+                        <Switch
+                          checked={!noChannels && form.autoCreateInbound === true}
+                          disabled={noChannels}
+                          onChange={(v) => !noChannels && set({ autoCreateInbound: v })}
+                        />
                       </div>
-                      <Switch
-                        checked={!noChannels && form.autoCreateInbound === true}
-                        disabled={noChannels}
-                        onChange={(v) => !noChannels && set({ autoCreateInbound: v })}
-                      />
+                      {/* Reassurance: this toggle only affects inbound auto-capture. */}
+                      <p className="t-desc" style={{ marginTop: 4 }}>
+                        ✓ Manual tickets and support-form submissions always create tickets — regardless of this setting.
+                      </p>
                     </div>
                   );
                 })()}
@@ -376,8 +384,10 @@ export default function SetupWizard({ workspace, onDone, notify }) {
             )}
           </div>
         </div>
-        {step === 0 && form.supportChannels.length === 0 && (
-          <p style={{ textAlign: 'center', color: 'var(--slate)', fontSize: 12.5, marginTop: 12 }}>Pick at least one channel to continue.</p>
+        {step === 0 && form.supportChannels.length === 0 && !form.acceptConversationProviders && (
+          <p style={{ textAlign: 'center', color: 'var(--slate)', fontSize: 12.5, marginTop: 12 }}>
+            No channels selected — inbound messages won’t auto-create tickets, but support forms and manual tickets still work. You can add channels anytime in Settings.
+          </p>
         )}
       </div>
     </div>
