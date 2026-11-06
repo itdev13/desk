@@ -3,6 +3,48 @@ const router = express.Router();
 const rateLimit = require('express-rate-limit');
 const Ticket = require('../models/Ticket');
 const Comment = require('../models/Comment');
+const Workspace = require('../models/Workspace');
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/**
+ * Render the ticket list to self-contained HTML (inline styles so the custom JS needs no CSS of its
+ * own). The SERVER owns this markup — the agency's form is fully customizable, so any field type the
+ * builder ever supports renders here by iterating `customFields` as plain label/value pairs; the
+ * contact-page script never has to change.
+ */
+function renderTicketsHtml({ brandName, accent, contact, tickets }) {
+  const esc2 = esc;
+  if (!tickets.length) {
+    return `<div style="text-align:center;color:#667085;padding:28px 10px;font-size:14px">No tickets for ${esc2(contact?.name || 'this contact')} yet.</div>`;
+  }
+  return tickets.map((t) => {
+    const origin = t.source === 'portal' ? `Form: ${esc2(t.formName || 'Support form')}` : esc2(t.channel || t.source || '');
+    const when = t.createdAt ? new Date(t.createdAt).toLocaleString() : '';
+    const msg = t.firstMessage
+      ? `<div style="font-size:13px;color:#344054;white-space:pre-wrap;background:#f9fafb;border:1px solid #eef0f4;border-radius:7px;padding:9px 11px;margin-bottom:8px">${esc2(t.firstMessage)}</div>`
+      : '';
+    const cf = Array.isArray(t.customFields) ? t.customFields : [];
+    const fieldRows = cf
+      .filter((f) => f && (f.value != null && String(f.value).trim() !== ''))
+      .map((f) => `<div style="display:flex;gap:10px;font-size:12.5px;padding:2px 0"><b style="color:#475467;font-weight:600;min-width:140px;flex:none">${esc2(f.label)}</b><span style="color:#101828">${esc2(f.value)}</span></div>`)
+      .join('');
+    const fieldsBlock = fieldRows
+      ? `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#98a2b3;margin:4px 0 6px">Form details</div><div style="background:#f9fafb;border:1px solid #eef0f4;border-radius:7px;padding:10px">${fieldRows}</div>`
+      : '';
+    return `<div style="border:1px solid #eef0f4;border-radius:10px;padding:14px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span style="font-family:ui-monospace,monospace;font-size:11.5px;color:#667085">${esc2(t.ref || '')}</span>
+          <span style="font-weight:700;color:#101828;font-size:14px">${esc2(t.subject || '(no subject)')}</span>
+          <span style="margin-left:auto;font-size:11px;font-weight:700;text-transform:capitalize;padding:2px 9px;border-radius:999px;background:${accent}22;color:${accent}">${esc2(t.status || '')}</span>
+        </div>
+        <div style="font-size:12px;color:#667085;margin-bottom:8px">${origin}${when ? ' &middot; ' + esc2(when) : ''} &middot; ${esc2(t.priority || 'normal')} priority</div>
+        ${msg}${fieldsBlock}
+      </div>`;
+  }).join('');
+}
 const ghlService = require('../services/ghlService');
 const logger = require('../utils/logger');
 
@@ -74,7 +116,16 @@ router.get('/', limiter, async (req, res) => {
       })
     );
 
-    res.json({ success: true, contact, tickets: withOpening });
+    // Brand name so the modal is white-labeled (shows the agency's name, never "HelmDesk").
+    const ws = await Workspace.findOne({ locationId }).select('brand.name brand.primaryColor').lean();
+    const brandName = ws?.brand?.name || 'Support';
+    const accent = ws?.brand?.primaryColor || '#E0A24A';
+
+    // Render the whole ticket list to HTML HERE, server-side. The custom JS just injects it — so any
+    // future form field type (date, file, number, …) renders correctly without touching the script.
+    const html = renderTicketsHtml({ brandName, accent, contact, tickets: withOpening });
+
+    res.json({ success: true, brandName, accent, contact, tickets: withOpening, html });
   } catch (error) {
     logger.error('[contact-tickets] failed', { message: error.message, stack: error.stack });
     res.status(500).json({ success: false, error: 'Could not load tickets.', detail: error.message });
