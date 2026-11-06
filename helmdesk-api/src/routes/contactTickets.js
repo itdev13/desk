@@ -15,14 +15,19 @@ function esc(s) {
  * builder ever supports renders here by iterating `customFields` as plain label/value pairs; the
  * contact-page script never has to change.
  */
-// Per-status accent colors for the pill.
-const STATUS_COLORS = {
-  new: ['#eef2ff', '#3538cd'], open: ['#fff4e5', '#b45309'], pending: ['#fef9c3', '#854d0e'],
-  on_hold: ['#f1f5f9', '#475569'], resolved: ['#dcfce7', '#15803d'], closed: ['#f1f5f9', '#475569']
-};
-const PRIORITY_COLORS = {
-  urgent: '#dc2626', high: '#ea580c', normal: '#2563eb', low: '#64748b'
-};
+const STATUSES = ['new', 'open', 'pending', 'on_hold', 'resolved', 'closed'];
+const STATUS_LABELS = { new: 'New', open: 'Open', pending: 'Waiting', on_hold: 'On hold', resolved: 'Resolved', closed: 'Closed' };
+
+// One read-only "form field": a label above a filled, non-editable value box — looks like the form.
+function roField(label, value) {
+  if (value == null || String(value).trim() === '') return '';
+  const multiline = String(value).length > 60 || String(value).indexOf('\n') > -1;
+  return `<div style="margin-bottom:14px">
+    <div style="font-size:12px;font-weight:600;color:#475467;margin-bottom:5px">${esc(label)}</div>
+    <div style="font-size:14px;color:#101828;background:#f9fafb;border:1px solid #e9ecf2;border-radius:9px;
+      padding:${multiline ? '11px 13px' : '10px 13px'};white-space:pre-wrap;word-break:break-word;line-height:1.5">${esc(value)}</div>
+  </div>`;
+}
 
 function renderTicketsHtml({ brandName, accent, contact, tickets }) {
   const e = esc;
@@ -37,47 +42,40 @@ function renderTicketsHtml({ brandName, accent, contact, tickets }) {
     const isPortal = t.source === 'portal';
     const origin = isPortal ? `Form · ${e(t.formName || 'Support form')}` : e(t.channel || t.source || '');
     const when = t.createdAt ? new Date(t.createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '';
-    const [pillBg, pillFg] = STATUS_COLORS[t.status] || ['#f1f5f9', '#475569'];
-    const prColor = PRIORITY_COLORS[(t.priority || 'normal')] || '#64748b';
 
-    // The opening message may contain a trailing "— Form details —" block (we also add it to the
-    // ticket body). Strip it here so we don't show the same answers twice — the structured grid below
-    // is the canonical view.
-    let body = String(t.firstMessage || '').replace(/\n*—\s*Form details\s*—[\s\S]*$/i, '').trim();
-    const msg = body
-      ? `<div style="font-size:13px;line-height:1.55;color:#344054;white-space:pre-wrap;margin:10px 0 0">${e(body)}</div>`
-      : '';
+    // Strip the trailing "— Form details —" block from the message (it duplicates the fields below).
+    const message = String(t.firstMessage || '').replace(/\n*—\s*Form details\s*—[\s\S]*$/i, '').trim();
 
+    // Render the submission exactly like the form: core fields (what the form collects) then every
+    // custom answer, each as a read-only labeled field. All read-only — only the status is editable.
     const cf = (Array.isArray(t.customFields) ? t.customFields : [])
       .filter((f) => f && f.value != null && String(f.value).trim() !== '');
-    const fieldRows = cf.map((f, i) => `
-      <div style="display:flex;gap:12px;padding:9px 12px;${i ? 'border-top:1px solid #f1f3f7;' : ''}">
-        <span style="flex:none;width:150px;font-size:12px;font-weight:600;color:#667085">${e(f.label)}</span>
-        <span style="flex:1;min-width:0;font-size:13px;color:#101828;word-break:break-word">${e(f.value)}</span>
-      </div>`).join('');
-    const fieldsBlock = fieldRows
-      ? `<div style="margin-top:12px">
-           <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#98a2b3;margin:0 0 6px 2px">Form submission</div>
-           <div style="background:#fafbfc;border:1px solid #eef0f4;border-radius:10px;overflow:hidden">${fieldRows}</div>
-         </div>`
-      : '';
+    const formFields = [
+      roField('Name', t.contactName),
+      roField('Email', t.contactEmail),
+      roField('Subject', t.subject),
+      roField('Message', message),
+      roField('Priority', (t.priority || '').charAt(0).toUpperCase() + (t.priority || '').slice(1)),
+      ...cf.map((f) => roField(f.label, f.value))
+    ].filter(Boolean).join('');
 
-    return `<div style="border:1px solid #e9ecf2;border-radius:14px;padding:16px;margin-bottom:12px;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.04)">
-        <div style="display:flex;align-items:flex-start;gap:10px">
-          <div style="flex:1;min-width:0">
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              <span style="font-family:ui-monospace,SFMono-Regular,monospace;font-size:11px;font-weight:600;color:#98a2b3;background:#f4f5f8;padding:1px 7px;border-radius:5px">${e(t.ref || '')}</span>
-              <span style="font-weight:700;color:#101828;font-size:15px;letter-spacing:-.01em">${e(t.subject || '(no subject)')}</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;margin-top:7px;font-size:11.5px;color:#8a94a6">
-              <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:6px;height:6px;border-radius:50%;background:${prColor};display:inline-block"></span>${e((t.priority || 'normal'))}</span>
-              <span style="color:#d0d5dd">·</span><span>${origin}</span>
-              ${when ? `<span style="color:#d0d5dd">·</span><span>${e(when)}</span>` : ''}
-            </div>
-          </div>
-          <span style="flex:none;font-size:11px;font-weight:700;text-transform:capitalize;padding:3px 10px;border-radius:999px;background:${pillBg};color:${pillFg}">${e((t.status || '').replace('_', ' '))}</span>
+    // Editable status dropdown (only editable control). Wired by the script via data-ticket.
+    const statusOpts = STATUSES.map((s) =>
+      `<option value="${s}"${s === t.status ? ' selected' : ''}>${e(STATUS_LABELS[s] || s)}</option>`).join('');
+
+    return `<div style="border:1px solid #e9ecf2;border-radius:16px;padding:18px;margin-bottom:14px;background:#fff;box-shadow:0 1px 3px rgba(16,24,40,.05)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+          <span style="font-family:ui-monospace,SFMono-Regular,monospace;font-size:11px;font-weight:600;color:#98a2b3;background:#f4f5f8;padding:2px 7px;border-radius:5px">${e(t.ref || '')}</span>
+          <span style="margin-left:auto;font-size:11.5px;color:#8a94a6">${origin}${when ? ' · ' + e(when) : ''}</span>
         </div>
-        ${msg}${fieldsBlock}
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <h4 style="margin:0;font-size:17px;font-weight:700;color:#101828;letter-spacing:-.01em;flex:1;min-width:0">${e(t.subject || '(no subject)')}</h4>
+          <select class="hd-status" data-ticket="${e(t._id)}" data-prev="${e(t.status || '')}"
+            style="flex:none;font-size:12.5px;font-weight:600;color:#101828;border:1px solid #d0d5dd;border-radius:8px;padding:7px 10px;background:#fff;cursor:pointer;outline:none;appearance:auto">
+            ${statusOpts}
+          </select>
+        </div>
+        ${formFields || '<div style="color:#8a94a6;font-size:13px">No fields captured.</div>'}
       </div>`;
   }).join('');
 }
@@ -138,7 +136,7 @@ router.get('/', limiter, async (req, res) => {
     const tickets = await Ticket.find({ locationId, contactId, deleted: { $ne: true } })
       .sort({ createdAt: -1 })
       .limit(50)
-      .select('ref subject status priority channel source formName customFields createdAt lastActivityAt')
+      .select('ref subject status priority channel source formName customFields contactName contactEmail createdAt lastActivityAt')
       .lean();
 
     // Pull the opening message of each ticket so the modal can show what the contact actually wrote.
@@ -165,6 +163,42 @@ router.get('/', limiter, async (req, res) => {
   } catch (error) {
     logger.error('[contact-tickets] failed', { message: error.message, stack: error.stack });
     res.status(500).json({ success: false, error: 'Could not load tickets.', detail: error.message });
+  }
+});
+
+/**
+ * POST /api/contact-tickets/status  — update one ticket's status from the contact-page modal.
+ * Body: { locationId, contactId, ticketId, status }. Same GHL ownership check as the GET. Status is
+ * the ONLY thing this endpoint can change (everything else in the modal is read-only).
+ */
+router.post('/status', limiter, async (req, res) => {
+  const locationId = String(req.body.locationId || '').trim();
+  const contactId = String(req.body.contactId || '').trim();
+  const ticketId = String(req.body.ticketId || '').trim();
+  const status = String(req.body.status || '').trim();
+  if (!locationId || !contactId || !ticketId) return res.status(400).json({ success: false, error: 'Missing fields.' });
+  if (!STATUSES.includes(status)) return res.status(400).json({ success: false, error: 'Invalid status.' });
+
+  try {
+    // Ownership: the contact must belong to this location (same gate as GET).
+    try {
+      const raw = await ghlService.apiRequest('GET', `/contacts/${encodeURIComponent(contactId)}`, locationId);
+      const c = raw.contact || raw;
+      if (!c || !(c.id || c._id)) throw new Error('not found');
+    } catch (e) {
+      return res.status(403).json({ success: false, error: 'Not authorized for this contact.' });
+    }
+
+    // The ticket must belong to this location AND this contact (can't touch others').
+    const ticket = await Ticket.findOne({ _id: ticketId, locationId, contactId, deleted: { $ne: true } });
+    if (!ticket) return res.status(404).json({ success: false, error: 'Ticket not found.' });
+
+    const ticketService = require('../services/ticketService');
+    await ticketService.changeStatus(ticket, status);
+    res.json({ success: true, status: ticket.status });
+  } catch (error) {
+    logger.error('[contact-tickets] status update failed', { message: error.message });
+    res.status(500).json({ success: false, error: 'Could not update status.' });
   }
 });
 

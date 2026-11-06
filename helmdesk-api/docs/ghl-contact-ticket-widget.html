@@ -81,8 +81,8 @@
   }
 
   // The SERVER renders the ticket list HTML (so new form field types never require a script change).
-  // This just injects it and sets the white-label title/subtitle.
-  function renderTickets(body, data) {
+  // This just injects it, sets the white-label title, and wires the (only) editable control: status.
+  function renderTickets(body, data, ctx) {
     var contact = data.contact || {};
     var count = (data.tickets || []).length;
     var brand = data.brandName || 'Support';
@@ -91,6 +91,24 @@
     var sub = document.querySelector('#' + MODAL_ID + ' .hd-sub');
     if (sub) sub.textContent = (contact.name || 'Contact') + (count ? (' · ' + count + ' ticket' + (count === 1 ? '' : 's')) : '');
     body.innerHTML = data.html || '<div class="hd-empty">No tickets for this contact yet.</div>';
+
+    // Wire each status <select> to save on change (the one editable thing in the modal).
+    body.querySelectorAll('.hd-status').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        var ticketId = sel.getAttribute('data-ticket');
+        var prev = sel.getAttribute('data-prev');
+        var next = sel.value;
+        sel.disabled = true;
+        fetch(ctx.base + '/api/contact-tickets/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ locationId: ctx.locationId, contactId: ctx.contactId, ticketId: ticketId, status: next })
+        })
+          .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || j.success === false) throw new Error((j && j.error) || 'Failed'); return j; }); })
+          .then(function () { sel.setAttribute('data-prev', next); sel.disabled = false; })
+          .catch(function () { sel.value = prev; sel.disabled = false; alert('Could not update status. Please try again.'); });
+      });
+    });
   }
 
   function openModal() {
@@ -114,7 +132,9 @@
     var body = modal.querySelector('.hd-body');
     if (!contactId || !locationId) { body.innerHTML = '<div class="hd-err">Could not read contact/location from the page.</div>'; return; }
 
-    var url = API_BASE.replace(/\/$/, '') + '/api/contact-tickets?locationId=' +
+    var base = API_BASE.replace(/\/$/, '');
+    var ctx = { base: base, locationId: locationId, contactId: contactId };
+    var url = base + '/api/contact-tickets?locationId=' +
       encodeURIComponent(locationId) + '&contactId=' + encodeURIComponent(contactId);
 
     fetch(url, { method: 'GET' })
@@ -127,7 +147,7 @@
           return j;
         });
       })
-      .then(function (data) { if (document.getElementById(MODAL_ID)) renderTickets(body, data); })
+      .then(function (data) { if (document.getElementById(MODAL_ID)) renderTickets(body, data, ctx); })
       .catch(function (err) { if (document.getElementById(MODAL_ID)) body.innerHTML = '<div class="hd-err">Failed to load: ' + esc(err.message) + '</div>'; });
   }
 
