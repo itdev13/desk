@@ -42,7 +42,7 @@ export default function SetupWizard({ workspace, onDone, notify }) {
     autoReplyEnabled: true,
     autoReplyMessage: "Thanks for reaching out — we've received your message and a team member will get back to you shortly.",
     ticketNumberPrefix: 'HD-',
-    portalEnabled: false
+    portalEnabled: true // on by default (only applies on plans that allow forms; gated below by whiteLabel)
   });
 
   const [agentsLoaded, setAgentsLoaded] = useState(false);
