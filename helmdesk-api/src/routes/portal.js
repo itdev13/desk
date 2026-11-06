@@ -337,7 +337,11 @@ async function processSubmission(ws, form, req, res) {
     // Fold custom answers into the opening message so the agent sees them in context — but only if
     // the message came from a real message field (if we already derived it from the custom answers,
     // they're in there and we'd be duplicating).
-    const appendCustom = core.message && custom.length ? '\n\n— Form details —\n' + custBlock : '';
+    // Append the FULL field summary (name/email/phone/subject/priority + every custom answer) to the
+    // ticket's opening message — not just custom fields — so the agent sees the complete submission.
+    // detailsBlock already excludes the message body (shown above) and blanks. Only append when the
+    // message came from a real message field; otherwise the details are already the message itself.
+    const appendCustom = (core.message && detailsBlock) ? '\n\n— Form details —\n' + detailsBlock : '';
     // Normalize a customer-chosen priority (e.g. "High" → "high"); ignore anything not in the enum so a
     // crafted submission can't set a junk value. Falls through to the ticket default when unset/invalid.
     const VALID_PRIORITIES = ['urgent', 'high', 'normal', 'low'];

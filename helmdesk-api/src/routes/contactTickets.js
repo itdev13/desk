@@ -15,32 +15,68 @@ function esc(s) {
  * builder ever supports renders here by iterating `customFields` as plain label/value pairs; the
  * contact-page script never has to change.
  */
+// Per-status accent colors for the pill.
+const STATUS_COLORS = {
+  new: ['#eef2ff', '#3538cd'], open: ['#fff4e5', '#b45309'], pending: ['#fef9c3', '#854d0e'],
+  on_hold: ['#f1f5f9', '#475569'], resolved: ['#dcfce7', '#15803d'], closed: ['#f1f5f9', '#475569']
+};
+const PRIORITY_COLORS = {
+  urgent: '#dc2626', high: '#ea580c', normal: '#2563eb', low: '#64748b'
+};
+
 function renderTicketsHtml({ brandName, accent, contact, tickets }) {
-  const esc2 = esc;
+  const e = esc;
   if (!tickets.length) {
-    return `<div style="text-align:center;color:#667085;padding:28px 10px;font-size:14px">No tickets for ${esc2(contact?.name || 'this contact')} yet.</div>`;
+    return `<div style="text-align:center;color:#8a94a6;padding:40px 16px">
+      <div style="font-size:34px;margin-bottom:8px">🎫</div>
+      <div style="font-size:14px;font-weight:600;color:#475467">No tickets yet</div>
+      <div style="font-size:12.5px;margin-top:2px">${e(contact?.name || 'This contact')} hasn’t submitted anything yet.</div>
+    </div>`;
   }
   return tickets.map((t) => {
-    const origin = t.source === 'portal' ? `Form: ${esc2(t.formName || 'Support form')}` : esc2(t.channel || t.source || '');
-    const when = t.createdAt ? new Date(t.createdAt).toLocaleString() : '';
-    const msg = t.firstMessage
-      ? `<div style="font-size:13px;color:#344054;white-space:pre-wrap;background:#f9fafb;border:1px solid #eef0f4;border-radius:7px;padding:9px 11px;margin-bottom:8px">${esc2(t.firstMessage)}</div>`
+    const isPortal = t.source === 'portal';
+    const origin = isPortal ? `Form · ${e(t.formName || 'Support form')}` : e(t.channel || t.source || '');
+    const when = t.createdAt ? new Date(t.createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '';
+    const [pillBg, pillFg] = STATUS_COLORS[t.status] || ['#f1f5f9', '#475569'];
+    const prColor = PRIORITY_COLORS[(t.priority || 'normal')] || '#64748b';
+
+    // The opening message may contain a trailing "— Form details —" block (we also add it to the
+    // ticket body). Strip it here so we don't show the same answers twice — the structured grid below
+    // is the canonical view.
+    let body = String(t.firstMessage || '').replace(/\n*—\s*Form details\s*—[\s\S]*$/i, '').trim();
+    const msg = body
+      ? `<div style="font-size:13px;line-height:1.55;color:#344054;white-space:pre-wrap;margin:10px 0 0">${e(body)}</div>`
       : '';
-    const cf = Array.isArray(t.customFields) ? t.customFields : [];
-    const fieldRows = cf
-      .filter((f) => f && (f.value != null && String(f.value).trim() !== ''))
-      .map((f) => `<div style="display:flex;gap:10px;font-size:12.5px;padding:2px 0"><b style="color:#475467;font-weight:600;min-width:140px;flex:none">${esc2(f.label)}</b><span style="color:#101828">${esc2(f.value)}</span></div>`)
-      .join('');
+
+    const cf = (Array.isArray(t.customFields) ? t.customFields : [])
+      .filter((f) => f && f.value != null && String(f.value).trim() !== '');
+    const fieldRows = cf.map((f, i) => `
+      <div style="display:flex;gap:12px;padding:9px 12px;${i ? 'border-top:1px solid #f1f3f7;' : ''}">
+        <span style="flex:none;width:150px;font-size:12px;font-weight:600;color:#667085">${e(f.label)}</span>
+        <span style="flex:1;min-width:0;font-size:13px;color:#101828;word-break:break-word">${e(f.value)}</span>
+      </div>`).join('');
     const fieldsBlock = fieldRows
-      ? `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#98a2b3;margin:4px 0 6px">Form details</div><div style="background:#f9fafb;border:1px solid #eef0f4;border-radius:7px;padding:10px">${fieldRows}</div>`
+      ? `<div style="margin-top:12px">
+           <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#98a2b3;margin:0 0 6px 2px">Form submission</div>
+           <div style="background:#fafbfc;border:1px solid #eef0f4;border-radius:10px;overflow:hidden">${fieldRows}</div>
+         </div>`
       : '';
-    return `<div style="border:1px solid #eef0f4;border-radius:10px;padding:14px;margin-bottom:12px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-          <span style="font-family:ui-monospace,monospace;font-size:11.5px;color:#667085">${esc2(t.ref || '')}</span>
-          <span style="font-weight:700;color:#101828;font-size:14px">${esc2(t.subject || '(no subject)')}</span>
-          <span style="margin-left:auto;font-size:11px;font-weight:700;text-transform:capitalize;padding:2px 9px;border-radius:999px;background:${accent}22;color:${accent}">${esc2(t.status || '')}</span>
+
+    return `<div style="border:1px solid #e9ecf2;border-radius:14px;padding:16px;margin-bottom:12px;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.04)">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span style="font-family:ui-monospace,SFMono-Regular,monospace;font-size:11px;font-weight:600;color:#98a2b3;background:#f4f5f8;padding:1px 7px;border-radius:5px">${e(t.ref || '')}</span>
+              <span style="font-weight:700;color:#101828;font-size:15px;letter-spacing:-.01em">${e(t.subject || '(no subject)')}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:7px;font-size:11.5px;color:#8a94a6">
+              <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:6px;height:6px;border-radius:50%;background:${prColor};display:inline-block"></span>${e((t.priority || 'normal'))}</span>
+              <span style="color:#d0d5dd">·</span><span>${origin}</span>
+              ${when ? `<span style="color:#d0d5dd">·</span><span>${e(when)}</span>` : ''}
+            </div>
+          </div>
+          <span style="flex:none;font-size:11px;font-weight:700;text-transform:capitalize;padding:3px 10px;border-radius:999px;background:${pillBg};color:${pillFg}">${e((t.status || '').replace('_', ' '))}</span>
         </div>
-        <div style="font-size:12px;color:#667085;margin-bottom:8px">${origin}${when ? ' &middot; ' + esc2(when) : ''} &middot; ${esc2(t.priority || 'normal')} priority</div>
         ${msg}${fieldsBlock}
       </div>`;
   }).join('');
