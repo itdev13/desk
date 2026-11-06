@@ -138,7 +138,9 @@ export function contrastText(hex) {
  * - Collapses the runaway blank lines that email templates produce.
  */
 export function cleanMessageText(body) {
-  const raw = String(body || '');
+  // Drop the trailing "— Form details —" block the portal appends to the message: those fields
+  // already render as a structured "Form details" card, so keeping them here just duplicates them.
+  const raw = String(body || '').replace(/\n*—\s*Form details\s*—[\s\S]*$/i, '').trim();
   // Heuristic: looks like HTML if it has a tag. Plain text is returned as-is.
   if (!/<[a-z!][\s\S]*>/i.test(raw)) return raw.trim();
   try {
