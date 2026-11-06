@@ -70,7 +70,11 @@ export function agoFull(dateish) {
   if (isNaN(d.getTime())) return '';
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const str = d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZoneName: 'short' });
+    // Use explicit COMPONENTS, not dateStyle/timeStyle — those cannot be combined with timeZoneName
+    // (it throws TypeError and the tooltip silently falls back to a plain, zone-less string).
+    const str = d.toLocaleString(undefined, {
+      year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short'
+    });
     return tz ? `${str} (${tz})` : str;
   } catch {
     return d.toLocaleString();

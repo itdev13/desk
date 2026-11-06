@@ -47,18 +47,22 @@ function renderTicketsHtml({ brandName, accent, contact, tickets, timeZone }) {
     // location's own timezone so the whole support team sees consistent, correct local times.
     const dateOpts = { dateStyle: 'medium', timeStyle: 'short' };
     if (timeZone) dateOpts.timeZone = timeZone;
+    // Tooltip uses explicit COMPONENTS, not dateStyle/timeStyle — those cannot be combined with
+    // timeZoneName (doing so throws TypeError and silently drops us to the UTC catch below).
+    const fullOpts = { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' };
+    if (timeZone) fullOpts.timeZone = timeZone;
     let when = '';
     let whenFull = ''; // hover tooltip: full date + time + timezone, so the zone is never ambiguous
     if (t.createdAt) {
       const d = new Date(t.createdAt);
       try {
         when = d.toLocaleString('en-US', dateOpts);
-        // e.g. "Nov 6, 2026, 6:58 PM GMT+5:30 (Asia/Kolkata)"
-        const withZone = d.toLocaleString('en-US', { ...dateOpts, timeZoneName: 'short' });
+        // e.g. "Nov 6, 2026, 12:00 PM PST (America/Tijuana)"
+        const withZone = d.toLocaleString('en-US', fullOpts);
         whenFull = timeZone ? `${withZone} (${timeZone})` : withZone;
       } catch {
         when = d.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }); // bad tz → server zone
-        whenFull = d.toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'long' });
+        whenFull = d.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
       }
     }
 
