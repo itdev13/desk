@@ -1,0 +1,174 @@
+<!--
+  HelmDesk — "Ticket" button + modal for the GoHighLevel CONTACT DETAIL page.
+
+  Paste this whole <script> block into the GHL Marketplace app's Custom JS (the "Ticket View" custom
+  code / custom menu snippet). It adds a "Tickets" button next to the contact's delete action; clicking
+  it opens a modal that lists that contact's HelmDesk tickets (including portal-form submissions with
+  every field the contact filled), fetched securely from the HelmDesk API.
+
+  The API verifies the contact belongs to the location (via the location's OAuth token) before
+  returning anything, so no secret key is needed in this page.
+
+  ONE THING TO SET: API_BASE below → your HelmDesk API host.
+-->
+<script>
+(function () {
+  // ===== CONFIG =====
+  var API_BASE = 'https://helmdeskapi.vaultsuite.store'; // HelmDesk API host (no trailing slash)
+  // ==================
+
+  var BTN_ID = 'hd-ticket-btn';
+  var MODAL_ID = 'hd-ticket-modal';
+
+  function getContactId() {
+    var m = location.pathname.match(/\/contacts\/detail\/([^/?#]+)/);
+    return m ? m[1] : null;
+  }
+  // GHL contact URLs look like /v2/location/<locationId>/contacts/detail/<contactId>
+  function getLocationId() {
+    var m = location.pathname.match(/\/location\/([^/?#]+)/);
+    return m ? m[1] : null;
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function injectStyles() {
+    if (document.getElementById('hd-ticket-styles')) return;
+    var s = document.createElement('style');
+    s.id = 'hd-ticket-styles';
+    s.textContent = [
+      '#' + BTN_ID + '{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;font-size:13px;font-weight:600;',
+      'color:#422006;background:#E0A24A;border:1px solid #c98a30;border-radius:7px;cursor:pointer;white-space:nowrap}',
+      '#' + BTN_ID + ':hover{filter:brightness(1.04)}',
+      '#' + MODAL_ID + '{position:fixed;inset:0;background:rgba(15,23,41,.45);backdrop-filter:blur(2px);display:flex;',
+      'align-items:center;justify-content:center;z-index:99999;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif}',
+      '#' + MODAL_ID + ' .hd-box{background:#fff;border-radius:14px;width:560px;max-width:calc(100vw - 32px);max-height:82vh;',
+      'display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.28);overflow:hidden}',
+      '#' + MODAL_ID + ' .hd-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;',
+      'border-bottom:1px solid #eef0f4}',
+      '#' + MODAL_ID + ' .hd-head h3{margin:0;font-size:16px;font-weight:700;color:#101828}',
+      '#' + MODAL_ID + ' .hd-head .hd-sub{font-size:12.5px;color:#667085;margin-top:2px}',
+      '#' + MODAL_ID + ' .hd-close{background:none;border:none;font-size:22px;cursor:pointer;color:#98a2b3;line-height:1}',
+      '#' + MODAL_ID + ' .hd-body{padding:16px 20px;overflow:auto;font-size:14px;color:#344054}',
+      '#' + MODAL_ID + ' .hd-t{border:1px solid #eef0f4;border-radius:10px;padding:14px;margin-bottom:12px}',
+      '#' + MODAL_ID + ' .hd-t-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}',
+      '#' + MODAL_ID + ' .hd-ref{font-family:ui-monospace,monospace;font-size:11.5px;color:#667085}',
+      '#' + MODAL_ID + ' .hd-subj{font-weight:700;color:#101828;font-size:14px}',
+      '#' + MODAL_ID + ' .hd-pill{margin-left:auto;font-size:11px;font-weight:700;text-transform:capitalize;',
+      'padding:2px 9px;border-radius:999px;background:#eef2ff;color:#3538cd}',
+      '#' + MODAL_ID + ' .hd-meta{font-size:12px;color:#667085;margin-bottom:8px}',
+      '#' + MODAL_ID + ' .hd-msg{font-size:13px;color:#344054;white-space:pre-wrap;background:#f9fafb;border:1px solid #eef0f4;',
+      'border-radius:7px;padding:9px 11px;margin-bottom:8px}',
+      '#' + MODAL_ID + ' .hd-fields{display:flex;flex-direction:column;gap:5px}',
+      '#' + MODAL_ID + ' .hd-f{display:flex;gap:8px;font-size:12.5px}',
+      '#' + MODAL_ID + ' .hd-f b{color:#475467;font-weight:600;min-width:120px}',
+      '#' + MODAL_ID + ' .hd-empty{text-align:center;color:#667085;padding:28px 10px}',
+      '#' + MODAL_ID + ' .hd-err{color:#d92d20}'
+    ].join('');
+    document.head.appendChild(s);
+  }
+
+  function escHandler(e) { if (e.key === 'Escape') closeModal(); }
+  function closeModal() {
+    var m = document.getElementById(MODAL_ID);
+    if (m) m.remove();
+    document.removeEventListener('keydown', escHandler);
+  }
+
+  function renderTickets(body, data) {
+    var contact = data.contact || {};
+    var tickets = data.tickets || [];
+    if (!tickets.length) {
+      body.innerHTML = '<div class="hd-empty">No tickets for this contact yet.</div>';
+      return;
+    }
+    var html = tickets.map(function (t) {
+      var pill = '<span class="hd-pill">' + esc(t.status || '') + '</span>';
+      var origin = t.source === 'portal'
+        ? ('Form: ' + esc(t.formName || 'Support form'))
+        : esc(t.channel || t.source || '');
+      var when = t.createdAt ? new Date(t.createdAt).toLocaleString() : '';
+      var msg = t.firstMessage ? '<div class="hd-msg">' + esc(t.firstMessage) + '</div>' : '';
+      var fields = (t.customFields || []).map(function (f) {
+        return '<div class="hd-f"><b>' + esc(f.label) + '</b><span>' + esc(f.value) + '</span></div>';
+      }).join('');
+      var fieldsBlock = fields ? '<div class="hd-fields">' + fields + '</div>' : '';
+      return '<div class="hd-t">' +
+          '<div class="hd-t-top"><span class="hd-ref">' + esc(t.ref || '') + '</span>' +
+            '<span class="hd-subj">' + esc(t.subject || '(no subject)') + '</span>' + pill + '</div>' +
+          '<div class="hd-meta">' + origin + (when ? ' &middot; ' + esc(when) : '') +
+            ' &middot; ' + esc(t.priority || 'normal') + ' priority</div>' +
+          msg + fieldsBlock +
+        '</div>';
+    }).join('');
+    body.innerHTML = html;
+    // Update the subtitle with the contact name + count.
+    var sub = document.querySelector('#' + MODAL_ID + ' .hd-sub');
+    if (sub) sub.textContent = (contact.name || 'Contact') + ' · ' + tickets.length + ' ticket' + (tickets.length === 1 ? '' : 's');
+  }
+
+  function openModal() {
+    closeModal();
+    var contactId = getContactId();
+    var locationId = getLocationId();
+
+    var modal = document.createElement('div');
+    modal.id = MODAL_ID;
+    modal.innerHTML =
+      '<div class="hd-box">' +
+        '<div class="hd-head"><div><h3>HelmDesk Tickets</h3><div class="hd-sub">Loading…</div></div>' +
+          '<button class="hd-close" aria-label="Close">&times;</button></div>' +
+        '<div class="hd-body">Loading…</div>' +
+      '</div>';
+    modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+    modal.querySelector('.hd-close').addEventListener('click', closeModal);
+    document.addEventListener('keydown', escHandler);
+    document.body.appendChild(modal);
+
+    var body = modal.querySelector('.hd-body');
+    if (!contactId || !locationId) { body.innerHTML = '<div class="hd-err">Could not read contact/location from the page.</div>'; return; }
+
+    var url = API_BASE.replace(/\/$/, '') + '/api/contact-tickets?locationId=' +
+      encodeURIComponent(locationId) + '&contactId=' + encodeURIComponent(contactId);
+
+    fetch(url, { method: 'GET' })
+      .then(function (r) {
+        return r.text().then(function (tx) {
+          var j; try { j = JSON.parse(tx); } catch (_) { j = null; }
+          if (!r.ok || !j || j.success === false) {
+            throw new Error((j && j.error) || ('HTTP ' + r.status));
+          }
+          return j;
+        });
+      })
+      .then(function (data) { if (document.getElementById(MODAL_ID)) renderTickets(body, data); })
+      .catch(function (err) { if (document.getElementById(MODAL_ID)) body.innerHTML = '<div class="hd-err">Failed to load: ' + esc(err.message) + '</div>'; });
+  }
+
+  function injectButton() {
+    if (!getContactId()) return;
+    if (document.getElementById(BTN_ID)) return;
+    var anchor = document.getElementById('delete-contact-trigger');
+    if (!anchor || !anchor.parentElement) return;
+    var btn = document.createElement('button');
+    btn.id = BTN_ID;
+    btn.type = 'button';
+    btn.textContent = 'Tickets';
+    btn.addEventListener('click', function (e) { e.stopPropagation(); openModal(); });
+    anchor.parentElement.insertBefore(btn, anchor);
+  }
+
+  injectStyles();
+  var pending = false;
+  new MutationObserver(function () {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(function () { pending = false; injectButton(); });
+  }).observe(document.body, { childList: true, subtree: true });
+  injectButton();
+})();
+</script>

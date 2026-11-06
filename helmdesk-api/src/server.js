@@ -103,6 +103,9 @@ class HelmDeskApp {
     const portalRoutes = require('./routes/portal');
     this.app.use('/portal', portalRoutes); // public, unauthenticated intake (legacy /portal/:slug)
     this.app.use('/f', portalRoutes.fRouter); // short public form URLs: /f/<name>/<slug>
+    // Contact-page script endpoint — no app session (runs on app.gohighlevel.com); verifies contact
+    // ownership against GHL with the location's token. Returns the contact's tickets for a modal.
+    this.app.use('/api/contact-tickets', require('./routes/contactTickets'));
 
     // Serve the built Custom Page UI (if present) at /app, same-origin for the GHL iframe.
     const uiDist = path.resolve(__dirname, '../../helmdesk-ui/dist');
