@@ -4,6 +4,7 @@ const rateLimit = require('express-rate-limit');
 const Ticket = require('../models/Ticket');
 const Comment = require('../models/Comment');
 const Workspace = require('../models/Workspace');
+const OAuthToken = require('../models/OAuthToken');
 
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -29,7 +30,7 @@ function roField(label, value) {
   </div>`;
 }
 
-function renderTicketsHtml({ brandName, accent, contact, tickets }) {
+function renderTicketsHtml({ brandName, accent, contact, tickets, timeZone }) {
   const e = esc;
   if (!tickets.length) {
     return `<div style="text-align:center;color:#8a94a6;padding:40px 16px">
@@ -41,7 +42,16 @@ function renderTicketsHtml({ brandName, accent, contact, tickets }) {
   return tickets.map((t) => {
     const isPortal = t.source === 'portal';
     const origin = isPortal ? `Form · ${e(t.formName || 'Support form')}` : e(t.channel || t.source || '');
-    const when = t.createdAt ? new Date(t.createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '';
+    // Render in the LOCATION's timezone, not the server's. This HTML is built server-side, so a bare
+    // toLocaleString would use whatever zone the deployed box runs in (usually UTC). We pass the GHL
+    // location's own timezone so the whole support team sees consistent, correct local times.
+    const dateOpts = { dateStyle: 'medium', timeStyle: 'short' };
+    if (timeZone) dateOpts.timeZone = timeZone;
+    let when = '';
+    if (t.createdAt) {
+      try { when = new Date(t.createdAt).toLocaleString('en-US', dateOpts); }
+      catch { when = new Date(t.createdAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }); } // bad tz string → server zone
+    }
 
     // Strip the trailing "— Form details —" block from the message (it duplicates the fields below).
     const message = String(t.firstMessage || '').replace(/\n*—\s*Form details\s*—[\s\S]*$/i, '').trim();
@@ -163,9 +173,14 @@ router.get('/', limiter, async (req, res) => {
     const brandName = ws?.brand?.name || 'Support';
     const accent = ws?.brand?.primaryColor || '#E0A24A';
 
+    // The GHL location's timezone (fetched at install, stored on the token) so dates render in the
+    // location's zone instead of the server's. Null is fine — renderTicketsHtml falls back gracefully.
+    const tok = await OAuthToken.findOne({ locationId }).select('locationTimezone').lean();
+    const timeZone = tok?.locationTimezone || null;
+
     // Render the whole ticket list to HTML HERE, server-side. The custom JS just injects it — so any
     // future form field type (date, file, number, …) renders correctly without touching the script.
-    const html = renderTicketsHtml({ brandName, accent, contact, tickets: withOpening });
+    const html = renderTicketsHtml({ brandName, accent, contact, tickets: withOpening, timeZone });
 
     res.json({ success: true, brandName, accent, contact, tickets: withOpening, html });
   } catch (error) {
