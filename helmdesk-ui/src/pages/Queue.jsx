@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../lib/api.js';
-import { ago, slaDisplay, fmtMins, labelChannel } from '../lib/format.js';
+import { ago, agoFull, slaDisplay, fmtMins, labelChannel } from '../lib/format.js';
 import { Icon, PriorityPill, Avatar } from '../components/ui.jsx';
 import NewTicketModal from '../components/NewTicketModal.jsx';
 import { useAutoRefresh, useDebounce } from '../lib/useAutoRefresh.js';
@@ -134,7 +134,7 @@ function TicketRow({ t, onOpen }) {
         <div className="id">{t.ref} <PriorityPill priority={t.priority} /></div>
         <div className="subj">{t.subject}</div>
         <div className="sub2">
-          {t.contactName || 'Unknown'}{t.channel ? ` · ${labelChannel(t.channel)}` : ''} · {ago(t.lastActivityAt)}
+          {t.contactName || 'Unknown'}{t.channel ? ` · ${labelChannel(t.channel)}` : ''} · <span title={agoFull(t.lastActivityAt)}>{ago(t.lastActivityAt)}</span>
         </div>
       </div>
       <div className="tmeta">

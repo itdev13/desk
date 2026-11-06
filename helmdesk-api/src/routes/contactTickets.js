@@ -48,9 +48,18 @@ function renderTicketsHtml({ brandName, accent, contact, tickets, timeZone }) {
     const dateOpts = { dateStyle: 'medium', timeStyle: 'short' };
     if (timeZone) dateOpts.timeZone = timeZone;
     let when = '';
+    let whenFull = ''; // hover tooltip: full date + time + timezone, so the zone is never ambiguous
     if (t.createdAt) {
-      try { when = new Date(t.createdAt).toLocaleString('en-US', dateOpts); }
-      catch { when = new Date(t.createdAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }); } // bad tz string → server zone
+      const d = new Date(t.createdAt);
+      try {
+        when = d.toLocaleString('en-US', dateOpts);
+        // e.g. "Nov 6, 2026, 6:58 PM GMT+5:30 (Asia/Kolkata)"
+        const withZone = d.toLocaleString('en-US', { ...dateOpts, timeZoneName: 'short' });
+        whenFull = timeZone ? `${withZone} (${timeZone})` : withZone;
+      } catch {
+        when = d.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }); // bad tz → server zone
+        whenFull = d.toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'long' });
+      }
     }
 
     // Strip the trailing "— Form details —" block from the message (it duplicates the fields below).
@@ -76,7 +85,7 @@ function renderTicketsHtml({ brandName, accent, contact, tickets, timeZone }) {
     return `<div style="border:1px solid #e9ecf2;border-radius:16px;padding:18px;margin-bottom:14px;background:#fff;box-shadow:0 1px 3px rgba(16,24,40,.05)">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
           <span style="font-family:ui-monospace,SFMono-Regular,monospace;font-size:11px;font-weight:600;color:#98a2b3;background:#f4f5f8;padding:2px 7px;border-radius:5px">${e(t.ref || '')}</span>
-          <span style="margin-left:auto;font-size:11.5px;color:#8a94a6">${origin}${when ? ' · ' + e(when) : ''}</span>
+          <span style="margin-left:auto;font-size:11.5px;color:#8a94a6">${origin}${when ? ' · <span title="' + e(whenFull) + '" style="cursor:help;border-bottom:1px dotted #cbd2dd">' + e(when) + '</span>' : ''}</span>
         </div>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
           <h4 style="margin:0;font-size:17px;font-weight:700;color:#101828;letter-spacing:-.01em;flex:1;min-width:0">${e(t.subject || '(no subject)')}</h4>

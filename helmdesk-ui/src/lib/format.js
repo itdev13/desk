@@ -60,6 +60,24 @@ export function ago(dateish) {
 }
 
 /**
+ * Full, unambiguous timestamp for a hover tooltip: date + time + the viewer's timezone, e.g.
+ * "Nov 6, 2026 at 6:58 PM GMT+5:30 (Asia/Kolkata)". Pair with `ago()` as the `title` on a time so
+ * the exact moment and zone are one hover away.
+ */
+export function agoFull(dateish) {
+  if (!dateish) return '';
+  const d = new Date(dateish);
+  if (isNaN(d.getTime())) return '';
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const str = d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZoneName: 'short' });
+    return tz ? `${str} (${tz})` : str;
+  } catch {
+    return d.toLocaleString();
+  }
+}
+
+/**
  * SLA countdown display from a ticket. Returns { text, sub, tone }.
  * tone: crit (breached/<15m), warn (<2h), good, paused.
  */

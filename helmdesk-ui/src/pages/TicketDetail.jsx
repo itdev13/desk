@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { api } from '../lib/api.js';
-import { ago, slaDisplay, STATUS_LABEL, PRIORITY_LABEL, labelChannel, isCustomProviderChannel, cleanMessageText } from '../lib/format.js';
+import { ago, agoFull, slaDisplay, STATUS_LABEL, PRIORITY_LABEL, labelChannel, isCustomProviderChannel, cleanMessageText } from '../lib/format.js';
 import { looksLikeHtml } from '../lib/sanitizeHtml.js';
 import EmailFrame from '../components/EmailFrame.jsx';
 import MessageEmail from '../components/MessageEmail.jsx';
@@ -133,7 +133,7 @@ export default function TicketDetail({ id, onBack, user, notify, onChange }) {
                 return (
                 <div key={c._id} className={`msg ${c.kind} ${c.authorType === 'system' ? 'system' : ''}`}>
                   <div className="meta">
-                    {author}{' · '}{ago(c.createdAt)}
+                    {author}{' · '}<span title={agoFull(c.createdAt)} style={{ cursor: 'help' }}>{ago(c.createdAt)}</span>
                   </div>
                   <div style={{ whiteSpace: 'pre-wrap' }}>{cleanMessageText(c.body)}</div>
                 </div>
@@ -215,7 +215,7 @@ export default function TicketDetail({ id, onBack, user, notify, onChange }) {
             <div className="side-card">
               <h4>SLA</h4>
               <div className="kv"><span className="k">Status</span><span className={`sla ${sla.tone}`}>{sla.text} {sla.sub && `(${sla.sub})`}</span></div>
-              <div className="kv"><span className="k">First reply</span><span>{ticket.firstResponseAt ? ago(ticket.firstResponseAt) : '—'}</span></div>
+              <div className="kv"><span className="k">First reply</span><span title={ticket.firstResponseAt ? agoFull(ticket.firstResponseAt) : ''} style={ticket.firstResponseAt ? { cursor: 'help' } : undefined}>{ticket.firstResponseAt ? ago(ticket.firstResponseAt) : '—'}</span></div>
               <div className="kv"><span className="k">Breached</span><span>{ticket.breached ? <span className="pill crit plain">Yes</span> : 'No'}</span></div>
             </div>
 
@@ -237,7 +237,7 @@ export default function TicketDetail({ id, onBack, user, notify, onChange }) {
                 </span>
               </div>
               <div className="kv"><span className="k">Source</span><span style={{ textTransform: 'capitalize' }}>{ticket.source}</span></div>
-              <div className="kv"><span className="k">Opened</span><span>{ago(ticket.createdAt)}</span></div>
+              <div className="kv"><span className="k">Opened</span><span title={agoFull(ticket.createdAt)} style={{ cursor: 'help' }}>{ago(ticket.createdAt)}</span></div>
               <div className="kv"><span className="k">Messages</span><span>{ticket.messageCount}</span></div>
             </div>
 

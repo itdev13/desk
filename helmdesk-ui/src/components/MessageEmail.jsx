@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import EmailFrame from './EmailFrame.jsx';
 import { Avatar, Icon } from './ui.jsx';
 import { htmlToText } from '../lib/sanitizeHtml.js';
-import { ago } from '../lib/format.js';
+import { ago, agoFull } from '../lib/format.js';
 
 /**
  * A single email rendered as a card — ported from PipelinePulse's EmailBody/EmailFull.
@@ -37,7 +37,7 @@ export default function MessageEmail({ c, onResize }) {
             ? (c.emailTo && <div className="email-card-sub">To: {c.emailTo}</div>)
             : (preview && <div className="email-card-sub">{preview}</div>)}
         </div>
-        <span className="email-card-time">{ago(c.createdAt)}</span>
+        <span className="email-card-time" title={agoFull(c.createdAt)}>{ago(c.createdAt)}</span>
         <span className="email-card-chev"><Icon name={open ? 'chevron-up' : 'chevron'} size={16} /></span>
       </button>
 

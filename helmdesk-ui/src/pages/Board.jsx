@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { api } from '../lib/api.js';
-import { ago, slaDisplay } from '../lib/format.js';
+import { ago, agoFull, slaDisplay } from '../lib/format.js';
 import { PriorityPill, Avatar } from '../components/ui.jsx';
 import { STATUS_LABEL } from '../lib/format.js';
 import { useAutoRefresh } from '../lib/useAutoRefresh.js';
@@ -107,7 +107,7 @@ export default function Board({ onOpen, isAdmin }) {
                           {t.assigneeName ? <Avatar name={t.assigneeName} size={24} /> : null}
                         </div>
                         <div className={`sla ${sla.tone}`} style={{ marginTop: 8, fontSize: 11 }}>{sla.text} {sla.sub && `· ${sla.sub}`}</div>
-                        <div style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>{t.contactName || 'Unknown'} · {ago(t.lastActivityAt)}</div>
+                        <div style={{ fontSize: 11, color: 'var(--slate)', marginTop: 4 }}>{t.contactName || 'Unknown'} · <span title={agoFull(t.lastActivityAt)}>{ago(t.lastActivityAt)}</span></div>
                       </div>
                     );
                   })}
