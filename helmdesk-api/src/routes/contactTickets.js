@@ -76,8 +76,8 @@ router.get('/', limiter, async (req, res) => {
 
     res.json({ success: true, contact, tickets: withOpening });
   } catch (error) {
-    logger.error('[contact-tickets] failed', { message: error.message });
-    res.status(500).json({ success: false, error: 'Could not load tickets.' });
+    logger.error('[contact-tickets] failed', { message: error.message, stack: error.stack });
+    res.status(500).json({ success: false, error: 'Could not load tickets.', detail: error.message });
   }
 });
 

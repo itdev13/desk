@@ -38,6 +38,12 @@ class HelmDeskApp {
       })
     );
 
+    // The contact-page script runs on each agency's OWN (white-label) GHL domain — which we can't
+    // enumerate — so this one public, ownership-verified, cookie-less endpoint allows ANY origin.
+    // Mounted BEFORE the strict global CORS so a white-label origin isn't rejected (which would 500 the
+    // preflight and surface as "Failed to fetch"). No credentials → safe to open.
+    this.app.use('/api/contact-tickets', cors({ origin: true, credentials: false, methods: ['GET'] }));
+
     this.app.use(
       cors({
         origin(origin, callback) {
