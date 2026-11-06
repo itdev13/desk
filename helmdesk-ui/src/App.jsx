@@ -46,6 +46,21 @@ export default function App() {
       const params = new URLSearchParams(window.location.search);
       const devLocation = params.get('locationId');
 
+      // Deep link: a URL like .../custom-page-link/<appId>?open=<ticketId> should jump straight to that
+      // ticket. GHL embeds us in an iframe, so the param may live on OUR url, the parent's, or the
+      // referrer — check all three. (Falls back to no deep link if none has it.)
+      const deepOpen = (() => {
+        try { if (params.get('open')) return params.get('open'); } catch (_) {}
+        try {
+          const top = window.top && window.top.location && window.top.location.search;
+          if (top) { const v = new URLSearchParams(top).get('open'); if (v) return v; }
+        } catch (_) { /* cross-origin parent — ignore */ }
+        try {
+          if (document.referrer) { const v = new URL(document.referrer).searchParams.get('open'); if (v) return v; }
+        } catch (_) {}
+        return null;
+      })();
+
       // Ask GHL for the encrypted user context (Custom Page SSO).
       let encryptedData = null;
       try {
@@ -83,6 +98,8 @@ export default function App() {
       } else {
         setPhase('app');
         refreshCounts();
+        // Deep link: open the requested ticket in the inbox detail pane on load.
+        if (deepOpen) { setView('inbox'); setOpenTicketId(deepOpen); track('deep_link_open_ticket', { id: deepOpen }); }
       }
     } catch (err) {
       if (err.status === 403) {

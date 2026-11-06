@@ -15,6 +15,10 @@
 (function () {
   // ===== CONFIG =====
   var API_BASE = 'https://helmdeskapi.vaultsuite.store'; // HelmDesk API host (no trailing slash)
+  // Your HelmDesk custom-page id in GHL (from the page URL: /custom-page-link/<THIS>). When set, each
+  // ticket gets an "Open full ticket →" button that deep-links into the app (?open=<ticketId>). Leave
+  // empty to hide that button.
+  var CUSTOM_PAGE_ID = '6a42c684165d1f3e1eb4a5f0';
   // ==================
 
   var BTN_ID = 'hd-ticket-btn';
@@ -109,6 +113,25 @@
           .catch(function () { sel.value = prev; sel.disabled = false; alert('Could not update status. Please try again.'); });
       });
     });
+
+    // "Open full ticket →" deep links into the HelmDesk custom page with ?open=<ticketId>. Only shown
+    // when CUSTOM_PAGE_ID is configured and we can read the current GHL origin/location.
+    if (CUSTOM_PAGE_ID && ctx.locationId) {
+      var origin = (function () {
+        try { return (window.top && window.top.location && window.top.location.origin) || location.origin; }
+        catch (_) { return location.origin; } // cross-origin parent → fall back to our own origin
+      })();
+      var pageUrl = origin + '/v2/location/' + encodeURIComponent(ctx.locationId) +
+        '/custom-page-link/' + encodeURIComponent(CUSTOM_PAGE_ID);
+      body.querySelectorAll('.hd-open').forEach(function (btn) {
+        btn.style.display = 'inline-flex';
+        btn.addEventListener('click', function () {
+          var tid = btn.getAttribute('data-open-ticket');
+          var href = pageUrl + '?open=' + encodeURIComponent(tid);
+          try { window.top.location.href = href; } catch (_) { window.open(href, '_blank', 'noopener'); }
+        });
+      });
+    }
   }
 
   function openModal() {
