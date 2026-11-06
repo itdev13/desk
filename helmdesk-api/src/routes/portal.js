@@ -292,7 +292,16 @@ async function processSubmission(ws, form, req, res) {
     const detailsBlock = summaryLines.join('\n');
 
     // Upsert the contact in GHL so the ticket links to a real person (creates them if they don't
-    // exist yet, by email/phone). Tag + source let the agency see these came from the portal.
+    // exist yet, by email/phone). Tags + source let the agency see these came from their support form.
+    // Tags use the agency's BRAND name (never "helmdesk") so the white-label isn't leaked onto the
+    // contact. e.g. brand "Liberty Timeshare Resolution" → tags ["liberty-timeshare-resolution",
+    // "support-form"]. Form name is added too so they can segment by which form.
+    const brandName = ws.brand?.name || 'Support';
+    const brandTag = brandName.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50);
+    const formTag = (form?.name ? String(form.name) : 'support-form')
+      .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50);
+    const contactTags = [brandTag, 'support-form', formTag].filter((t, i, a) => t && a.indexOf(t) === i);
+
     let contact = { id: null, name: name || email || phone };
     try {
       const upserted = await ghlService.upsertContact(ws.locationId, {
@@ -300,8 +309,8 @@ async function processSubmission(ws, form, req, res) {
         lastName: (name || '').split(' ').slice(1).join(' ') || undefined,
         email: email || undefined,
         phone: phone || undefined,
-        source: `${ws.brand?.name || 'HelmDesk'} Portal`,
-        tags: ['helmdesk', 'portal']
+        source: `${brandName} Support Form`,
+        tags: contactTags
       });
       contact = { id: upserted.id || upserted.contact?.id, name: name || email || phone };
     } catch (e) {
