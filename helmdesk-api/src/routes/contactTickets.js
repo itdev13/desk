@@ -132,6 +132,21 @@ const limiter = rateLimit({
   message: { success: false, error: 'Too many requests. Please wait a moment.' }
 });
 
+// Never cache these responses. Without this, Express sets an ETag on res.json(); the browser then
+// sends If-None-Match and gets a 304 Not Modified, serving the STALE cached body — so status changes
+// and server-side re-renders (timezone, button, etc.) never reach the modal. Force fresh every time.
+router.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  // Drop the conditional-request header so Express's res.json() never computes a 304 Not Modified.
+  // Without this the browser sends If-None-Match, matches the ETag of a stale body, and gets a 304 —
+  // serving the OLD cached modal (wrong timezone, old button) and skipping our render entirely.
+  delete req.headers['if-none-match'];
+  delete req.headers['if-modified-since'];
+  next();
+});
+
 router.get('/', limiter, async (req, res) => {
   const locationId = String(req.query.locationId || '').trim();
   const contactId = String(req.query.contactId || '').trim();
