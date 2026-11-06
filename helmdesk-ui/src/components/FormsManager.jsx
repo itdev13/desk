@@ -71,15 +71,10 @@ export default function FormsManager({ brand, notify }) {
         return (
           <div key={form._id} className={`form-card${open ? ' open' : ''}`}>
             <div className="form-card-head">
-              <div className="form-name-wrap" title="Click to rename">
-                <input className="form-name" value={form.name}
-                  onChange={(e) => setForms((l) => l.map((f) => f._id === form._id ? { ...f, name: e.target.value } : f))}
-                  onBlur={(e) => saveForm(form, { name: e.target.value })} placeholder="Form name" />
-                <button type="button" className="form-name-edit" title="Rename form"
-                  onClick={(e) => e.currentTarget.parentNode.querySelector('.form-name')?.focus()}>
-                  <Icon name="pencil" size={14} />
-                </button>
-              </div>
+              {/* Plain editable name — click and type, no pencil/tooltip. */}
+              <input className="form-name" value={form.name} aria-label="Form name"
+                onChange={(e) => setForms((l) => l.map((f) => f._id === form._id ? { ...f, name: e.target.value } : f))}
+                onBlur={(e) => saveForm(form, { name: e.target.value })} placeholder="Form name" />
               <label className="form-enable" title="Enabled">
                 <Switch checked={form.enabled !== false} onChange={(v) => saveForm(form, { enabled: v })} />
               </label>
@@ -106,8 +101,9 @@ export default function FormsManager({ brand, notify }) {
               <div className="form-fields">
                 <PortalFormBuilder value={form.fields} brand={brand}
                   onChange={(pf) => setForms((l) => l.map((f) => f._id === form._id ? { ...f, fields: pf } : f))} />
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
-                  <button type="button" className="btn btn-accent" onClick={() => saveForm(form, { fields: form.fields })}>Save fields</button>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+                  <button type="button" className="btn btn-ghost" onClick={() => setOpenId(null)}>Done</button>
+                  <button type="button" className="btn btn-accent" onClick={() => { saveForm(form, { fields: form.fields }); setOpenId(null); }}>Save fields</button>
                 </div>
               </div>
             )}

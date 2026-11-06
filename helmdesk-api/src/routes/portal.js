@@ -166,7 +166,7 @@ function renderPortalForm(ws, form, submitPath, opts = {}) {
   <div class="head">${logoUrl
     ? `<img class="logo" src="${logoUrl}" alt="${brandName}">`
     : `<div class="badge">${brandName[0] ? brandName[0].toUpperCase() : 'S'}</div>`}<h1>${brandName}</h1></div>
-  <p class="sub">${formTitle} and our team will get back to you.</p>
+  <p class="sub">Send us a message and our team will get back to you.</p>
   <form id="f" method="post" action="${action}">
     ${fields.map((f) => renderField(f)).join('\n    ')}
     <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">

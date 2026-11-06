@@ -427,19 +427,19 @@ button { font-family: inherit; cursor: pointer; }
 /* ── Tabs / filter chips ── */
 .filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .chip {
-  padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;
-  background: var(--panel); border: 1px solid var(--line); color: var(--slate);
+  padding: 9px 18px; border-radius: 10px; font-size: 14px; font-weight: 650;
+  background: var(--panel); border: 1px solid var(--line); color: var(--ink-2);
   transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
 }
-.chip:hover { border-color: var(--accent); color: var(--ink); }
-/* Settings tabs: a soft amber pill for the active one, not a hard black block —
-   reads as "selected" without shouting. */
+.chip:hover { border-color: var(--accent); color: var(--ink); background: var(--accent-soft); }
+/* Settings tabs: a clear amber active pill with an accent ring, so the three tabs read as prominent,
+   obviously-clickable segments (not faint text). */
 .chip.active {
-  background: var(--accent-soft); border-color: var(--accent);
-  color: var(--accent-dk); box-shadow: 0 1px 2px rgba(185,126,44,0.18);
+  background: var(--accent); border-color: var(--accent);
+  color: var(--on-accent, #fff); box-shadow: 0 2px 8px rgba(185,126,44,0.28);
 }
-.chip.active .ico { color: var(--accent-dk); }
-.chip-icon { display: inline-flex; align-items: center; gap: 7px; }
+.chip.active .ico { color: var(--on-accent, #fff); }
+.chip-icon { display: inline-flex; align-items: center; gap: 8px; }
 .chip-icon .ico { width: 16px; height: 16px; flex: none; }
 
 /* ── Cards ── */
@@ -1079,16 +1079,16 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .form-card { border: 1px solid var(--line); border-radius: 12px; background: var(--paper); overflow: hidden; }
 .form-card.open { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent); }
 .form-card-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
-/* Name + pencil read as one clean editable field on the left. One border, shown only on hover/focus;
-   no nested highlight boxes. margin-right:auto keeps the toggle/edit/delete grouped on the right. */
-.form-name-wrap { flex: 1 1 auto; min-width: 0; max-width: 360px; margin-right: auto; display: inline-flex; align-items: center; border: 1px solid transparent; border-radius: 8px; transition: border-color .12s, box-shadow .12s; }
-.form-name-wrap:hover { border-color: var(--line); }
-.form-name-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent); }
-.form-name { flex: 1 1 auto; min-width: 0; border: none; background: transparent; font-size: 14px; font-weight: 650; color: var(--ink); padding: 6px 8px; border-radius: 8px; outline: none; }
-/* Pencil is a quiet hint, no box of its own; it brightens on wrapper hover. */
-.form-name-edit { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; margin-right: 4px; border: none; background: transparent; color: var(--slate-2); border-radius: 6px; cursor: pointer; opacity: .5; transition: opacity .12s, color .12s; }
-.form-name-wrap:hover .form-name-edit, .form-name-wrap:focus-within .form-name-edit { opacity: 1; }
-.form-name-edit:hover { color: var(--accent-dk); }
+/* Plain editable name field: transparent until hover/focus, then a subtle box so it's clearly an input.
+   Fills the left space; margin-right:auto keeps the toggle/edit/delete grouped on the right. */
+.form-name {
+  flex: 1 1 auto; min-width: 0; max-width: 360px; margin-right: auto;
+  border: 1px solid transparent; background: transparent; font-size: 14px; font-weight: 650;
+  color: var(--ink); padding: 7px 10px; border-radius: 8px; outline: none;
+  transition: border-color .12s, box-shadow .12s, background .12s;
+}
+.form-name:hover { border-color: var(--line); background: var(--paper); }
+.form-name:focus { border-color: var(--accent); background: var(--panel); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent); }
 .form-enable { display: flex; align-items: center; flex: none; }
 .form-edit-btn { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--accent-dk); background: none; border: none; cursor: pointer; flex: none; }
 .form-del-btn { width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid var(--line); background: var(--panel); border-radius: 7px; cursor: pointer; color: var(--slate); flex: none; }

@@ -105,7 +105,7 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
   const [ws, setWs] = useState(null);
   const [agents, setAgents] = useState([]);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState('channels');
+  const [tab, setTab] = useState('brand');
   const [whiteLabel, setWhiteLabel] = useState(true); // gates the branding tab; assume allowed until known
   const [routing, setRouting] = useState(true); // gates round-robin; assume allowed until known
   const [planName, setPlanName] = useState('');
@@ -164,9 +164,9 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
   };
 
   const tabs = [
+    { key: 'brand', label: 'Branding & forms', icon: 'palette' },
     { key: 'channels', label: 'Channels & filters', icon: 'filter' },
-    { key: 'assignment', label: 'Assignment & SLA', icon: 'route' },
-    { key: 'brand', label: 'Branding & forms', icon: 'palette' }
+    { key: 'assignment', label: 'Assignment & SLA', icon: 'route' }
   ];
 
   return (
