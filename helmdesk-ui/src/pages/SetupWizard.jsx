@@ -172,13 +172,28 @@ export default function SetupWizard({ workspace, onDone, notify }) {
                   </button>
                 </div>
 
-                <div className="toggle-row" style={{ marginTop: 16 }}>
-                  <div>
-                    <div className="t-label">Automatic ticket creation</div>
-                    <div className="t-desc">Turn inbound messages on the channels above into tickets. Off = nothing is auto-captured (forms &amp; manual tickets still work). You can change this anytime.</div>
-                  </div>
-                  <Switch checked={form.autoCreateInbound === true} onChange={(v) => set({ autoCreateInbound: v })} />
-                </div>
+                {/* Auto-create only makes sense once at least one channel is picked — it acts ON those
+                    channels. With none selected it's a no-op, so disable + explain. */}
+                {(() => {
+                  const noChannels = form.supportChannels.length === 0 && !form.acceptConversationProviders;
+                  return (
+                    <div className="toggle-row" style={{ marginTop: 16, opacity: noChannels ? 0.55 : 1 }}>
+                      <div>
+                        <div className="t-label">Automatic ticket creation</div>
+                        <div className="t-desc">
+                          {noChannels
+                            ? 'Pick at least one channel above to turn this on — it creates tickets from those channels.'
+                            : 'Turn inbound messages on the channels above into tickets. Off = nothing is auto-captured (forms & manual tickets still work). You can change this anytime.'}
+                        </div>
+                      </div>
+                      <Switch
+                        checked={!noChannels && form.autoCreateInbound === true}
+                        disabled={noChannels}
+                        onChange={(v) => !noChannels && set({ autoCreateInbound: v })}
+                      />
+                    </div>
+                  );
+                })()}
               </>
             )}
 
