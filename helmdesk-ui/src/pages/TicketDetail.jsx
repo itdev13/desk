@@ -65,6 +65,8 @@ export default function TicketDetail({ id, onBack, user, notify, onChange }) {
 
   const { ticket, comments, assigneeDeleted, canReply = true } = data;
   const sla = slaDisplay(ticket);
+  // The customer's opening message — used to show the full form submission in the Form details card.
+  const firstCustomerMessage = (comments.find((c) => c.kind === 'customer')?.body) || '';
 
   const send = async () => {
     if (!body.trim()) return;
@@ -239,10 +241,20 @@ export default function TicketDetail({ id, onBack, user, notify, onChange }) {
               <div className="kv"><span className="k">Messages</span><span>{ticket.messageCount}</span></div>
             </div>
 
-            {ticket.customFields?.length > 0 && (
+            {/* For form submissions, show the FULL submitted record — the content fields (subject,
+                message, priority) alongside every custom field — so the whole form is visible in one
+                place, not just the custom answers. */}
+            {(ticket.source === 'portal' || ticket.customFields?.length > 0) && (
               <div className="side-card">
                 <h4>Form details</h4>
-                {ticket.customFields.map((c, i) => (
+                {ticket.source === 'portal' && [
+                  ['Subject', ticket.subject],
+                  ['Message', cleanMessageText(firstCustomerMessage)],
+                  ['Priority', ticket.priority ? PRIORITY_LABEL[ticket.priority] || ticket.priority : '']
+                ].filter(([, v]) => v && String(v).trim()).map(([k, v]) => (
+                  <div className="kv kv-stack" key={k}><span className="k">{k}</span><span className="v">{v}</span></div>
+                ))}
+                {(ticket.customFields || []).map((c, i) => (
                   <div className="kv kv-stack" key={i}><span className="k">{c.label}</span><span className="v">{c.value}</span></div>
                 ))}
               </div>
