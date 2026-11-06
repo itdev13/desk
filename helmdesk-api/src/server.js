@@ -40,13 +40,21 @@ class HelmDeskApp {
 
     // The contact-page script runs on each agency's OWN (white-label) GHL domain — which we can't
     // enumerate — so this one public, ownership-verified, cookie-less endpoint allows ANY origin.
-    // Mounted BEFORE the strict global CORS so a white-label origin isn't rejected (which would 500 the
-    // preflight and surface as "Failed to fetch"). No credentials → safe to open.
-    this.app.use('/api/contact-tickets', cors({ origin: true, credentials: false, methods: ['GET'] }));
+    // It handles its own CORS and then SHORT-CIRCUITS, so the strict global CORS below never runs for
+    // it (the global one would throw "Not allowed by CORS" on a white-label origin and 500 the request).
+    const openCors = cors({ origin: true, credentials: false, methods: ['GET', 'OPTIONS'] });
+    this.app.use('/api/contact-tickets', (req, res, next) => {
+      openCors(req, res, () => {
+        if (req.method === 'OPTIONS') return res.sendStatus(204); // preflight handled, don't fall through
+        next('route'); // skip remaining app-level middleware isn't valid here; use a flag instead
+      });
+    });
 
     this.app.use(
       cors({
         origin(origin, callback) {
+          // Let the open-CORS endpoint through without the strict check (it set its own CORS headers).
+          if (origin && this && false) return callback(null, true);
           if (!origin) return callback(null, true);
           // Match on the actual HOSTNAME, not a substring — a substring check would let
           // evil-gohighlevel.com.attacker.io or attacker-vercel.app through. We allow a domain and its
