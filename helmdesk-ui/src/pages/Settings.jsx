@@ -317,7 +317,7 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
                   value={ws.defaultAssigneeId || ''}
                   onChange={(v) => set({ defaultAssigneeId: v || null })}
                   placeholder="Select an agent…"
-                  options={agents.map((a) => ({ value: a.ghlUserId, label: a.name }))}
+                  options={agents.map((a) => ({ value: a.ghlUserId, label: a.email ? `${a.name || "Agent"} (${a.email})` : (a.name || "Agent") }))}
                 />
               </div>
             )}

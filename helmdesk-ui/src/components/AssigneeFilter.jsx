@@ -25,7 +25,7 @@ export default function AssigneeFilter({ value, onChange, isAdmin }) {
     { value: 'none', label: 'Unassigned' },
     ...agents
       .filter((a) => !a.deleted)
-      .map((a) => ({ value: a.ghlUserId, label: a.name || a.email || 'Agent' }))
+      .map((a) => ({ value: a.ghlUserId, label: a.email ? `${a.name || "Agent"} (${a.email})` : (a.name || "Agent") }))
   ];
 
   return (

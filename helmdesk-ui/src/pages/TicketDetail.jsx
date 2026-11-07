@@ -202,7 +202,7 @@ export default function TicketDetail({ id, onBack, user, notify, onChange }) {
                   ...(assigneeDeleted && ticket.assigneeId && !agents.some((a) => a.ghlUserId === ticket.assigneeId)
                     ? [{ value: ticket.assigneeId, label: `${ticket.assigneeName || 'Deleted user'} (deleted)` }]
                     : []),
-                  ...agents.map((a) => ({ value: a.ghlUserId, label: a.name }))
+                  ...agents.map((a) => ({ value: a.ghlUserId, label: a.email ? `${a.name || "Agent"} (${a.email})` : (a.name || "Agent") }))
                 ]}
               />
               {assigneeDeleted && (

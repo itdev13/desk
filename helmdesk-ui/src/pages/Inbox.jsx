@@ -499,7 +499,7 @@ function TicketPanes({ id, isAdmin, notify, onChanged, rightOpen = true, toggleR
                   { value: '', label: 'Unassigned' },
                   ...(assigneeDeleted && ticket.assigneeId && !agents.some((a) => a.ghlUserId === ticket.assigneeId)
                     ? [{ value: ticket.assigneeId, label: `${ticket.assigneeName || 'Deleted user'} (deleted)` }] : []),
-                  ...agents.map((a) => ({ value: a.ghlUserId, label: a.name }))
+                  ...agents.map((a) => ({ value: a.ghlUserId, label: a.email ? `${a.name || "Agent"} (${a.email})` : (a.name || "Agent") }))
                 ]} />
             ) : <span>{ticket.assigneeName || 'Unassigned'}</span>}
           </div>
