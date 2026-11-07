@@ -42,7 +42,7 @@ export function Logo({ size = 30, onDark = false, brandName }) {
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
       <LogoMark size={size} />
       <span style={{ fontWeight: 800, letterSpacing: '-0.01em', fontSize: size * 0.55, color: onDark ? '#fff' : 'var(--ink)' }}>
-        Helm<span style={{ color: 'var(--accent)' }}>Desk</span>
+        Help<span style={{ color: 'var(--accent)' }}>Desk</span>
       </span>
     </span>
   );
