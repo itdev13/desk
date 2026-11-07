@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { api, setToken } from './lib/api.js';
+import { api, setToken, setRefreshHandler } from './lib/api.js';
 import { Spinner, Icon, Toast } from './components/ui.jsx';
 import { LogoMark } from './components/Logo.jsx';
 import { useAutoRefresh } from './lib/useAutoRefresh.js';
@@ -39,6 +39,30 @@ export default function App() {
   const [reconnectDismissed, setReconnectDismissed] = useState(false);
 
   const notify = useCallback((message, error = false) => setToast({ message, error }), []);
+
+  // Mint a session token: run the GHL SSO handshake (or dev ?locationId) → POST /api/auth/verify →
+  // store the JWT. Shared by initial bootstrap AND the 401 auto-recovery so an expired session can be
+  // silently re-minted mid-use. Returns true on success. Does NOT touch app phase/routing.
+  const mintSession = useCallback(async () => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const devLocation = params.get('locationId');
+      let encryptedData = null;
+      try { encryptedData = await requestGhlUserData(); } catch { /* not embedded — dev mode */ }
+      if (!encryptedData && !devLocation) return false;
+      const res = await api.verify(encryptedData ? { encryptedData } : { locationId: devLocation });
+      if (!res?.token) return false; // no token minted → leave the existing one untouched, don't claim success
+      setToken(res.token);
+      return true;
+    } catch {
+      // Any failure (handshake timeout, verify error) → report failure. The caller lets the original
+      // 401 surface; we never wipe the token or trigger a reconnect from here.
+      return false;
+    }
+  }, []);
+
+  // Register the refresher so api.js can silently re-auth + retry on a 401 (expired session).
+  useEffect(() => { setRefreshHandler(mintSession); }, [mintSession]);
 
   // Resolve the locationId: GHL posts an encrypted blob into the iframe; in dev we accept ?locationId.
   const bootstrap = useCallback(async () => {

@@ -132,6 +132,50 @@
         });
       });
     }
+
+    // "+ New ticket" — toggle the server-rendered create form and submit it to the create endpoint.
+    var newBtn = body.querySelector('.hd-new-btn');
+    var form = body.querySelector('.hd-new-form');
+    if (newBtn && form) {
+      newBtn.addEventListener('click', function () {
+        var open = form.style.display !== 'none';
+        form.style.display = open ? 'none' : 'block';
+        if (!open) { var s = form.querySelector('.hd-f-subject'); if (s) s.focus(); }
+      });
+      var cancel = form.querySelector('.hd-new-cancel');
+      if (cancel) cancel.addEventListener('click', function () { form.style.display = 'none'; });
+      form.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var subject = (form.querySelector('.hd-f-subject') || {}).value || '';
+        var message = (form.querySelector('.hd-f-message') || {}).value || '';
+        var priority = (form.querySelector('.hd-f-priority') || {}).value || 'normal';
+        if (!subject.trim()) { alert('Please enter a subject.'); return; }
+        var submitBtn = form.querySelector('.hd-new-submit');
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Creating…'; }
+        fetch(ctx.base + '/api/contact-tickets/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ locationId: ctx.locationId, contactId: ctx.contactId, subject: subject, message: message, priority: priority })
+        })
+          .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || j.success === false) throw new Error((j && j.error) || 'Failed'); return j; }); })
+          .then(function () { reloadModal(body, ctx); }) // refresh the list so the new ticket shows
+          .catch(function (err) {
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Create ticket'; }
+            alert('Could not create ticket: ' + (err.message || 'please try again.'));
+          });
+      });
+    }
+  }
+
+  // Re-fetch the contact's tickets and re-render the modal body (used after creating a ticket).
+  function reloadModal(body, ctx) {
+    body.innerHTML = 'Loading…';
+    var url = ctx.base + '/api/contact-tickets?locationId=' +
+      encodeURIComponent(ctx.locationId) + '&contactId=' + encodeURIComponent(ctx.contactId);
+    fetch(url, { method: 'GET' })
+      .then(function (r) { return r.text().then(function (tx) { var j; try { j = JSON.parse(tx); } catch (_) { j = null; } if (!r.ok || !j || j.success === false) throw new Error((j && j.error) || ('HTTP ' + r.status)); return j; }); })
+      .then(function (data) { if (document.getElementById(MODAL_ID)) renderTickets(body, data, ctx); })
+      .catch(function (err) { if (document.getElementById(MODAL_ID)) body.innerHTML = '<div class="hd-err">Failed to reload: ' + esc(err.message) + '</div>'; });
   }
 
   function openModal() {

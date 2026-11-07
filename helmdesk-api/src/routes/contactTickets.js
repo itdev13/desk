@@ -30,16 +30,53 @@ function roField(label, value) {
   </div>`;
 }
 
+// The "New ticket" action bar + the (hidden) create form. The custom JS toggles the form and wires
+// the submit to POST /api/contact-tickets/create. Rendered server-side so the script stays dumb.
+function renderCreateUi({ accent }) {
+  const prOpts = ['normal', 'low', 'high', 'urgent']
+    .map((p) => `<option value="${p}"${p === 'normal' ? ' selected' : ''}>${p.charAt(0).toUpperCase() + p.slice(1)}</option>`).join('');
+  return `<div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:14px">
+      <button type="button" class="hd-new-btn"
+        style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:#fff;background:${accent};border:1px solid ${accent};border-radius:9px;padding:8px 14px;cursor:pointer">
+        + New ticket
+      </button>
+    </div>
+    <form class="hd-new-form" style="display:none;border:1px solid #e9ecf2;border-radius:16px;padding:18px;margin-bottom:16px;background:#fff;box-shadow:0 1px 3px rgba(16,24,40,.05)">
+      <div style="font-size:14px;font-weight:700;color:#101828;margin-bottom:14px">New ticket</div>
+      <div style="margin-bottom:12px">
+        <div style="font-size:12px;font-weight:600;color:#475467;margin-bottom:5px">Subject</div>
+        <input class="hd-f-subject" type="text" required placeholder="Brief summary"
+          style="width:100%;box-sizing:border-box;font-size:14px;color:#101828;background:#fff;border:1px solid #d0d5dd;border-radius:9px;padding:10px 13px;outline:none"/>
+      </div>
+      <div style="margin-bottom:12px">
+        <div style="font-size:12px;font-weight:600;color:#475467;margin-bottom:5px">Message</div>
+        <textarea class="hd-f-message" rows="4" placeholder="What does the customer need?"
+          style="width:100%;box-sizing:border-box;font-size:14px;color:#101828;background:#fff;border:1px solid #d0d5dd;border-radius:9px;padding:10px 13px;outline:none;resize:vertical;font-family:inherit"></textarea>
+      </div>
+      <div style="margin-bottom:16px;max-width:180px">
+        <div style="font-size:12px;font-weight:600;color:#475467;margin-bottom:5px">Priority</div>
+        <select class="hd-f-priority" style="width:100%;box-sizing:border-box;font-size:14px;color:#101828;background:#fff;border:1px solid #d0d5dd;border-radius:9px;padding:10px 13px;outline:none;cursor:pointer;appearance:auto">${prOpts}</select>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:10px">
+        <button type="button" class="hd-new-cancel"
+          style="font-size:12.5px;font-weight:600;color:#475467;background:#f7f8fa;border:1px solid #e4e7ec;border-radius:9px;padding:8px 14px;cursor:pointer">Cancel</button>
+        <button type="submit" class="hd-new-submit"
+          style="font-size:12.5px;font-weight:600;color:#fff;background:${accent};border:1px solid ${accent};border-radius:9px;padding:8px 16px;cursor:pointer">Create ticket</button>
+      </div>
+    </form>`;
+}
+
 function renderTicketsHtml({ brandName, accent, contact, tickets, timeZone }) {
   const e = esc;
+  const createUi = renderCreateUi({ accent });
   if (!tickets.length) {
-    return `<div style="text-align:center;color:#8a94a6;padding:40px 16px">
+    return createUi + `<div style="text-align:center;color:#8a94a6;padding:32px 16px">
       <div style="font-size:34px;margin-bottom:8px">🎫</div>
       <div style="font-size:14px;font-weight:600;color:#475467">No tickets yet</div>
-      <div style="font-size:12.5px;margin-top:2px">${e(contact?.name || 'This contact')} hasn’t submitted anything yet.</div>
+      <div style="font-size:12.5px;margin-top:2px">Create the first ticket for ${e(contact?.name || 'this contact')} above.</div>
     </div>`;
   }
-  return tickets.map((t) => {
+  return createUi + tickets.map((t) => {
     const isPortal = t.source === 'portal';
     const origin = isPortal ? `Form · ${e(t.formName || 'Support form')}` : e(t.channel || t.source || '');
     // Render in the LOCATION's timezone, not the server's. This HTML is built server-side, so a bare
@@ -268,6 +305,62 @@ router.post('/status', limiter, async (req, res) => {
   } catch (error) {
     logger.error('[contact-tickets] status update failed', { message: error.message });
     res.status(500).json({ success: false, error: 'Could not update status.' });
+  }
+});
+
+/**
+ * POST /api/contact-tickets/create — create a NEW ticket for this contact straight from the contact
+ * page ("New ticket" in the modal). Same GHL ownership gate as the GET: the contact must belong to
+ * this location, verified with the location's own OAuth token (no app session on this page).
+ * Body: { locationId, contactId, subject, message, priority? }.
+ */
+const CREATE_PRIORITIES = ['urgent', 'high', 'normal', 'low'];
+router.post('/create', limiter, async (req, res) => {
+  const locationId = String(req.body.locationId || '').trim();
+  const contactId = String(req.body.contactId || '').trim();
+  const subject = String(req.body.subject || '').trim();
+  const message = String(req.body.message || '').trim();
+  const priority = CREATE_PRIORITIES.includes(String(req.body.priority).toLowerCase())
+    ? String(req.body.priority).toLowerCase() : 'normal';
+  if (!locationId || !contactId) return res.status(400).json({ success: false, error: 'Missing fields.' });
+  if (!subject) return res.status(400).json({ success: false, error: 'Subject is required.' });
+
+  try {
+    // Ownership gate — fetch the contact with this location's token; also gives us the name/email to
+    // stamp on the ticket so the new record is properly linked to the contact.
+    let contact;
+    try {
+      const raw = await ghlService.apiRequest('GET', `/contacts/${encodeURIComponent(contactId)}`, locationId);
+      const c = raw.contact || raw;
+      if (!c || !(c.id || c._id)) throw new Error('not found');
+      contact = {
+        id: c.id || c._id,
+        name: c.contactName || [c.firstName, c.lastName].filter(Boolean).join(' ') || c.email || c.phone || 'Contact',
+        email: c.email || null
+      };
+    } catch (e) {
+      return res.status(403).json({ success: false, error: 'Not authorized for this contact.' });
+    }
+
+    const workspace = await Workspace.findOne({ locationId });
+    if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found.' });
+
+    const ticketService = require('../services/ticketService');
+    const ticket = await ticketService.createTicket(workspace, {
+      subject,
+      contactId: contact.id,
+      contactName: contact.name,
+      contactEmail: contact.email,
+      source: 'manual',          // created by a team member, not an inbound channel
+      channel: 'Internal',
+      priority,
+      firstMessage: message || null
+    });
+
+    res.json({ success: true, ticketId: String(ticket._id), ref: ticket.ref });
+  } catch (error) {
+    logger.error('[contact-tickets] create failed', { message: error.message });
+    res.status(500).json({ success: false, error: 'Could not create ticket.' });
   }
 });
 

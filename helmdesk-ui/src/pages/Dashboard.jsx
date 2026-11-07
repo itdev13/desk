@@ -32,6 +32,10 @@ export default function Dashboard() {
       setByAgent(d.byAgent || []);
       setByChannel(d.byChannel || []);
       setTrend(t.trend || []);
+    } catch (err) {
+      // Swallow background-refresh failures so a transient error (or a one-off expired session that
+      // the api layer is already re-authing) doesn't surface or spin. A visible load still throws.
+      if (!silent) throw err;
     } finally {
       if (!silent) setLoading(false);
     }
