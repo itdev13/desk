@@ -853,6 +853,12 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .center-screen { display: grid; place-items: center; height: 100vh; }
 .spinner { width: 34px; height: 34px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+/* Full-page loading: the ticket mark sits inside a spinning amber ring and breathes gently. */
+.boot-loader { position: relative; width: 76px; height: 76px; display: grid; place-items: center; }
+.boot-loader .spinner { position: absolute; inset: 0; width: auto; height: auto; }
+.boot-mark { display: grid; place-items: center; border-radius: 10px; box-shadow: 0 6px 18px rgba(207, 135, 50, 0.28); animation: boot-breathe 1.6s ease-in-out infinite; }
+@keyframes boot-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(0.94); } }
+@media (prefers-reduced-motion: reduce) { .boot-mark { animation: none; } }
 .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 12px 20px; border-radius: 10px; box-shadow: var(--shadow-lg); font-size: 13.5px; z-index: 100; }
 .toast.err { background: var(--crit); }
 .section-title { display: flex; align-items: center; justify-content: space-between; }

@@ -1,4 +1,5 @@
 import React from 'react';
+import { LogoMark } from './Logo.jsx';
 import { PRIORITY_LABEL, STATUS_LABEL, avatarColor, initials } from '../lib/format.js';
 
 /**
@@ -131,7 +132,10 @@ export function Avatar({ name, size = 30 }) {
 export function Spinner() {
   return (
     <div className="center-screen">
-      <div className="spinner" />
+      <div className="boot-loader" role="status" aria-label="Loading">
+        <div className="spinner" />
+        <div className="boot-mark"><LogoMark size={44} /></div>
+      </div>
     </div>
   );
 }
