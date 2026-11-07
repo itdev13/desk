@@ -157,7 +157,7 @@ const logger = require('../utils/logger');
  * session JWT. Instead of a shared key, we VERIFY OWNERSHIP against GHL: we fetch the contact using
  * THIS location's OAuth token. The token is location-scoped, so a contact that doesn't belong to the
  * location returns 404 from GHL → we reject. This means a caller can only read tickets for a contact
- * that genuinely lives in a location HelmDesk is installed on (which the agent is already viewing).
+ * that genuinely lives in a location HelpDesk is installed on (which the agent is already viewing).
  *
  * Rate-limited per IP as a second guard.
  *
@@ -233,7 +233,7 @@ router.get('/', limiter, async (req, res) => {
       })
     );
 
-    // Brand name so the modal is white-labeled (shows the agency's name, never "HelmDesk").
+    // Brand name so the modal is white-labeled (shows the agency's name, never "HelpDesk").
     const ws = await Workspace.findOne({ locationId }).select('brand.name brand.primaryColor').lean();
     const brandName = ws?.brand?.name || 'Support';
     const accent = ws?.brand?.primaryColor || '#E0A24A';

@@ -4,10 +4,10 @@ const OAuthToken = require('../models/OAuthToken');
 const CompanyLocation = require('../models/CompanyLocation');
 
 /**
- * GoHighLevel API service for HelmDesk.
+ * GoHighLevel API service for HelpDesk.
  *
  * Handles the full OAuth token lifecycle (location + company tokens, refresh, mint-from-company)
- * and the Conversations / Contacts endpoints HelmDesk needs to RECEIVE inbound (via webhook,
+ * and the Conversations / Contacts endpoints HelpDesk needs to RECEIVE inbound (via webhook,
  * elsewhere) and SEND replies back out on the customer's original channel.
  *
  * Token machinery is battle-tested (ported from the Vaultsuite marketplace apps): it survives
@@ -102,7 +102,7 @@ class GHLService {
           if (latest && latest.accessToken !== companyToken.accessToken) {
             companyToken = latest;
           } else {
-            throw new Error('Company token expired. Please reconnect HelmDesk.');
+            throw new Error('Company token expired. Please reconnect HelpDesk.');
           }
         } else {
           throw refreshErr;
@@ -149,14 +149,14 @@ class GHLService {
     if (!tokenDoc) {
       const companyLoc = await CompanyLocation.findCompanyByLocation(locationId);
       if (!companyLoc) {
-        const err = new Error('Location not connected. Please reconnect HelmDesk.');
+        const err = new Error('Location not connected. Please reconnect HelpDesk.');
         err.status = 404;
         err.isClientError = true;
         throw err;
       }
       const companyToken = await OAuthToken.findOne({ companyId: companyLoc.companyId, tokenType: 'company', isActive: true });
       if (!companyToken) {
-        const err = new Error('Company token expired. Please reconnect HelmDesk.');
+        const err = new Error('Company token expired. Please reconnect HelpDesk.');
         err.status = 401;
         err.isClientError = true;
         throw err;
@@ -215,7 +215,7 @@ class GHLService {
       // 401 → refresh once and retry (re-fetch latest token to dodge concurrent-refresh races).
       if (error.response?.status === 401 && retryCount === 0) {
         const tokenDoc = await OAuthToken.findActiveToken(locationId);
-        if (!tokenDoc?.refreshToken) throw new Error('Authentication failed. Please reconnect HelmDesk.');
+        if (!tokenDoc?.refreshToken) throw new Error('Authentication failed. Please reconnect HelpDesk.');
 
         const expiresIn = tokenDoc.expiresAt - Date.now();
         if (expiresIn > 23 * 60 * 60 * 1000) {
@@ -333,7 +333,7 @@ class GHLService {
    * Send an outbound message on the customer's channel.
    * POST /conversations/messages
    * `data` shape: { type: 'SMS'|'Email'|'WhatsApp'|'IG'|'FB'|'Live_Chat'|'Custom', contactId, message, html?, subject?, ... }
-   * This is how an agent's reply leaves HelmDesk and reaches the customer through GHL.
+   * This is how an agent's reply leaves HelpDesk and reaches the customer through GHL.
    */
   async sendMessage(locationId, data) {
     return this.apiRequest('POST', '/conversations/messages', locationId, data);
@@ -342,7 +342,7 @@ class GHLService {
   /**
    * Record an inbound message into GHL's native conversation (optional mirror).
    * POST /conversations/messages/inbound — keeps the GHL Conversations view in sync with
-   * activity that originated in HelmDesk (e.g. a portal-submitted ticket).
+   * activity that originated in HelpDesk (e.g. a portal-submitted ticket).
    */
   async addInboundMessage(locationId, data) {
     return this.apiRequest('POST', '/conversations/messages/inbound', locationId, data);

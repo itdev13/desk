@@ -7,7 +7,7 @@ const Workspace = require('../models/Workspace');
 const logger = require('../utils/logger');
 
 /**
- * HelmDesk OAuth.
+ * HelpDesk OAuth.
  *
  * Scopes are messaging-centric: we need to read inbound, send replies, read contacts (for the
  * ticket's contact card) and users (for the agent roster). charges.* lets GHL bill the monthly
@@ -121,7 +121,7 @@ router.get('/callback', async (req, res) => {
           .catch((e) => logger.warn('installer capture failed (non-blocking)', { message: e.message }));
       }
 
-      logger.info('✅ HelmDesk connected (location)', { locationId: tokenData.locationId });
+      logger.info('✅ HelpDesk connected (location)', { locationId: tokenData.locationId });
       // Populate the team roster immediately on install (best-effort; non-blocking). Without this, a
       // plain location install wouldn't sync users until an admin clicked "Sync team".
       require('../services/agentService')
@@ -152,7 +152,7 @@ router.get('/callback', async (req, res) => {
         { companyId: tokenData.companyId, locationIds: locations.map((l) => l.locationId) },
         { upsert: true, new: true }
       );
-      logger.info('✅ HelmDesk connected (company)', { companyId: tokenData.companyId, locations: locations.length });
+      logger.info('✅ HelpDesk connected (company)', { companyId: tokenData.companyId, locations: locations.length });
 
       // Drop the agency's existing location tokens so they get lazily re-minted (getValidToken) from
       // this freshly-authorized company token on next use. GHL does NOT refresh a live location token's
@@ -212,8 +212,8 @@ router.get('/status', async (req, res) => {
   }
 });
 
-// HelmDesk icon mark (matches helmdesk-ui/public/icon.svg and the marketplace listing).
-const LOGO_SVG = `<svg width="56" height="56" viewBox="0 0 112 112" aria-label="HelmDesk" style="display:block;margin:0 auto 20px">
+// HelpDesk icon mark (matches helmdesk-ui/public/icon.svg and the marketplace listing).
+const LOGO_SVG = `<svg width="56" height="56" viewBox="0 0 112 112" aria-label="HelpDesk" style="display:block;margin:0 auto 20px">
   <defs><linearGradient id="a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ECB45F"/><stop offset="1" stop-color="#D4912F"/></linearGradient></defs>
   <rect x="4" y="4" width="104" height="104" rx="26" fill="url(#a)"/>
   <g fill="#0F1729"><rect x="34" y="32" width="12" height="48" rx="3"/><rect x="66" y="32" width="12" height="48" rx="3"/><rect x="40" y="50" width="32" height="11" rx="3"/></g>
@@ -223,12 +223,12 @@ const LOGO_SVG = `<svg width="56" height="56" viewBox="0 0 112 112" aria-label="
 function renderSuccessPage({ already = false, upgrade = false } = {}) {
   // Three states: first install, "already connected" (duplicate callback), and an UPGRADE re-auth
   // (an existing install that reconnected to enable a new version's features).
-  const heading = upgrade ? 'HelmDesk updated' : `HelmDesk ${already ? 'already ' : ''}connected`;
+  const heading = upgrade ? 'HelpDesk updated' : `HelpDesk ${already ? 'already ' : ''}connected`;
   const body = upgrade
-    ? `The new features are now enabled. Head back to <strong style="color:#E0A24A">HelmDesk</strong> in your sub-account menu to pick up where you left off.`
-    : `Open your sub-account and find <strong style="color:#E0A24A">HelmDesk</strong> in the left menu to finish setup.`;
+    ? `The new features are now enabled. Head back to <strong style="color:#E0A24A">HelpDesk</strong> in your sub-account menu to pick up where you left off.`
+    : `Open your sub-account and find <strong style="color:#E0A24A">HelpDesk</strong> in the left menu to finish setup.`;
   const pill = upgrade ? '✓ Update complete — you can close this window.' : '✓ Installation complete — you can close this window.';
-  return `<!DOCTYPE html><html><head><title>HelmDesk ${upgrade ? 'Updated' : 'Connected'}</title>
+  return `<!DOCTYPE html><html><head><title>HelpDesk ${upgrade ? 'Updated' : 'Connected'}</title>
   <style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#0F1729;color:#fff}
   .c{text-align:center;background:#131C2E;padding:48px;border-radius:16px;max-width:440px;border:1px solid #232E45;border-top:3px solid #E0A24A}
   h1{margin:0 0 8px;font-size:24px}p{color:#C3CCDB;line-height:1.6}
@@ -239,11 +239,11 @@ function renderSuccessPage({ already = false, upgrade = false } = {}) {
 }
 
 function renderErrorPage(message) {
-  return `<!DOCTYPE html><html><head><title>HelmDesk — Connection Failed</title>
+  return `<!DOCTYPE html><html><head><title>HelpDesk — Connection Failed</title>
   <style>body{font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#0F1729;color:#fff}
   .c{text-align:center;background:#131C2E;padding:48px;border-radius:16px;max-width:440px;border-top:3px solid #D64545}
   h1{color:#fff}.e{background:#FBE6E6;color:#991B1B;padding:12px;border-radius:8px;font-size:13px;margin-top:16px}</style></head>
-  <body><div class="c">${LOGO_SVG}<h1>Connection failed</h1><p style="color:#C3CCDB">We couldn't connect HelmDesk.</p>
+  <body><div class="c">${LOGO_SVG}<h1>Connection failed</h1><p style="color:#C3CCDB">We couldn't connect HelpDesk.</p>
   <div class="e">${message}</div></div></body></html>`;
 }
 

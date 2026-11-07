@@ -2,7 +2,7 @@ const logger = require('../utils/logger');
 const database = require('../config/database');
 
 /**
- * Monthly-only subscription mirror for HelmDesk.
+ * Monthly-only subscription mirror for HelpDesk.
  *
  * GHL collects the recurring fee (set as the app's subscription price in the marketplace
  * dashboard). This service mirrors entitlement so the app can gate access, and maps GHL planIds

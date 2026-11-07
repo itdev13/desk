@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 /**
  * Subscription lifecycle + invoice ledger (analytics / audit). Not a charge engine —
- * HelmDesk does not charge per use. Records install, plan change, cancellation, and the
+ * HelpDesk does not charge per use. Records install, plan change, cancellation, and the
  * invoice-paid webhooks GHL sends for the monthly fee.
  */
 const subscriptionTransactionSchema = new mongoose.Schema(

@@ -1,5 +1,5 @@
 /**
- * HelmDesk custom workflow TRIGGER keys — the single source of truth.
+ * HelpDesk custom workflow TRIGGER keys — the single source of truth.
  *
  * IMPORTANT: these wire strings MUST exactly match the Custom Triggers registered in the GoHighLevel
  * Marketplace app dashboard. There is no runtime registration API — the dashboard config and this

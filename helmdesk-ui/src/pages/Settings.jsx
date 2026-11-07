@@ -461,7 +461,7 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
           <InfoPanel
             title="What each setting does"
             items={[
-              { term: 'Brand name', desc: 'Replaces “HelmDesk” across the app your clients see — the top-left name and page titles.' },
+              { term: 'Brand name', desc: 'Replaces “HelpDesk” across the app your clients see — the top-left name and page titles.' },
               { term: 'Primary color', desc: 'The accent color used for buttons and highlights, so the app matches your agency’s branding.' },
               { term: 'Support forms', desc: 'Turns on public, branded web forms where customers can submit tickets directly — no channel message needed.' },
               { term: 'Form link & embed', desc: 'Each form has a shareable link, plus embed code for a floating widget or an inline form on your website.' },
@@ -474,7 +474,7 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
         <div className="retention-note">
           <Icon name="clock" size={15} />
           <span>
-            <b>Data retention:</b> if you uninstall HelmDesk, your tickets, agents, and settings are kept for
+            <b>Data retention:</b> if you uninstall HelpDesk, your tickets, agents, and settings are kept for
             <b> 7 days</b> so a reinstall restores everything. After 7 days they’re permanently deleted.
           </span>
         </div>

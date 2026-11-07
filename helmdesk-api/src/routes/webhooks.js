@@ -381,9 +381,9 @@ router.post('/inbound', async (req, res) => {
  * OutboundMessage webhook — POST /api/webhooks/outbound
  *
  * Fires when a message is SENT to a contact. Two cases, and dedup is the whole game:
- *   - Sent BY HelmDesk (agent replied in our app): we already recorded it, so we SKIP — matched
+ *   - Sent BY HelpDesk (agent replied in our app): we already recorded it, so we SKIP — matched
  *     by the ghlMessageId we stored on our reply Comment.
- *   - Sent OUTSIDE HelmDesk (native GHL inbox / workflow): record it on the contact's open ticket,
+ *   - Sent OUTSIDE HelpDesk (native GHL inbox / workflow): record it on the contact's open ticket,
  *     stamp first-response, and stop the SLA clock — so the ticket reflects reality.
  * Always 200 (GHL retries non-2xx).
  * ════════════════════════════════════════════════════════════════════════════ */

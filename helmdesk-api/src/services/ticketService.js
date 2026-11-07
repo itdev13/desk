@@ -379,7 +379,7 @@ async function handleInbound(workspace, payload) {
 
 /**
  * Handle an OutboundMessage (a reply SENT to the contact). The job is to capture replies made
- * OUTSIDE HelmDesk (native GHL inbox / workflow) so the ticket reflects reality — while NOT
+ * OUTSIDE HelpDesk (native GHL inbox / workflow) so the ticket reflects reality — while NOT
  * double-recording replies we sent ourselves.
  *
  * Dedup: when we send a reply we store its ghlMessageId on the reply Comment. If a comment with

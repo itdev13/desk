@@ -11,10 +11,10 @@ const slaMonitor = require('./jobs/slaMonitor');
 const uninstallCleanup = require('./jobs/uninstallCleanup');
 
 /**
- * HelmDesk API
+ * HelpDesk API
  * GoHighLevel marketplace app: helpdesk & ticketing on top of Conversations.
  */
-class HelmDeskApp {
+class HelpDeskApp {
   constructor() {
     this.app = express();
     this.port = process.env.PORT || 3020;
@@ -85,7 +85,7 @@ class HelmDeskApp {
     this.app.get('/health', (req, res) => {
       res.json({
         status: 'healthy',
-        app: 'HelmDesk',
+        app: 'HelpDesk',
         db: database.isConnected() ? 'connected' : 'disabled',
         timestamp: new Date().toISOString()
       });
@@ -125,7 +125,7 @@ class HelmDeskApp {
     }
 
     this.app.get('/', (req, res) => {
-      res.json({ app: 'HelmDesk', version: require('../package.json').version });
+      res.json({ app: 'HelpDesk', version: require('../package.json').version });
     });
   }
 
@@ -148,7 +148,7 @@ class HelmDeskApp {
     }
     this.app.listen(this.port, () => {
       logger.info('='.repeat(48));
-      logger.info('🚀 HelmDesk API started');
+      logger.info('🚀 HelpDesk API started');
       logger.info(`   Port:        ${this.port}`);
       logger.info(`   Environment: ${process.env.NODE_ENV || 'development'}`);
       logger.info(`   Base URL:    ${process.env.BASE_URL || `http://localhost:${this.port}`}`);
@@ -157,4 +157,4 @@ class HelmDeskApp {
   }
 }
 
-new HelmDeskApp().start();
+new HelpDeskApp().start();

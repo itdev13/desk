@@ -1,13 +1,13 @@
 import React from 'react';
 
 /**
- * HelmDesk icon mark — the amber tile with an "H" whose crossbar carries a helm hub.
+ * HelpDesk icon mark — the amber tile with an "H" whose crossbar carries a helm hub.
  * Inline SVG so it scales crisply at any size and needs no asset request. Mirrors public/icon.svg
  * (the file uploaded to the GHL marketplace listing) so the in-app brand matches the listing exactly.
  */
 export function LogoMark({ size = 32, hub = true }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 112 112" role="img" aria-label="HelmDesk" style={{ display: 'block', flex: 'none' }}>
+    <svg width={size} height={size} viewBox="0 0 112 112" role="img" aria-label="HelpDesk" style={{ display: 'block', flex: 'none' }}>
       <defs>
         <linearGradient id="hd-amber" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#ECB45F" />
@@ -30,10 +30,10 @@ export function LogoMark({ size = 32, hub = true }) {
   );
 }
 
-/** Icon + "HelmDesk" wordmark lockup (Desk in accent). `onDark` flips the word color to white. */
+/** Icon + "HelpDesk" wordmark lockup (Desk in accent). `onDark` flips the word color to white. */
 export function Logo({ size = 30, onDark = false, brandName }) {
   // When white-labeled, show the brand name as plain text next to the mark.
-  if (brandName && brandName !== 'HelmDesk') {
+  if (brandName && brandName !== 'HelpDesk') {
     return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
         <LogoMark size={size} />

@@ -148,7 +148,7 @@ router.post('/verify', async (req, res) => {
     if (!token) {
       const companyLoc = await CompanyLocation.findCompanyByLocation(locationId);
       if (!companyLoc) {
-        return res.status(403).json({ success: false, error: 'Workspace not connected. Please install HelmDesk.', connected: false });
+        return res.status(403).json({ success: false, error: 'Workspace not connected. Please install HelpDesk.', connected: false });
       }
       companyId = companyId || companyLoc.companyId;
     } else {
@@ -194,7 +194,7 @@ router.post('/verify', async (req, res) => {
       role = 'admin';
     }
 
-    // HelmDesk access gate. Admins (and the installer) always have access. For a non-admin agent,
+    // HelpDesk access gate. Admins (and the installer) always have access. For a non-admin agent,
     // access is on unless an admin has turned off their accessEnabled flag. A user with no synced
     // Agent record yet (e.g. before the first Team sync) defaults to having access.
     const hasAccess = role === 'admin' || agentRecord == null || agentRecord.accessEnabled !== false;
@@ -223,7 +223,7 @@ router.post('/verify', async (req, res) => {
         needsReconnect,
         needsReconnectReason,
         reconnectUrl,
-        brand: workspace?.brand || { name: 'HelmDesk', primaryColor: '#E0A24A' }
+        brand: workspace?.brand || { name: 'HelpDesk', primaryColor: '#E0A24A' }
       },
       user: { userId, name, email, role, hasAccess },
       // Tells the UI whether to send clickstream events (respects ANALYTICS_ENABLED + excluded ids).

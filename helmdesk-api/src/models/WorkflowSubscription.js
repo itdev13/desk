@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
 
 /**
- * A GoHighLevel workflow's subscription to one of HelmDesk's custom triggers.
+ * A GoHighLevel workflow's subscription to one of HelpDesk's custom triggers.
  *
- * GHL calls POST /api/workflows/triggers/subscriptions when an agency adds a HelmDesk trigger to a
+ * GHL calls POST /api/workflows/triggers/subscriptions when an agency adds a HelpDesk trigger to a
  * workflow (and again to update/delete it). We store the per-subscription `targetUrl` GHL hands us,
  * then POST the event payload there whenever that trigger fires (see ticketService.fireTrigger).
  *

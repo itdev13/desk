@@ -318,7 +318,7 @@ async function processSubmission(ws, form, req, res) {
     }
 
     // Mirror the submission into GHL's native Conversations as an inbound message, so the form
-    // submission is visible there too (not just in HelmDesk). Best-effort — never blocks the ticket.
+    // submission is visible there too (not just in HelpDesk). Best-effort — never blocks the ticket.
     const providerId = process.env.GHL_CONVERSATION_PROVIDER_ID || '6a4419eda0320c4756a842cb';
     if (contact.id && providerId) {
       try {
@@ -356,7 +356,7 @@ async function processSubmission(ws, form, req, res) {
       contactEmail: email || null,
       channel: 'portal',
       source: 'portal',
-      formName: form?.name || `${ws.brand?.name || 'HelmDesk'} Portal`,
+      formName: form?.name || `${ws.brand?.name || 'HelpDesk'} Portal`,
       priority: chosenPriority || undefined, // undefined → createTicket applies the default/rules
       firstMessage: message + appendCustom,
       customFields: custom
@@ -418,7 +418,7 @@ fRouter.get('/widget.js', (req, res) => {
   var s = document.currentScript;
   if (!s) { var all = document.getElementsByTagName('script'); s = all[all.length - 1]; }
   var slug = s && s.getAttribute('data-form');
-  if (!slug) { console.error('[HelmDesk widget] missing data-form on the script tag'); return; }
+  if (!slug) { console.error('[HelpDesk widget] missing data-form on the script tag'); return; }
   var label = s.getAttribute('data-label') || 'Support';
   var color = s.getAttribute('data-color') || '#E0A24A';
   var side = (s.getAttribute('data-position') === 'left') ? 'left' : 'right';

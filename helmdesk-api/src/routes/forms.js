@@ -53,7 +53,7 @@ const withUrl = (f) => ({ ...f, url: publicFormUrl(f.slug, f.workspaceSlug), emb
 /** The workspace's name slug (brand name, else location name), for the pretty URL. */
 async function workspaceSlugFor(locationId) {
   const ws = await Workspace.findOne({ locationId }).select('brand locationName').lean();
-  return slugifyName(ws?.brand?.name && ws.brand.name !== 'HelmDesk' ? ws.brand.name : ws?.locationName);
+  return slugifyName(ws?.brand?.name && ws.brand.name !== 'HelpDesk' ? ws.brand.name : ws?.locationName);
 }
 
 /** GET /api/forms — list the workspace's forms (admin), each with its public short URL. */

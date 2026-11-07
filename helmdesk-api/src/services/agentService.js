@@ -141,7 +141,7 @@ async function reconcileSeats(locationId) {
 
 /**
  * Upsert a single agent from a User webhook (UserCreate / UserUpdate). Idempotent; preserves the
- * HelmDesk-only `active` flag and load count on update, sets them only on insert.
+ * HelpDesk-only `active` flag and load count on update, sets them only on insert.
  */
 async function upsertAgentForLocation(locationId, user) {
   const name = user.name || [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || 'Agent';
@@ -171,7 +171,7 @@ async function removeAgentForLocation(locationId, ghlUserId) {
  * Resolve which of OUR workspaces a user webhook applies to.
  * - Sub-account user: payload has `locationId` → just that one (if we have a workspace for it).
  * - Agency user: payload has `companyId` + `locations[]` → every location in that list we manage.
- * Filters to locations that actually have a HelmDesk Workspace so we don't create stray Agent rows.
+ * Filters to locations that actually have a HelpDesk Workspace so we don't create stray Agent rows.
  */
 async function locationsForUserWebhook(data) {
   const Workspace = require('../models/Workspace');

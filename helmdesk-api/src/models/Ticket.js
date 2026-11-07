@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 /**
- * The core record. A ticket is HelmDesk's own concept — GHL has no notion of it.
+ * The core record. A ticket is HelpDesk's own concept — GHL has no notion of it.
  * We store only a *reference* to the GHL contact/conversation (never copy contact PII beyond
  * a cached display name), keeping storage light and data-residency exposure minimal.
  *

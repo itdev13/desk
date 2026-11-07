@@ -123,7 +123,7 @@ export default function SetupWizard({ workspace, onDone, notify }) {
       <div className="wizard">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18, justifyContent: 'center' }}>
           <LogoMark size={32} />
-          <strong style={{ fontSize: 18 }}>HelmDesk setup</strong>
+          <strong style={{ fontSize: 18 }}>HelpDesk setup</strong>
         </div>
         <div className="wizard-card">
           <div className="wizard-head">

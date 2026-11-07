@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 /**
- * One workspace per installed GHL sub-account. Holds the agency's HelmDesk configuration —
+ * One workspace per installed GHL sub-account. Holds the agency's HelpDesk configuration —
  * everything the setup wizard collects. Settings-first: the app does not create tickets until
  * `setupComplete` is true, so the agency's channel/ignore/SLA choices are always in effect.
  */
@@ -120,7 +120,7 @@ const workspaceSchema = new mongoose.Schema(
 
     // ── White-label (Phase 3) ──
     brand: {
-      name: { type: String, default: 'HelmDesk' },
+      name: { type: String, default: 'HelpDesk' },
       primaryColor: { type: String, default: '#E0A24A' },
       logoUrl: { type: String, default: null }
     },

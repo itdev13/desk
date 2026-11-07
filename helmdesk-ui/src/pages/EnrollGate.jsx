@@ -23,11 +23,11 @@ export default function EnrollGate({ brand, notify, onRetry }) {
     track('enroll_click', { plan: plan?.name });
     const url = data?.enrolUrl || data?.upgradeUrl;
     if (url) window.open(url, '_blank', 'noopener');
-    else notify?.('Please subscribe from your marketplace account to activate HelmDesk.', false);
+    else notify?.('Please subscribe from your marketplace account to activate HelpDesk.', false);
   };
 
   const plans = data?.plans || [];
-  const brandName = brand?.name || 'HelmDesk';
+  const brandName = brand?.name || 'HelpDesk';
 
   return (
     <div className="enroll-wrap">

@@ -46,7 +46,7 @@ const TYPE_LABEL = Object.fromEntries(TYPES.map((t) => [t.value, t.label]));
 export default function PortalFormBuilder({ value, onChange, brand }) {
   const fields = Array.isArray(value) && value.length ? value : DEFAULTS;
   const accent = brand?.color || '#E0A24A';
-  const brandName = brand?.name || 'HelmDesk';
+  const brandName = brand?.name || 'HelpDesk';
   const [openIdx, setOpenIdx] = useState(null); // which card is expanded for editing
   const [dragIdx, setDragIdx] = useState(null);
   const [overIdx, setOverIdx] = useState(null);

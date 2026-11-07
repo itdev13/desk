@@ -13,7 +13,7 @@ import { track } from '../lib/analytics.js';
  * `reconnectUrl` is computed server-side (agency white-label domain + /v2/location/{id}/integration/{appId}).
  */
 export default function ReconnectModal({ brand, reason, reconnectUrl, onClose }) {
-  const brandName = brand?.name || 'HelmDesk';
+  const brandName = brand?.name || 'HelpDesk';
   const accent = brand?.primaryColor || '#E0A24A';
 
   useEffect(() => {

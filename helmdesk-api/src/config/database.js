@@ -3,7 +3,7 @@ const logger = require('../utils/logger');
 
 /**
  * MongoDB connection. The app requires a database — unlike a stateless tool,
- * HelmDesk's whole product (tickets, SLAs, comments) lives here.
+ * HelpDesk's whole product (tickets, SLAs, comments) lives here.
  */
 class Database {
   constructor() {
@@ -13,7 +13,7 @@ class Database {
   async connect() {
     const uri = process.env.MONGODB_URI;
     if (!uri) {
-      logger.error('MONGODB_URI is not set. HelmDesk cannot run without a database.');
+      logger.error('MONGODB_URI is not set. HelpDesk cannot run without a database.');
       process.exit(1);
     }
     try {

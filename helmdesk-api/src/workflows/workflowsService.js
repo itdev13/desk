@@ -4,11 +4,11 @@ const ghlService = require('../services/ghlService');
 const logger = require('../utils/logger');
 
 /**
- * HelmDesk custom workflow triggers — subscription handling + firing.
+ * HelpDesk custom workflow triggers — subscription handling + firing.
  * Ported from the telegram app's proven GHL custom-trigger pattern.
  *
  * Flow:
- *   1. GHL calls handleSubscription() when an agency adds/updates/removes a HelmDesk trigger in a
+ *   1. GHL calls handleSubscription() when an agency adds/updates/removes a HelpDesk trigger in a
  *      workflow. We upsert (or soft-delete) a WorkflowSubscription keyed on {workflowId, triggerKey}.
  *   2. When that ticket event happens, fireTrigger() POSTs the event payload to every active
  *      subscription's targetUrl, which starts the agency's workflow.

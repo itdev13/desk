@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 /**
  * One subscription per install (location-level; company-level for agency installs).
  *
- * HelmDesk is MONTHLY-ONLY: there is no usage metering or overage. A ticket costs us nothing
+ * HelpDesk is MONTHLY-ONLY: there is no usage metering or overage. A ticket costs us nothing
  * to store, so there is nothing to meter — the recurring fee is collected by GoHighLevel
  * (configured as the app's subscription price in the marketplace dashboard) and this record
  * mirrors entitlement status. PLAN_CHANGE moves a workspace between tiers (e.g. seat count).

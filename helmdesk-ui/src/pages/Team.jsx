@@ -57,7 +57,7 @@ export default function Team({ notify, onNavPlan }) {
     catch (err) { track('agent_toggle_blocked', { code: err.code }); notify(err.message, true); load(); }
   };
 
-  // Toggle whether a (non-admin) user can open the HelmDesk app at all.
+  // Toggle whether a (non-admin) user can open the HelpDesk app at all.
   const toggleAccess = async (a, accessEnabled) => {
     setAgents((list) => list.map((x) => (x.ghlUserId === a.ghlUserId ? { ...x, accessEnabled } : x)));
     try { await api.updateAgent(a.ghlUserId, { accessEnabled }); track('agent_access_toggle', { accessEnabled }); }
@@ -127,7 +127,7 @@ export default function Team({ notify, onNavPlan }) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
                     {/* App access — admins always have access, so only show the toggle for agents. */}
                     {a.role !== 'admin' && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }} title="Can this user open HelmDesk">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }} title="Can this user open HelpDesk">
                         <span className="muted" style={{ fontSize: 12 }}>{a.accessEnabled === false ? 'No access' : 'App access'}</span>
                         <Switch checked={a.accessEnabled !== false} onChange={(v) => toggleAccess(a, v)} />
                       </div>

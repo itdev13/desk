@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
  * Ledger for one-time paid onboarding calls ($2 / 30 min). Each row is one attempt to charge the
  * agency's GHL wallet for a booked call. `_id` doubles as the GHL charge idempotency `eventId`,
  * so a retried request never double-charges. Unlike SubscriptionTransaction (subscription mirror),
- * this is the ONLY place HelmDesk collects a per-item charge — and it's revenue, not an API cost.
+ * this is the ONLY place HelpDesk collects a per-item charge — and it's revenue, not an API cost.
  */
 const onboardingChargeSchema = new mongoose.Schema(
   {

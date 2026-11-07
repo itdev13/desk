@@ -148,7 +148,7 @@ router.post('/onboarding-call', async (req, res) => {
       units: 1,
       fixedPrice: ONBOARDING_METER_FIXED, // fixed-price meter → don't send a custom price
       eventId: charge._id.toString(),
-      description: `HelmDesk onboarding call — ${ONBOARDING_MINS} min`
+      description: `HelpDesk onboarding call — ${ONBOARDING_MINS} min`
     });
 
     charge.status = internalTesting ? 'tested' : 'charged';

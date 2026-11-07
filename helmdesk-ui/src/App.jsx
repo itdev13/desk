@@ -105,7 +105,7 @@ export default function App() {
       initAnalytics(res.analytics || {}); // start clickstream capture if the server has it enabled
       track('app_open', { role: res.user?.role, setupComplete: !!res.workspace?.setupComplete });
 
-      // Access gate: an admin turned off this user's HelmDesk access → block before anything else.
+      // Access gate: an admin turned off this user's HelpDesk access → block before anything else.
       if (res.user?.hasAccess === false) {
         setPhase('noaccess');
         return;
@@ -159,7 +159,7 @@ export default function App() {
     setPhase('app');
     refreshCounts();
     track('setup_complete');
-    notify('Setup complete — HelmDesk is live.');
+    notify('Setup complete — HelpDesk is live.');
   };
 
   // Opening a ticket always lands in the inbox view, which is where the detail renders. This keeps a
@@ -169,8 +169,8 @@ export default function App() {
 
   if (phase === 'loading') return <Spinner />;
   if (phase === 'error') return <ConnectScreen title="Something went wrong" message={errorMsg} retry={bootstrap} />;
-  if (phase === 'connect') return <ConnectScreen title="Connect HelmDesk" message="Install HelmDesk from the marketplace to get started." cta />;
-  if (phase === 'noaccess') return <ConnectScreen title="You don't have access to HelmDesk" message="Your administrator hasn't enabled HelmDesk access for your account. Please contact your admin to request access." />;
+  if (phase === 'connect') return <ConnectScreen title="Connect HelpDesk" message="Install HelpDesk from the marketplace to get started." cta />;
+  if (phase === 'noaccess') return <ConnectScreen title="You don't have access to HelpDesk" message="Your administrator hasn't enabled HelpDesk access for your account. Please contact your admin to request access." />;
   if (phase === 'enroll') return <EnrollGate brand={workspace?.brand} notify={notify} onRetry={bootstrap} />;
   if (phase === 'wizard') return <SetupWizard workspace={workspace} onDone={finishSetup} notify={notify} />;
 
@@ -239,7 +239,7 @@ export default function App() {
 }
 
 function TopNav({ workspace, sub, view, queueView, counts, isAdmin, onNav }) {
-  const brand = workspace?.brand || { name: 'HelmDesk' };
+  const brand = workspace?.brand || { name: 'HelpDesk' };
   const tabs = [
     { key: 'inbox', label: 'Inbox', icon: 'inbox', count: counts.open },
     { key: 'queue', label: 'Queue', icon: 'filter' },
@@ -256,11 +256,11 @@ function TopNav({ workspace, sub, view, queueView, counts, isAdmin, onNav }) {
       <div className="topnav-brand">
         {brand.logoUrl
           ? <img className="ws-logo" src={brand.logoUrl} alt={brand.name || 'Workspace'} />
-          : (!brand.name || brand.name === 'HelmDesk')
+          : (!brand.name || brand.name === 'HelpDesk')
             ? <LogoMark size={30} />
             : <div className="ws-badge" style={brand.primaryColor ? { background: brand.primaryColor, color: contrastText(brand.primaryColor) } : undefined}>{brand.name[0].toUpperCase()}</div>}
         <div className="ws-name">
-          {brand.name || 'HelmDesk'}
+          {brand.name || 'HelpDesk'}
           <small>{workspace?.locationName || 'Workspace'}</small>
         </div>
       </div>

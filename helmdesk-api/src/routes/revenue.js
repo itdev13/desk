@@ -5,14 +5,14 @@ const SubscriptionTransaction = require('../models/SubscriptionTransaction');
 const OnboardingCharge = require('../models/OnboardingCharge');
 
 /**
- * VENDOR revenue summary — how much HelmDesk generates across ALL workspaces.
+ * VENDOR revenue summary — how much HelpDesk generates across ALL workspaces.
  *
  * This is YOUR (the app vendor's) number, not an agency's, so it is NOT behind the per-workspace
  * session auth. It's gated by a secret in the REVENUE_API_KEY env var, passed as ?key=… or an
  * x-revenue-key header. If the env var isn't set, the route is disabled (404) so it can't leak.
  *
  * NOTE: GoHighLevel collects the subscription fee and pays you out (minus their cut). These numbers
- * are HelmDesk's own mirror of who's subscribed to what — an estimate. GHL's marketplace dashboard
+ * are HelpDesk's own mirror of who's subscribed to what — an estimate. GHL's marketplace dashboard
  * is the authoritative payout figure.
  */
 function guard(req, res, next) {
@@ -66,7 +66,7 @@ router.get('/', guard, async (req, res) => {
     res.json({
       success: true,
       currency: 'USD',
-      note: 'Estimate from HelmDesk\'s own data. GoHighLevel collects the fee; its dashboard is the authoritative payout.',
+      note: 'Estimate from HelpDesk\'s own data. GoHighLevel collects the fee; its dashboard is the authoritative payout.',
       mrr: Math.round(mrr),                         // monthly recurring revenue (active subs)
       arr: Math.round(mrr * 12),                    // annualized
       subscribers: { active: activeCount, trialing: trialingCount, past_due: pastDueCount },

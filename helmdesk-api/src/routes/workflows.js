@@ -4,7 +4,7 @@ const workflowsService = require('../workflows/workflowsService');
 const logger = require('../utils/logger');
 
 /**
- * Provider endpoints for HelmDesk's custom workflow TRIGGERS.
+ * Provider endpoints for HelpDesk's custom workflow TRIGGERS.
  * GoHighLevel calls these; they are registered against this app in the Marketplace dashboard.
  *
  * GHL expects 200 {success:true} on success and 400 {success:false} on failure (the message is

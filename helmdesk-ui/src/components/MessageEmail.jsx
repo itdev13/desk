@@ -11,8 +11,8 @@ import { ago, agoFull } from '../lib/format.js';
  * scannable. Expanded: the From/To address block (when present) + the real email body in a sandboxed
  * EmailFrame, so it keeps its own formatting without leaking styles into the app.
  *
- * `c` is a HelmDesk comment: { body (HTML), authorName, kind, channel, createdAt, emailFrom?, emailTo? }.
- * from/to are optional — HelmDesk doesn't always capture them; the block is omitted when absent.
+ * `c` is a HelpDesk comment: { body (HTML), authorName, kind, channel, createdAt, emailFrom?, emailTo? }.
+ * from/to are optional — HelpDesk doesn't always capture them; the block is omitted when absent.
  */
 export default function MessageEmail({ c, onResize }) {
   const [open, setOpen] = useState(false);

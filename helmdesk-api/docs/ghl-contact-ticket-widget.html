@@ -1,15 +1,18 @@
 <!--
-  HelmDesk — "Ticket" button + modal for the GoHighLevel CONTACT DETAIL page.
+  HelmDesk — "Ticket View" button + modal for the GoHighLevel CONTACT DETAIL and CONVERSATIONS pages.
 
-  Paste this whole <script> block into the GHL Marketplace app's Custom JS (the "Ticket View" custom
-  code / custom menu snippet). It adds a "Tickets" button next to the contact's delete action; clicking
-  it opens a modal that lists that contact's HelmDesk tickets (including portal-form submissions with
-  every field the contact filled), fetched securely from the HelmDesk API.
+  Paste the whole <script> block below into the GHL Marketplace app's Custom JS ("Ticket View").
+  It adds a "Tickets" button next to the contact's actions; clicking it opens a modal that:
+    • lists that contact's HelmDesk tickets (portal-form submissions with every field they filled),
+    • lets an agent change a ticket's STATUS,
+    • lets an agent CREATE a new ticket for the contact ("+ New ticket"),
+    • deep-links to open the full ticket inside the HelmDesk app.
 
   The API verifies the contact belongs to the location (via the location's OAuth token) before
-  returning anything, so no secret key is needed in this page.
+  returning anything, so no secret key is needed in this page. All ticket HTML is rendered
+  server-side, so new form field types never require a change to this script.
 
-  ONE THING TO SET: API_BASE below → your HelmDesk API host.
+  TWO THINGS TO SET: API_BASE (your HelmDesk API host) and CUSTOM_PAGE_ID (your HelmDesk custom-page id).
 -->
 <script>
 (function () {
@@ -23,15 +26,33 @@
 
   var BTN_ID = 'hd-ticket-btn';
   var MODAL_ID = 'hd-ticket-modal';
+  var CONTACT_LINK_SEL = 'a[aria-label="View contact details"][href*="/contacts/detail/"]';
+  var TICKET_ICON =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6z"/>' +
+      '<path d="M14 5v2M14 11v2M14 17v2"/>' +
+    '</svg>';
 
-  function getContactId() {
-    var m = location.pathname.match(/\/contacts\/detail\/([^/?#]+)/);
+  function idFromPath(p) {
+    var m = (p || '').match(/\/contacts\/detail\/([^/?#]+)/);
     return m ? m[1] : null;
   }
-  // GHL contact URLs look like /v2/location/<locationId>/contacts/detail/<contactId>
+  // Contact page: id is in the URL. Conversations page: read it from the "View contact details" link.
+  function getContactId() {
+    var id = idFromPath(location.pathname);
+    if (id) return id;
+    var a = document.querySelector(CONTACT_LINK_SEL);
+    return a ? idFromPath(a.getAttribute('href')) : null;
+  }
+  // locationId is always in the URL on both pages: /v2/location/<locationId>/...
   function getLocationId() {
     var m = location.pathname.match(/\/location\/([^/?#]+)/);
     return m ? m[1] : null;
+  }
+  // Contact page: before the delete icon. Conversations page: before the open-contact icon.
+  function getAnchor() {
+    return document.getElementById('delete-contact-trigger') ||
+           document.querySelector(CONTACT_LINK_SEL);
   }
 
   function esc(s) {
@@ -45,32 +66,20 @@
     var s = document.createElement('style');
     s.id = 'hd-ticket-styles';
     s.textContent = [
-      '#' + BTN_ID + '{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;font-size:13px;font-weight:600;',
-      'color:#422006;background:#E0A24A;border:1px solid #c98a30;border-radius:7px;cursor:pointer;white-space:nowrap}',
+      '#' + BTN_ID + '{display:inline-flex;align-items:center;justify-content:center;width:28px;height:24px;padding:0;box-sizing:border-box;',
+      'color:#422006;background:#E0A24A;border:1px solid #c98a30;border-radius:6px;cursor:pointer;flex-shrink:0}',
+      '#' + BTN_ID + ' svg{width:16px;height:16px}',
       '#' + BTN_ID + ':hover{filter:brightness(1.04)}',
       '#' + MODAL_ID + '{position:fixed;inset:0;background:rgba(15,23,41,.45);backdrop-filter:blur(2px);display:flex;',
       'align-items:center;justify-content:center;z-index:99999;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif}',
-      '#' + MODAL_ID + ' .hd-box{background:#fff;border-radius:14px;width:560px;max-width:calc(100vw - 32px);max-height:82vh;',
+      '#' + MODAL_ID + ' .hd-box{background:#fff;border-radius:14px;width:600px;max-width:calc(100vw - 32px);max-height:85vh;',
       'display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.28);overflow:hidden}',
       '#' + MODAL_ID + ' .hd-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;',
-      'border-bottom:1px solid #eef0f4}',
+      'border-bottom:1px solid #eef0f4;flex:none}',
       '#' + MODAL_ID + ' .hd-head h3{margin:0;font-size:16px;font-weight:700;color:#101828}',
       '#' + MODAL_ID + ' .hd-head .hd-sub{font-size:12.5px;color:#667085;margin-top:2px}',
       '#' + MODAL_ID + ' .hd-close{background:none;border:none;font-size:22px;cursor:pointer;color:#98a2b3;line-height:1}',
-      '#' + MODAL_ID + ' .hd-body{padding:16px 20px;overflow:auto;font-size:14px;color:#344054}',
-      '#' + MODAL_ID + ' .hd-t{border:1px solid #eef0f4;border-radius:10px;padding:14px;margin-bottom:12px}',
-      '#' + MODAL_ID + ' .hd-t-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}',
-      '#' + MODAL_ID + ' .hd-ref{font-family:ui-monospace,monospace;font-size:11.5px;color:#667085}',
-      '#' + MODAL_ID + ' .hd-subj{font-weight:700;color:#101828;font-size:14px}',
-      '#' + MODAL_ID + ' .hd-pill{margin-left:auto;font-size:11px;font-weight:700;text-transform:capitalize;',
-      'padding:2px 9px;border-radius:999px;background:#eef2ff;color:#3538cd}',
-      '#' + MODAL_ID + ' .hd-meta{font-size:12px;color:#667085;margin-bottom:8px}',
-      '#' + MODAL_ID + ' .hd-msg{font-size:13px;color:#344054;white-space:pre-wrap;background:#f9fafb;border:1px solid #eef0f4;',
-      'border-radius:7px;padding:9px 11px;margin-bottom:8px}',
-      '#' + MODAL_ID + ' .hd-fields-h{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#98a2b3;margin:4px 0 6px}',
-      '#' + MODAL_ID + ' .hd-fields{display:flex;flex-direction:column;gap:6px;background:#f9fafb;border:1px solid #eef0f4;border-radius:7px;padding:10px}',
-      '#' + MODAL_ID + ' .hd-f{display:flex;gap:8px;font-size:12.5px}',
-      '#' + MODAL_ID + ' .hd-f b{color:#475467;font-weight:600;min-width:120px}',
+      '#' + MODAL_ID + ' .hd-body{padding:16px 20px;overflow:auto;font-size:14px;color:#344054;background:#fbfbfc}',
       '#' + MODAL_ID + ' .hd-empty{text-align:center;color:#667085;padding:28px 10px}',
       '#' + MODAL_ID + ' .hd-err{color:#d92d20}'
     ].join('');
@@ -85,7 +94,8 @@
   }
 
   // The SERVER renders the ticket list HTML (so new form field types never require a script change).
-  // This just injects it, sets the white-label title, and wires the (only) editable control: status.
+  // This injects it, sets the white-label title, and wires the editable controls (status + create +
+  // deep link).
   function renderTickets(body, data, ctx) {
     var contact = data.contact || {};
     var count = (data.tickets || []).length;
@@ -96,7 +106,7 @@
     if (sub) sub.textContent = (contact.name || 'Contact') + (count ? (' · ' + count + ' ticket' + (count === 1 ? '' : 's')) : '');
     body.innerHTML = data.html || '<div class="hd-empty">No tickets for this contact yet.</div>';
 
-    // Wire each status <select> to save on change (the one editable thing in the modal).
+    // Wire each status <select> to save on change (one of the editable controls in the modal).
     body.querySelectorAll('.hd-status').forEach(function (sel) {
       sel.addEventListener('change', function () {
         var ticketId = sel.getAttribute('data-ticket');
@@ -180,7 +190,7 @@
 
   function openModal() {
     closeModal();
-    var contactId = getContactId();
+    var contactId = getContactId(); // read at click time → always the contact currently open
     var locationId = getLocationId();
 
     var modal = document.createElement('div');
@@ -201,33 +211,25 @@
 
     var base = API_BASE.replace(/\/$/, '');
     var ctx = { base: base, locationId: locationId, contactId: contactId };
-    var url = base + '/api/contact-tickets?locationId=' +
-      encodeURIComponent(locationId) + '&contactId=' + encodeURIComponent(contactId);
-
-    fetch(url, { method: 'GET' })
-      .then(function (r) {
-        return r.text().then(function (tx) {
-          var j; try { j = JSON.parse(tx); } catch (_) { j = null; }
-          if (!r.ok || !j || j.success === false) {
-            throw new Error((j && j.error) || ('HTTP ' + r.status));
-          }
-          return j;
-        });
-      })
-      .then(function (data) { if (document.getElementById(MODAL_ID)) renderTickets(body, data, ctx); })
-      .catch(function (err) { if (document.getElementById(MODAL_ID)) body.innerHTML = '<div class="hd-err">Failed to load: ' + esc(err.message) + '</div>'; });
+    reloadModal(body, ctx);
   }
 
   function injectButton() {
-    if (!getContactId()) return;
-    if (document.getElementById(BTN_ID)) return;
-    var anchor = document.getElementById('delete-contact-trigger');
-    if (!anchor || !anchor.parentElement) return;
+    var anchor = getAnchor();
+    var existing = document.getElementById(BTN_ID);
+    if (!anchor || !anchor.parentElement || !getContactId()) {
+      if (existing) existing.remove();
+      return;
+    }
+    if (existing && existing.nextElementSibling === anchor) return; // already in place
+    if (existing) existing.remove();
     var btn = document.createElement('button');
     btn.id = BTN_ID;
     btn.type = 'button';
-    btn.textContent = 'Tickets';
-    btn.addEventListener('click', function (e) { e.stopPropagation(); openModal(); });
+    btn.title = 'Support tickets';
+    btn.setAttribute('aria-label', 'Support tickets');
+    btn.innerHTML = TICKET_ICON;
+    btn.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); openModal(); });
     anchor.parentElement.insertBefore(btn, anchor);
   }
 
