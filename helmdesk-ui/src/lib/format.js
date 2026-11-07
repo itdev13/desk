@@ -17,6 +17,16 @@ export const CHANNELS = [
 ];
 
 /** Friendly channel label (shared across Queue, Board, TicketDetail). */
+/** How a ticket was created, in words an agent recognizes. */
+export const SOURCE_LABEL = {
+  portal: 'Form submission',
+  manual: 'Created manually',
+  inbound: 'Inbound message (auto)'
+};
+export function labelSource(s) {
+  return SOURCE_LABEL[s] || (s ? s.charAt(0).toUpperCase() + s.slice(1) : '—');
+}
+
 export function labelChannel(c) {
   return {
     SMS: 'SMS', Email: 'Email', WhatsApp: 'WhatsApp', FB: 'Facebook', IG: 'Instagram',

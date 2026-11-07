@@ -1,31 +1,26 @@
 import React from 'react';
 
 /**
- * HelpDesk icon mark — the amber tile with an "H" whose crossbar carries a helm hub.
+ * HelpDesk icon mark — the amber tile with a ticket stub carrying a check.
  * Inline SVG so it scales crisply at any size and needs no asset request. Mirrors public/icon.svg
- * (the file uploaded to the GHL marketplace listing) so the in-app brand matches the listing exactly.
+ * (the vector of the icon uploaded to the GHL marketplace listing) so the in-app brand matches it.
  */
-export function LogoMark({ size = 32, hub = true }) {
+export function LogoMark({ size = 32 }) {
+  const gid = `hd-amber-${React.useId().replace(/:/g, '')}`;
   return (
-    <svg width={size} height={size} viewBox="0 0 112 112" role="img" aria-label="HelpDesk" style={{ display: 'block', flex: 'none' }}>
+    <svg width={size} height={size} viewBox="0 0 800 800" role="img" aria-label="HelpDesk" style={{ display: 'block', flex: 'none' }}>
       <defs>
-        <linearGradient id="hd-amber" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#ECB45F" />
-          <stop offset="1" stopColor="#D4912F" />
+        <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#F0C27E" />
+          <stop offset="1" stopColor="#CF8732" />
         </linearGradient>
       </defs>
-      <rect x="4" y="4" width="104" height="104" rx="26" fill="url(#hd-amber)" />
-      <g fill="#0F1729">
-        <rect x="34" y="32" width="12" height="48" rx="3" />
-        <rect x="66" y="32" width="12" height="48" rx="3" />
-        <rect x="40" y="50" width="32" height="11" rx="3" />
+      <rect width="800" height="800" rx="180" fill={`url(#${gid})`} />
+      <g fill="none" stroke="#3A2408" strokeWidth="38" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M260 255H540A45 45 0 0 1 585 300V338A62 62 0 0 0 585 462V500A45 45 0 0 1 540 545H260A45 45 0 0 1 215 500V462A62 62 0 0 0 215 338V300A45 45 0 0 1 260 255Z" fill="#F3D3A0" fillOpacity="0.55" />
+        <path d="M440 260V300M440 370V430M440 500V540" />
+        <path d="M318 398L352 432L408 372" />
       </g>
-      {hub && (
-        <>
-          <circle cx="56" cy="55.5" r="5.2" fill="#0F1729" />
-          <circle cx="56" cy="55.5" r="2.2" fill="#D4912F" />
-        </>
-      )}
     </svg>
   );
 }

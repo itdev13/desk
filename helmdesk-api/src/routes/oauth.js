@@ -213,11 +213,13 @@ router.get('/status', async (req, res) => {
 });
 
 // HelpDesk icon mark (matches helmdesk-ui/public/icon.svg and the marketplace listing).
-const LOGO_SVG = `<svg width="56" height="56" viewBox="0 0 112 112" aria-label="HelpDesk" style="display:block;margin:0 auto 20px">
-  <defs><linearGradient id="a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ECB45F"/><stop offset="1" stop-color="#D4912F"/></linearGradient></defs>
-  <rect x="4" y="4" width="104" height="104" rx="26" fill="url(#a)"/>
-  <g fill="#0F1729"><rect x="34" y="32" width="12" height="48" rx="3"/><rect x="66" y="32" width="12" height="48" rx="3"/><rect x="40" y="50" width="32" height="11" rx="3"/></g>
-  <circle cx="56" cy="55.5" r="5.2" fill="#0F1729"/><circle cx="56" cy="55.5" r="2.2" fill="#D4912F"/>
+const LOGO_SVG = `<svg width="56" height="56" viewBox="0 0 800 800" aria-label="HelpDesk" style="display:block;margin:0 auto 20px">
+  <defs><linearGradient id="a" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F0C27E"/><stop offset="1" stop-color="#CF8732"/></linearGradient></defs>
+  <rect width="800" height="800" rx="180" fill="url(#a)"/>
+  <g fill="none" stroke="#3A2408" stroke-width="38" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M260 255H540A45 45 0 0 1 585 300V338A62 62 0 0 0 585 462V500A45 45 0 0 1 540 545H260A45 45 0 0 1 215 500V462A62 62 0 0 0 215 338V300A45 45 0 0 1 260 255Z" fill="#F3D3A0" fill-opacity="0.55"/>
+    <path d="M440 260V300M440 370V430M440 500V540"/><path d="M318 398L352 432L408 372"/>
+  </g>
 </svg>`;
 
 function renderSuccessPage({ already = false, upgrade = false } = {}) {

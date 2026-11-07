@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../lib/api.js';
-import { ago, agoFull, slaDisplay, STATUS_LABEL, PRIORITY_LABEL, labelChannel, isCustomProviderChannel, cleanMessageText } from '../lib/format.js';
+import { ago, agoFull, slaDisplay, STATUS_LABEL, PRIORITY_LABEL, labelChannel, labelSource, isCustomProviderChannel, cleanMessageText } from '../lib/format.js';
 import { looksLikeHtml } from '../lib/sanitizeHtml.js';
 import EmailFrame from '../components/EmailFrame.jsx';
 import MessageEmail from '../components/MessageEmail.jsx';
@@ -478,6 +478,7 @@ function TicketPanes({ id, isAdmin, notify, onChanged, rightOpen = true, toggleR
               )}
             </span>
           </div>
+          <div className="kv"><span className="k">Source</span><span>{labelSource(ticket.source)}</span></div>
           <div className="kv"><span className="k">Opened</span><span title={agoFull(ticket.createdAt)} style={{ cursor: 'help' }}>{ago(ticket.createdAt)}</span></div>
           <div className="kv"><span className="k">Messages</span><span>{ticket.messageCount}</span></div>
         </div>
