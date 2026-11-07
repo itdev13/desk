@@ -254,7 +254,7 @@ router.get('/', limiter, async (req, res) => {
     const tickets = await Ticket.find({ locationId, contactId, deleted: { $ne: true } })
       .sort({ createdAt: -1 })
       .limit(50)
-      .select('ref subject status priority channel source formName customFields contactName contactEmail createdAt lastActivityAt')
+      .select('ref subject status priority channel source formName customFields contactName contactEmail assigneeId assigneeName createdAt lastActivityAt')
       .lean();
 
     // Pull the opening message of each ticket so the modal can show what the contact actually wrote.
