@@ -5,6 +5,7 @@ const Ticket = require('../models/Ticket');
 const Comment = require('../models/Comment');
 const Workspace = require('../models/Workspace');
 const OAuthToken = require('../models/OAuthToken');
+const Agent = require('../models/Agent');
 
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -30,11 +31,30 @@ function roField(label, value) {
   </div>`;
 }
 
+// Assignee <option> list: "Unassigned" + each active agent shown as "Name (email)". `selectedId`
+// marks the current assignee (null → Unassigned selected). Deleted agents are excluded from the list,
+// but if the ticket is still assigned to a now-deleted user we keep that option so it shows correctly.
+function assigneeOptions(agents, selectedId, selectedName) {
+  const e = esc;
+  let opts = `<option value=""${!selectedId ? ' selected' : ''}>Unassigned</option>`;
+  const seen = {};
+  (agents || []).forEach((a) => {
+    seen[a.ghlUserId] = true;
+    const label = a.email ? `${a.name || 'Agent'} (${a.email})` : (a.name || 'Agent');
+    opts += `<option value="${e(a.ghlUserId)}"${a.ghlUserId === selectedId ? ' selected' : ''}>${e(label)}</option>`;
+  });
+  if (selectedId && !seen[selectedId]) {
+    opts += `<option value="${e(selectedId)}" selected>${e(selectedName || 'Assigned agent')} (removed)</option>`;
+  }
+  return opts;
+}
+
 // The "New ticket" action bar + the (hidden) create form. The custom JS toggles the form and wires
 // the submit to POST /api/contact-tickets/create. Rendered server-side so the script stays dumb.
-function renderCreateUi({ accent }) {
+function renderCreateUi({ accent, agents }) {
   const prOpts = ['normal', 'low', 'high', 'urgent']
     .map((p) => `<option value="${p}"${p === 'normal' ? ' selected' : ''}>${p.charAt(0).toUpperCase() + p.slice(1)}</option>`).join('');
+  const asOpts = assigneeOptions(agents, null, null);
   return `<div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:14px">
       <button type="button" class="hd-new-btn"
         style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:#fff;background:${accent};border:1px solid ${accent};border-radius:9px;padding:8px 14px;cursor:pointer">
@@ -53,9 +73,15 @@ function renderCreateUi({ accent }) {
         <textarea class="hd-f-message" rows="4" placeholder="What does the customer need?"
           style="width:100%;box-sizing:border-box;font-size:14px;color:#101828;background:#fff;border:1px solid #d0d5dd;border-radius:9px;padding:10px 13px;outline:none;resize:vertical;font-family:inherit"></textarea>
       </div>
-      <div style="margin-bottom:16px;max-width:180px">
-        <div style="font-size:12px;font-weight:600;color:#475467;margin-bottom:5px">Priority</div>
-        <select class="hd-f-priority" style="width:100%;box-sizing:border-box;font-size:14px;color:#101828;background:#fff;border:1px solid #d0d5dd;border-radius:9px;padding:10px 13px;outline:none;cursor:pointer;appearance:auto">${prOpts}</select>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+        <div style="flex:1;min-width:140px">
+          <div style="font-size:12px;font-weight:600;color:#475467;margin-bottom:5px">Priority</div>
+          <select class="hd-f-priority" style="width:100%;box-sizing:border-box;font-size:14px;color:#101828;background:#fff;border:1px solid #d0d5dd;border-radius:9px;padding:10px 13px;outline:none;cursor:pointer;appearance:auto">${prOpts}</select>
+        </div>
+        <div style="flex:2;min-width:180px">
+          <div style="font-size:12px;font-weight:600;color:#475467;margin-bottom:5px">Assignee</div>
+          <select class="hd-f-assignee" style="width:100%;box-sizing:border-box;font-size:14px;color:#101828;background:#fff;border:1px solid #d0d5dd;border-radius:9px;padding:10px 13px;outline:none;cursor:pointer;appearance:auto">${asOpts}</select>
+        </div>
       </div>
       <div style="display:flex;justify-content:flex-end;gap:10px">
         <button type="button" class="hd-new-cancel"
@@ -66,9 +92,9 @@ function renderCreateUi({ accent }) {
     </form>`;
 }
 
-function renderTicketsHtml({ brandName, accent, contact, tickets, timeZone }) {
+function renderTicketsHtml({ brandName, accent, contact, tickets, timeZone, agents }) {
   const e = esc;
-  const createUi = renderCreateUi({ accent });
+  const createUi = renderCreateUi({ accent, agents });
   if (!tickets.length) {
     return createUi + `<div style="text-align:center;color:#8a94a6;padding:32px 16px">
       <div style="font-size:34px;margin-bottom:8px">🎫</div>
@@ -119,20 +145,29 @@ function renderTicketsHtml({ brandName, accent, contact, tickets, timeZone }) {
       ...cf.map((f) => roField(f.label, f.value))
     ].filter(Boolean).join('');
 
-    // Editable status dropdown (only editable control). Wired by the script via data-ticket.
+    // Editable status dropdown. Wired by the script via data-ticket.
     const statusOpts = STATUSES.map((s) =>
       `<option value="${s}"${s === t.status ? ' selected' : ''}>${e(STATUS_LABELS[s] || s)}</option>`).join('');
+    // Editable assignee dropdown — shows the current owner (or Unassigned) and lets the agent reassign.
+    const asgOpts = assigneeOptions(agents, t.assigneeId || null, t.assigneeName || null);
 
     return `<div style="border:1px solid #e9ecf2;border-radius:16px;padding:18px;margin-bottom:14px;background:#fff;box-shadow:0 1px 3px rgba(16,24,40,.05)">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
           <span style="font-family:ui-monospace,SFMono-Regular,monospace;font-size:11px;font-weight:600;color:#98a2b3;background:#f4f5f8;padding:2px 7px;border-radius:5px">${e(t.ref || '')}</span>
           <span style="margin-left:auto;font-size:11.5px;color:#8a94a6">${origin}${when ? ' · <span title="' + e(whenFull) + '" style="cursor:help;border-bottom:1px dotted #cbd2dd">' + e(when) + '</span>' : ''}</span>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
           <h4 style="margin:0;font-size:17px;font-weight:700;color:#101828;letter-spacing:-.01em;flex:1;min-width:0">${e(t.subject || '(no subject)')}</h4>
           <select class="hd-status" data-ticket="${e(t._id)}" data-prev="${e(t.status || '')}"
             style="flex:none;font-size:12.5px;font-weight:600;color:#101828;border:1px solid #d0d5dd;border-radius:8px;padding:7px 10px;background:#fff;cursor:pointer;outline:none;appearance:auto">
             ${statusOpts}
+          </select>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+          <span style="font-size:12px;font-weight:600;color:#475467;flex:none">Assignee</span>
+          <select class="hd-assignee" data-ticket="${e(t._id)}" data-prev="${e(t.assigneeId || '')}"
+            style="flex:1;min-width:0;font-size:12.5px;color:#101828;border:1px solid #d0d5dd;border-radius:8px;padding:7px 10px;background:#fff;cursor:pointer;outline:none;appearance:auto">
+            ${asgOpts}
           </select>
         </div>
         ${formFields || '<div style="color:#8a94a6;font-size:13px">No fields captured.</div>'}
@@ -261,9 +296,16 @@ router.get('/', limiter, async (req, res) => {
     }
     logger.info('[contact-tickets][TZ] final timezone used for render', { locationId, timeZone: timeZone || '(none → UTC/server)' });
 
+    // Assignable agents (active, not deleted) so the modal can show/change the owner of each ticket
+    // and set one on a new ticket. Shown as "Name (email)".
+    const agents = await Agent.find({ locationId, deleted: { $ne: true }, active: { $ne: false } })
+      .select('ghlUserId name email')
+      .sort({ name: 1 })
+      .lean();
+
     // Render the whole ticket list to HTML HERE, server-side. The custom JS just injects it — so any
     // future form field type (date, file, number, …) renders correctly without touching the script.
-    const html = renderTicketsHtml({ brandName, accent, contact, tickets: withOpening, timeZone });
+    const html = renderTicketsHtml({ brandName, accent, contact, tickets: withOpening, timeZone, agents });
 
     res.json({ success: true, brandName, accent, contact, tickets: withOpening, html });
   } catch (error) {
@@ -357,10 +399,59 @@ router.post('/create', limiter, async (req, res) => {
       firstMessage: message || null
     });
 
+    // If the agent picked an assignee in the form, apply it (createTicket's own routing may have left
+    // it unassigned). Validate the agent belongs to this location so a crafted id can't be injected.
+    const assigneeId = String(req.body.assigneeId || '').trim();
+    if (assigneeId) {
+      const agent = await Agent.findOne({ locationId, ghlUserId: assigneeId, deleted: { $ne: true } }).lean();
+      if (agent) await ticketService.assign(ticket, { assigneeId: agent.ghlUserId, assigneeName: agent.name || null });
+    }
+
     res.json({ success: true, ticketId: String(ticket._id), ref: ticket.ref });
   } catch (error) {
     logger.error('[contact-tickets] create failed', { message: error.message });
     res.status(500).json({ success: false, error: 'Could not create ticket.' });
+  }
+});
+
+/**
+ * POST /api/contact-tickets/assignee — change who a ticket is assigned to, from the contact modal.
+ * Body: { locationId, contactId, ticketId, assigneeId }. Empty assigneeId → Unassigned. Same ownership
+ * gate as the others; the agent (if any) must belong to this location.
+ */
+router.post('/assignee', limiter, async (req, res) => {
+  const locationId = String(req.body.locationId || '').trim();
+  const contactId = String(req.body.contactId || '').trim();
+  const ticketId = String(req.body.ticketId || '').trim();
+  const assigneeId = String(req.body.assigneeId || '').trim(); // '' → unassign
+  if (!locationId || !contactId || !ticketId) return res.status(400).json({ success: false, error: 'Missing fields.' });
+
+  try {
+    // Ownership: the contact must belong to this location.
+    try {
+      const raw = await ghlService.apiRequest('GET', `/contacts/${encodeURIComponent(contactId)}`, locationId);
+      const c = raw.contact || raw;
+      if (!c || !(c.id || c._id)) throw new Error('not found');
+    } catch (e) {
+      return res.status(403).json({ success: false, error: 'Not authorized for this contact.' });
+    }
+
+    const ticket = await Ticket.findOne({ _id: ticketId, locationId, contactId, deleted: { $ne: true } });
+    if (!ticket) return res.status(404).json({ success: false, error: 'Ticket not found.' });
+
+    let assigneeName = null;
+    if (assigneeId) {
+      const agent = await Agent.findOne({ locationId, ghlUserId: assigneeId, deleted: { $ne: true } }).lean();
+      if (!agent) return res.status(400).json({ success: false, error: 'Unknown agent.' });
+      assigneeName = agent.name || null;
+    }
+
+    const ticketService = require('../services/ticketService');
+    await ticketService.assign(ticket, { assigneeId: assigneeId || null, assigneeName });
+    res.json({ success: true, assigneeId: assigneeId || null, assigneeName });
+  } catch (error) {
+    logger.error('[contact-tickets] assignee update failed', { message: error.message });
+    res.status(500).json({ success: false, error: 'Could not update assignee.' });
   }
 });
 

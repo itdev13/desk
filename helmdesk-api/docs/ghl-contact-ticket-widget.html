@@ -124,6 +124,24 @@
       });
     });
 
+    // Wire each assignee <select> to save on change (reassign a ticket, or set it to Unassigned).
+    body.querySelectorAll('.hd-assignee').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        var ticketId = sel.getAttribute('data-ticket');
+        var prev = sel.getAttribute('data-prev');
+        var next = sel.value; // '' = Unassigned
+        sel.disabled = true;
+        fetch(ctx.base + '/api/contact-tickets/assignee', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ locationId: ctx.locationId, contactId: ctx.contactId, ticketId: ticketId, assigneeId: next })
+        })
+          .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || j.success === false) throw new Error((j && j.error) || 'Failed'); return j; }); })
+          .then(function () { sel.setAttribute('data-prev', next); sel.disabled = false; })
+          .catch(function () { sel.value = prev; sel.disabled = false; alert('Could not update assignee. Please try again.'); });
+      });
+    });
+
     // "Open full ticket →" deep links into the HelmDesk custom page with ?open=<ticketId>. Only shown
     // when CUSTOM_PAGE_ID is configured and we can read the current GHL origin/location.
     if (CUSTOM_PAGE_ID && ctx.locationId) {
@@ -159,13 +177,14 @@
         var subject = (form.querySelector('.hd-f-subject') || {}).value || '';
         var message = (form.querySelector('.hd-f-message') || {}).value || '';
         var priority = (form.querySelector('.hd-f-priority') || {}).value || 'normal';
+        var assigneeId = (form.querySelector('.hd-f-assignee') || {}).value || '';
         if (!subject.trim()) { alert('Please enter a subject.'); return; }
         var submitBtn = form.querySelector('.hd-new-submit');
         if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Creating…'; }
         fetch(ctx.base + '/api/contact-tickets/create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ locationId: ctx.locationId, contactId: ctx.contactId, subject: subject, message: message, priority: priority })
+          body: JSON.stringify({ locationId: ctx.locationId, contactId: ctx.contactId, subject: subject, message: message, priority: priority, assigneeId: assigneeId })
         })
           .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || j.success === false) throw new Error((j && j.error) || 'Failed'); return j; }); })
           .then(function () { reloadModal(body, ctx); }) // refresh the list so the new ticket shows
