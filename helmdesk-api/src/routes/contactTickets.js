@@ -97,7 +97,9 @@ function renderTicketsHtml({ brandName, accent, contact, tickets, timeZone, agen
   const createUi = renderCreateUi({ accent, agents });
   if (!tickets.length) {
     return createUi + `<div style="text-align:center;color:#8a94a6;padding:32px 16px">
-      <div style="font-size:34px;margin-bottom:8px">🎫</div>
+      <div style="width:52px;height:52px;margin:0 auto 12px;border-radius:50%;background:${e(accent)}1f;color:${e(accent)};display:flex;align-items:center;justify-content:center">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a3 3 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a3 3 0 0 0 0-6z"/><path d="M14 5v2M14 11v2M14 17v2"/></svg>
+      </div>
       <div style="font-size:14px;font-weight:600;color:#475467">No tickets yet</div>
       <div style="font-size:12.5px;margin-top:2px">Create the first ticket for ${e(contact?.name || 'this contact')} above.</div>
     </div>`;
