@@ -1,24 +1,24 @@
 <!--
-  HelmDesk — "Ticket View" button + modal for the GoHighLevel CONTACT DETAIL and CONVERSATIONS pages.
+  HelpDesk — "Ticket View" button + modal for the GoHighLevel CONTACT DETAIL and CONVERSATIONS pages.
 
   Paste the whole <script> block below into the GHL Marketplace app's Custom JS ("Ticket View").
   It adds a "Tickets" button next to the contact's actions; clicking it opens a modal that:
-    • lists that contact's HelmDesk tickets (portal-form submissions with every field they filled),
+    • lists that contact's HelpDesk tickets (portal-form submissions with every field they filled),
     • lets an agent change a ticket's STATUS,
     • lets an agent CREATE a new ticket for the contact ("+ New ticket"),
-    • deep-links to open the full ticket inside the HelmDesk app.
+    • deep-links to open the full ticket inside the HelpDesk app.
 
   The API verifies the contact belongs to the location (via the location's OAuth token) before
   returning anything, so no secret key is needed in this page. All ticket HTML is rendered
   server-side, so new form field types never require a change to this script.
 
-  TWO THINGS TO SET: API_BASE (your HelmDesk API host) and CUSTOM_PAGE_ID (your HelmDesk custom-page id).
+  TWO THINGS TO SET: API_BASE (your HelpDesk API host) and CUSTOM_PAGE_ID (your HelpDesk custom-page id).
 -->
 <script>
 (function () {
   // ===== CONFIG =====
-  var API_BASE = 'https://helmdeskapi.vaultsuite.store'; // HelmDesk API host (no trailing slash)
-  // Your HelmDesk custom-page id in GHL (from the page URL: /custom-page-link/<THIS>). When set, each
+  var API_BASE = 'https://helmdeskapi.vaultsuite.store'; // HelpDesk API host (no trailing slash)
+  // Your HelpDesk custom-page id in GHL (from the page URL: /custom-page-link/<THIS>). When set, each
   // ticket gets an "Open full ticket →" button that deep-links into the app (?open=<ticketId>). Leave
   // empty to hide that button.
   var CUSTOM_PAGE_ID = '6a42c684165d1f3e1eb4a5f0';
@@ -70,6 +70,8 @@
       'color:#422006;background:#E0A24A;border:1px solid #c98a30;border-radius:6px;cursor:pointer;flex-shrink:0}',
       '#' + BTN_ID + ' svg{width:16px;height:16px}',
       '#' + BTN_ID + ':hover{filter:brightness(1.04)}',
+      '#' + BTN_ID + '.hd-float{position:fixed;right:24px;bottom:88px;width:44px;height:44px;border-radius:50%;z-index:9999;box-shadow:0 6px 18px rgba(15,23,41,.22)}',
+      '#' + BTN_ID + '.hd-float svg{width:20px;height:20px}',
       '#' + MODAL_ID + '{position:fixed;inset:0;background:rgba(15,23,41,.45);backdrop-filter:blur(2px);display:flex;',
       'align-items:center;justify-content:center;z-index:99999;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif}',
       '#' + MODAL_ID + ' .hd-box{background:#fff;border-radius:14px;width:600px;max-width:calc(100vw - 32px);max-height:85vh;',
@@ -142,7 +144,7 @@
       });
     });
 
-    // "Open full ticket →" deep links into the HelmDesk custom page with ?open=<ticketId>. Only shown
+    // "Open full ticket →" deep links into the HelpDesk custom page with ?open=<ticketId>. Only shown
     // when CUSTOM_PAGE_ID is configured and we can read the current GHL origin/location.
     if (CUSTOM_PAGE_ID && ctx.locationId) {
       var origin = (function () {
@@ -236,12 +238,24 @@
   function injectButton() {
     var anchor = getAnchor();
     var existing = document.getElementById(BTN_ID);
-    if (!anchor || !anchor.parentElement || !getContactId()) {
+    var contactId = getContactId();
+    if (!contactId) { if (existing) existing.remove(); return; }
+    // Fallback: a contact is open (id in the URL) but GHL rendered a header without our usual anchor —
+    // e.g. a contact opened from global search. Show a floating button instead of no button at all.
+    if (!anchor || !anchor.parentElement) {
+      if (existing && existing.classList.contains('hd-float')) return;
       if (existing) existing.remove();
+      var fb = makeButton();
+      fb.classList.add('hd-float');
+      document.body.appendChild(fb);
       return;
     }
     if (existing && existing.nextElementSibling === anchor) return; // already in place
     if (existing) existing.remove();
+    anchor.parentElement.insertBefore(makeButton(), anchor);
+  }
+
+  function makeButton() {
     var btn = document.createElement('button');
     btn.id = BTN_ID;
     btn.type = 'button';
@@ -249,7 +263,7 @@
     btn.setAttribute('aria-label', 'Support tickets');
     btn.innerHTML = TICKET_ICON;
     btn.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); openModal(); });
-    anchor.parentElement.insertBefore(btn, anchor);
+    return btn;
   }
 
   injectStyles();

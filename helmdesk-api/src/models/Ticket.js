@@ -37,7 +37,7 @@ const ticketSchema = new mongoose.Schema(
     conversationProviderId: { type: String, default: null, index: true },
 
     // How this ticket was born.
-    source: { type: String, enum: ['inbound', 'portal', 'manual'], default: 'inbound' },
+    source: { type: String, enum: ['inbound', 'portal', 'manual', 'workflow'], default: 'inbound' },
     formName: { type: String, default: null }, // name of the portal form this came from (source='portal')
 
     assigneeId: { type: String, default: null, index: true }, // GHL userId of the agent

@@ -105,4 +105,106 @@ async function fireTrigger(triggerKey, locationId, eventData) {
   );
 }
 
-module.exports = { handleSubscription, fireTrigger };
+/* ───────────────────────── Workflow ACTIONS ───────────────────────── */
+
+const ACTION_PRIORITIES = ['urgent', 'high', 'normal', 'low'];
+
+/** GHL sends action inputs under `data` (older payloads used `inputData`). Values may be non-strings. */
+function str(v) { return v == null ? '' : String(v).trim(); }
+function truthy(v) { return ['true', 'yes', '1', 'on'].includes(str(v).toLowerCase()); }
+
+/**
+ * "Create HelpDesk ticket" action — lets an agency open a ticket from any workflow, e.g.
+ * Trigger: Pipeline Stage Changed → Action: Create HelpDesk ticket.
+ *
+ * Payload: { data: { subject, message, priority, assignee, skipIfOpen }, extras: { locationId, contactId, workflowId } }
+ *   - subject   (required) — merge fields like {{contact.name}} are resolved by GHL before we get it.
+ *   - priority  urgent | high | normal | low (anything else → normal, so a typo never fails the step).
+ *   - assignee  GHL user id OR email of a HelpDesk agent in this location; blank → normal auto-routing.
+ *   - skipIfOpen "yes" → don't create a duplicate when this contact already has an open ticket with the
+ *                same subject. Pipeline stages flip back and forth; without this each flip opens a ticket.
+ *
+ * Throws with a human message on bad input — the router turns that into a 400 that GHL shows in the
+ * workflow's execution history.
+ */
+async function executeCreateTicket(payload = {}) {
+  const data = payload.data || payload.inputData || {};
+  const extras = payload.extras || {};
+  const locationId = str(extras.locationId);
+  const contactId = str(extras.contactId || data.contactId);
+  const subject = str(data.subject);
+  const message = str(data.message);
+  const priority = ACTION_PRIORITIES.includes(str(data.priority).toLowerCase()) ? str(data.priority).toLowerCase() : 'normal';
+
+  if (!locationId) throw new Error('Missing location — re-save the workflow.');
+  if (!contactId) throw new Error('This workflow has no contact. Use a contact-based trigger (e.g. Pipeline Stage Changed).');
+  if (!subject) throw new Error('Ticket subject is required.');
+
+  // Lazy requires: ticketService requires this module (to fire triggers), so a top-level require would
+  // be circular.
+  const Workspace = require('../models/Workspace');
+  const Ticket = require('../models/Ticket');
+  const Agent = require('../models/Agent');
+  const ticketService = require('../services/ticketService');
+
+  const workspace = await Workspace.findOne({ locationId });
+  if (!workspace) throw new Error('HelpDesk is not set up for this sub-account. Open HelpDesk once to finish setup.');
+
+  // Fetch the contact with THIS location's token — proves the contact belongs to the location (a forged
+  // request can't attach a ticket to someone else's contact) and gives us name/email for the ticket.
+  let contact;
+  try {
+    const raw = await ghlService.apiRequest('GET', `/contacts/${encodeURIComponent(contactId)}`, locationId);
+    const c = raw.contact || raw;
+    if (!c || !(c.id || c._id)) throw new Error('not found');
+    contact = {
+      id: c.id || c._id,
+      name: c.contactName || [c.firstName, c.lastName].filter(Boolean).join(' ') || c.email || c.phone || 'Contact',
+      email: c.email || null
+    };
+  } catch (e) {
+    throw new Error('Contact not found in this sub-account.');
+  }
+
+  if (truthy(data.skipIfOpen)) {
+    const existing = await Ticket.findOne({
+      locationId, contactId: contact.id, subject, status: { $in: Ticket.OPEN_STATUSES }
+    }).select('_id ref').lean();
+    if (existing) {
+      logger.info('⏭️ Workflow create-ticket skipped (open duplicate)', { locationId, contactId: contact.id, ref: existing.ref });
+      return { ticketId: String(existing._id), ticketRef: existing.ref, created: false };
+    }
+  }
+
+  const ticket = await ticketService.createTicket(workspace, {
+    subject,
+    contactId: contact.id,
+    contactName: contact.name,
+    contactEmail: contact.email,
+    source: 'workflow',
+    channel: 'Internal',
+    priority,
+    firstMessage: message || null
+  });
+
+  // Optional explicit assignee — must be an agent of THIS location (id or email), else ignored-with-error
+  // so the agency notices the misconfiguration instead of tickets silently landing unassigned.
+  const who = str(data.assignee);
+  if (who) {
+    const agent = await Agent.findOne({
+      locationId,
+      deleted: { $ne: true },
+      $or: [{ ghlUserId: who }, { email: who.toLowerCase() }, { email: who }]
+    }).lean();
+    if (!agent) {
+      logger.warn('Workflow create-ticket: assignee not found', { locationId, who });
+    } else {
+      await ticketService.assign(ticket, { assigneeId: agent.ghlUserId, assigneeName: agent.name || null });
+    }
+  }
+
+  logger.info('🎫 Ticket created from workflow', { locationId, ref: ticket.ref, workflowId: extras.workflowId });
+  return { ticketId: String(ticket._id), ticketRef: ticket.ref, created: true };
+}
+
+module.exports = { handleSubscription, fireTrigger, executeCreateTicket };

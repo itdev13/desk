@@ -21,7 +21,8 @@ export const CHANNELS = [
 export const SOURCE_LABEL = {
   portal: 'Form submission',
   manual: 'Created manually',
-  inbound: 'Inbound message (auto)'
+  inbound: 'Inbound message (auto)',
+  workflow: 'Workflow (automation)'
 };
 export function labelSource(s) {
   return SOURCE_LABEL[s] || (s ? s.charAt(0).toUpperCase() + s.slice(1) : '—');

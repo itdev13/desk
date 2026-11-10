@@ -27,4 +27,21 @@ router.post('/triggers/subscriptions', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/workflows/actions/create-ticket — "Create HelpDesk ticket" workflow ACTION.
+ * Registered in Marketplace → app → Workflow Actions with this URL. Returns the new ticket's id/ref so
+ * later workflow steps can use them.
+ */
+router.post('/actions/create-ticket', async (req, res) => {
+  const p = req.body || {};
+  logger.info('[action:create-ticket]', { locationId: p.extras?.locationId, contactId: p.extras?.contactId, workflowId: p.extras?.workflowId });
+  try {
+    const result = await workflowsService.executeCreateTicket(p);
+    res.json({ success: true, data: result, ...result });
+  } catch (error) {
+    logger.warn('workflow action create-ticket failed', { message: error.message });
+    res.status(400).json({ success: false, message: error.message, error: error.message });
+  }
+});
+
 module.exports = router;
