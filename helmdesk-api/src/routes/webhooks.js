@@ -14,6 +14,16 @@ const logger = require('../utils/logger');
 const ThrottleQueue = require('../utils/throttleQueue');
 const { webhookSignatureGuard } = require('../utils/webhookSignature');
 
+/**
+ * Which Installation record a lifecycle webhook refers to. Agency (company-level) events MUST match
+ * only the company record (locationId: null) — a bare { appId, companyId } also matches that agency's
+ * LOCATION records, so an agency INSTALL/UNINSTALL could overwrite a sub-account's record (and the
+ * agency-level purge would then never find its anchor).
+ */
+function installFilter(appId, locationId, companyId) {
+  return locationId ? { appId, locationId } : { appId, companyId, locationId: null };
+}
+
 // Verify GHL's Ed25519 X-GHL-Signature on every webhook (log-only by default; set
 // WEBHOOK_VERIFY_ENFORCE=true to reject unverified once logs confirm signatures pass).
 router.use(webhookSignatureGuard);
@@ -106,7 +116,7 @@ router.post('/helmdesk', async (req, res) => {
     switch (type) {
       case 'INSTALL': {
         await Installation.findOneAndUpdate(
-          locationId ? { appId, locationId } : { appId, companyId },
+          installFilter(appId, locationId, companyId),
           {
             appId, companyId, locationId, userId: data.userId, companyName: data.companyName,
             planId: data.planId, versionId: data.versionId || null, trial: data.trial || {},
@@ -166,7 +176,7 @@ router.post('/helmdesk', async (req, res) => {
         const uninstallReason = data.reason || data.uninstallReason || data.cancelReason || null;
         const isPaymentFailure = /payment/i.test(String(uninstallReason || ''));
         await Installation.findOneAndUpdate(
-          locationId ? { appId, locationId } : { appId, companyId },
+          installFilter(appId, locationId, companyId),
           { status: 'uninstalled', uninstalledAt: new Date(), uninstallReason }
         );
         await subscriptionService.setStatus({ locationId, companyId }, 'canceled', data);
@@ -193,7 +203,7 @@ router.post('/helmdesk', async (req, res) => {
         // top-level field and rawWebhookData so the stored payload stays self-consistent.
         if (newVersionId) {
           await Installation.updateOne(
-            locationId ? { appId, locationId } : { appId, companyId },
+            installFilter(appId, locationId, companyId),
             { $set: { versionId: newVersionId, 'rawWebhookData.versionId': newVersionId } }
           );
         }

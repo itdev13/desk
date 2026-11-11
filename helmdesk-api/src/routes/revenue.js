@@ -27,7 +27,11 @@ router.get('/', guard, async (req, res) => {
   try {
     // ── Active subscriptions → MRR (sum of active monthly prices). Trials count toward entitlement
     //    but aren't paying yet, so they're reported separately, not in MRR.
+    //    Only SUB-ACCOUNT subscriptions are billed. An agency-level install (locationId null) carries
+    //    the plan it was installed with (e.g. Agency $99) but GHL charges $0 for it — counting it
+    //    would inflate MRR — so it's excluded here and reported separately as `agencyInstalls`.
     const byPlan = await Subscription.aggregate([
+      { $match: { locationId: { $ne: null } } },
       { $group: {
         _id: { planName: { $ifNull: ['$planName', 'Unknown'] }, status: '$status' },
         count: { $sum: 1 },
@@ -49,6 +53,14 @@ router.get('/', guard, async (req, res) => {
       if (status === 'past_due') pastDueCount += row.count;
     }
 
+    // ── Agency-level installs (not billed) — counted for visibility only.
+    const agencyRows = await Subscription.aggregate([
+      { $match: { locationId: null } },
+      { $group: { _id: '$status', count: { $sum: 1 } } }
+    ]);
+    const agencyInstalls = {};
+    for (const r of agencyRows) agencyInstalls[r._id || 'unknown'] = r.count;
+
     // ── Total collected to date (from invoice_paid transactions GHL reported).
     const invoiceAgg = await SubscriptionTransaction.aggregate([
       { $match: { event: 'invoice_paid' } },
@@ -67,9 +79,10 @@ router.get('/', guard, async (req, res) => {
       success: true,
       currency: 'USD',
       note: 'Estimate from HelpDesk\'s own data. GoHighLevel collects the fee; its dashboard is the authoritative payout.',
-      mrr: Math.round(mrr),                         // monthly recurring revenue (active subs)
+      mrr: Math.round(mrr),                         // monthly recurring revenue (active SUB-ACCOUNT subs)
       arr: Math.round(mrr * 12),                    // annualized
       subscribers: { active: activeCount, trialing: trialingCount, past_due: pastDueCount },
+      agencyInstalls, // agency-level installs by status — not billed, not in MRR
       byPlan: Object.values(plans).sort((a, b) => (b.priceUsd || 0) - (a.priceUsd || 0)),
       collectedToDate: {
         subscriptionInvoices: Math.round(invoices.total), invoiceCount: invoices.count,
