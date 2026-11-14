@@ -31,6 +31,7 @@ Add each listed field (name + type) so it's filterable in the workflow builder.
 | `contactEmail` | string | |
 | `assigneeId` | string | GHL user id, or empty if unassigned. **Good filter.** |
 | `assigneeName` | string | |
+| `assigneeEmail` | string | Assignee's email (from the HelpDesk team list), or empty. Use as the *To* of a Send Email step. |
 | `source` | string | `inbound` / `portal` / `manual`. **Good filter.** |
 | `formName` | string | Portal form name (only when `source = portal`). **Good filter.** |
 | `customFields` | array | `[{ label, value }]` — custom portal answers. |

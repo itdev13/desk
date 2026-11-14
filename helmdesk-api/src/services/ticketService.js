@@ -37,6 +37,7 @@ function buildTriggerPayload(ticket, extra = {}) {
     contactEmail: ticket.contactEmail || null,
     assigneeId: ticket.assigneeId || null,
     assigneeName: ticket.assigneeName || null,
+    assigneeEmail: null, // filled in by safeFire from the Agent record (lets a workflow email the assignee)
     source: ticket.source || 'inbound', // 'portal' | 'inbound' | 'manual' — where the ticket came from
     formName: ticket.formName || null,  // portal form name (only set when source='portal')
     customFields: cf,                   // [{ label, value }] — custom portal question answers
@@ -46,15 +47,25 @@ function buildTriggerPayload(ticket, extra = {}) {
   };
 }
 
-/** Fire a workflow trigger without ever blocking or breaking the ticket flow. */
+/**
+ * Fire a workflow trigger without ever blocking or breaking the ticket flow.
+ * Resolves the assignee's email first so every trigger carries `assigneeEmail` — a workflow can then
+ * "Send email → {{trigger.assigneeEmail}}" on Ticket Assigned with no per-agent If/Else branches.
+ */
 function safeFire(triggerKey, ticket, extra = {}) {
-  try {
-    fireTrigger(triggerKey, ticket.locationId, buildTriggerPayload(ticket, extra)).catch((e) =>
-      logger.warn('fireTrigger rejected', { triggerKey, message: e.message })
-    );
-  } catch (e) {
-    logger.warn('fireTrigger threw', { triggerKey, message: e.message });
-  }
+  (async () => {
+    const payload = buildTriggerPayload(ticket, extra);
+    if (ticket.assigneeId) {
+      try {
+        const agent = await Agent.findOne({ locationId: ticket.locationId, ghlUserId: ticket.assigneeId })
+          .select('email').lean();
+        payload.assigneeEmail = agent?.email || null;
+      } catch (e) {
+        logger.warn('assignee email lookup failed (firing without it)', { triggerKey, message: e.message });
+      }
+    }
+    await fireTrigger(triggerKey, ticket.locationId, payload);
+  })().catch((e) => logger.warn('fireTrigger rejected', { triggerKey, message: e.message }));
 }
 
 /**
