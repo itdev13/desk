@@ -310,6 +310,21 @@ class GHLService {
   }
 
   /** Upsert a contact (create or merge by email/phone). Used by the public portal intake. */
+  /**
+   * Search this location's contacts by free text (name, email, phone). Uses the current
+   * POST /contacts/search; falls back to the legacy GET /contacts/?query= if that call is rejected
+   * (older scope sets). Returns raw GHL contact objects.
+   */
+  async searchContacts(locationId, query, limit = 10) {
+    try {
+      const r = await this.apiRequest('POST', '/contacts/search', locationId, { locationId, query, pageLimit: limit });
+      return r.contacts || [];
+    } catch (e) {
+      const r = await this.apiRequest('GET', '/contacts/', locationId, null, { locationId, query, limit });
+      return r.contacts || [];
+    }
+  }
+
   async upsertContact(locationId, contactData) {
     const body = { ...contactData, locationId };
     const response = await this.apiRequest('POST', '/contacts/upsert', locationId, body);

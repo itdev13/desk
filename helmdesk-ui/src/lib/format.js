@@ -191,3 +191,18 @@ export function cleanMessageText(body) {
     return raw.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   }
 }
+
+/**
+ * Link to a contact's profile in GHL. The app runs inside GHL's iframe, so the top window's origin
+ * (app.gohighlevel.com or the agency's white-label domain) comes from ancestorOrigins / the referrer.
+ */
+export function ghlContactUrl(locationId, contactId) {
+  if (!locationId || !contactId) return null;
+  let origin = 'https://app.gohighlevel.com';
+  try {
+    const ao = window.location.ancestorOrigins;
+    if (ao && ao.length) origin = ao[ao.length - 1];
+    else if (document.referrer) origin = new URL(document.referrer).origin;
+  } catch { /* keep default */ }
+  return `${origin}/v2/location/${encodeURIComponent(locationId)}/contacts/detail/${encodeURIComponent(contactId)}`;
+}

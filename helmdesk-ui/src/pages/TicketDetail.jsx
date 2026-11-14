@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { api } from '../lib/api.js';
-import { ago, agoFull, slaDisplay, STATUS_LABEL, PRIORITY_LABEL, labelChannel, labelSource, isCustomProviderChannel, cleanMessageText } from '../lib/format.js';
+import { ago, agoFull, slaDisplay, STATUS_LABEL, PRIORITY_LABEL, labelChannel, labelSource, isCustomProviderChannel, cleanMessageText, ghlContactUrl } from '../lib/format.js';
 import { looksLikeHtml } from '../lib/sanitizeHtml.js';
 import EmailFrame from '../components/EmailFrame.jsx';
 import MessageEmail from '../components/MessageEmail.jsx';
@@ -228,6 +228,12 @@ export default function TicketDetail({ id, onBack, user, notify, onChange }) {
                   <div className="muted" style={{ fontSize: 12 }}>{ticket.contactEmail || ticket.channel}</div>
                 </div>
               </div>
+              {ticket.contactId && ghlContactUrl(ticket.locationId, ticket.contactId) && (
+                <a href={ghlContactUrl(ticket.locationId, ticket.contactId)} target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'inline-block', fontSize: 12.5, fontWeight: 600, color: '#1d4ed8', marginBottom: 8, textDecoration: 'none' }}>
+                  View contact →
+                </a>
+              )}
               <div className="kv"><span className="k">{ticket.source === 'portal' ? 'Form' : 'Channel'}</span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                   {ticket.source === 'portal' ? (ticket.formName || 'Support form') : labelChannel(ticket.channel)}

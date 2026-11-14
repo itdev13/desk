@@ -7,6 +7,7 @@ const TicketEvent = require('../models/TicketEvent');
 const Workspace = require('../models/Workspace');
 const Agent = require('../models/Agent');
 const ticketService = require('../services/ticketService');
+const ghlService = require('../services/ghlService');
 const logger = require('../utils/logger');
 
 router.use(requireAuth);
@@ -129,6 +130,29 @@ router.get('/board', async (req, res) => {
 });
 
 /** GET /api/tickets/:id — full ticket with its comment thread and event log. */
+/** Normalize a GHL contact into what the ticket form/ticket needs. */
+function toContact(c) {
+  if (!c) return null;
+  const name = c.contactName || [c.firstName, c.lastName].filter(Boolean).join(' ') || c.email || c.phone || 'Contact';
+  return { id: c.id || c._id, name, email: c.email || null, phone: c.phone || null };
+}
+
+/**
+ * GET /api/tickets/contact-search?q=… — find a contact in THIS location by name, email or phone, so a
+ * manual ticket links to the real GHL contact. Declared before '/:id' so it isn't read as a ticket id.
+ */
+router.get('/contact-search', async (req, res) => {
+  const q = String(req.query.q || '').trim();
+  if (q.length < 2) return res.json({ success: true, contacts: [] });
+  try {
+    const raw = await ghlService.searchContacts(req.auth.locationId, q, 10);
+    res.json({ success: true, contacts: raw.map(toContact).filter((c) => c && c.id) });
+  } catch (error) {
+    logger.warn('contact search failed', { message: error.message });
+    res.status(502).json({ success: false, error: 'Could not search contacts. Please try again.' });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   const ticket = await loadTicket(req, res);
   if (!ticket) return;
@@ -152,10 +176,34 @@ router.post('/', async (req, res) => {
     const workspace = await Workspace.findOne({ locationId: req.auth.locationId });
     if (!workspace) return res.status(400).json({ success: false, error: 'Workspace not configured' });
 
-    const { subject, contactId, contactName, contactEmail, channel, priority, firstMessage } = req.body;
+    const { subject, contactId, channel, priority, firstMessage } = req.body;
+    let { contactName, contactEmail } = req.body;
+
+    // Link to the real GHL contact. A picked contactId is re-fetched with THIS location's token — that
+    // both proves it belongs to the location (a crafted id can't attach another account's contact)
+    // and gives us its current name/email. Without an id, an exact email match is linked if one exists.
+    let linked = null;
+    if (contactId) {
+      try {
+        const raw = await ghlService.apiRequest('GET', `/contacts/${encodeURIComponent(contactId)}`, req.auth.locationId);
+        linked = toContact(raw.contact || raw);
+      } catch (e) {
+        return res.status(400).json({ success: false, error: 'That contact was not found in this account.' });
+      }
+    } else if (contactEmail) {
+      try {
+        const want = String(contactEmail).trim().toLowerCase();
+        const hits = await ghlService.searchContacts(req.auth.locationId, want, 5);
+        linked = toContact(hits.find((c) => String(c.email || '').toLowerCase() === want));
+      } catch (e) {
+        logger.warn('manual ticket: email lookup failed (creating unlinked)', { message: e.message });
+      }
+    }
+    if (linked) { contactName = linked.name; contactEmail = linked.email; }
+
     const ticket = await ticketService.createTicket(workspace, {
       subject: subject || ticketServiceSubject(firstMessage),
-      contactId: contactId || null,
+      contactId: linked?.id || null,
       contactName: contactName || null,
       contactEmail: contactEmail || null,
       channel: channel || null,

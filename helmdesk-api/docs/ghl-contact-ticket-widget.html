@@ -49,10 +49,24 @@
     var m = location.pathname.match(/\/location\/([^/?#]+)/);
     return m ? m[1] : null;
   }
-  // Contact page: before the delete icon. Conversations page: before the open-contact icon.
-  function getAnchor() {
-    return document.getElementById('delete-contact-trigger') ||
-           document.querySelector(CONTACT_LINK_SEL);
+  // The contact header's avatar carries a stable pendo id (GHL's data-v-* class hashes change every
+  // release). Its next sibling is the NAME row, which every user sees — unlike the delete icon, which
+  // GHL hides from users without delete permission (that's why non-admins used to get no button).
+  var AVATAR_SEL = '[data-pendo-id="contact-details-header-avatar-edit"]';
+
+  // Where to put the button: { parent, before } (before = null → append at the end of parent).
+  //   1. Contact header: right after the contact's name.
+  //   2. Delete icon (older GHL layouts without the avatar hook).
+  //   3. Conversations: before the "View contact details" icon.
+  function getMount() {
+    var avatar = document.querySelector(AVATAR_SEL);
+    var nameRow = avatar && avatar.nextElementSibling;
+    if (nameRow) return { parent: nameRow, before: null };
+    var del = document.getElementById('delete-contact-trigger');
+    if (del && del.parentElement) return { parent: del.parentElement, before: del };
+    var link = document.querySelector(CONTACT_LINK_SEL);
+    if (link && link.parentElement) return { parent: link.parentElement, before: link };
+    return null;
   }
 
   function esc(s) {
@@ -236,13 +250,12 @@
   }
 
   function injectButton() {
-    var anchor = getAnchor();
     var existing = document.getElementById(BTN_ID);
-    var contactId = getContactId();
-    if (!contactId) { if (existing) existing.remove(); return; }
-    // Fallback: a contact is open (id in the URL) but GHL rendered a header without our usual anchor —
-    // e.g. a contact opened from global search. Show a floating button instead of no button at all.
-    if (!anchor || !anchor.parentElement) {
+    if (!getContactId()) { if (existing) existing.remove(); return; }
+    var mount = getMount();
+    // Last resort: a contact is open but none of the known spots rendered → floating button, so the
+    // agent always has a way in.
+    if (!mount) {
       if (existing && existing.classList.contains('hd-float')) return;
       if (existing) existing.remove();
       var fb = makeButton();
@@ -250,9 +263,9 @@
       document.body.appendChild(fb);
       return;
     }
-    if (existing && existing.nextElementSibling === anchor) return; // already in place
+    if (existing && existing.parentElement === mount.parent && existing.nextElementSibling === mount.before) return; // already in place
     if (existing) existing.remove();
-    anchor.parentElement.insertBefore(makeButton(), anchor);
+    mount.parent.insertBefore(makeButton(), mount.before);
   }
 
   function makeButton() {

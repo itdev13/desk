@@ -95,6 +95,7 @@ export const api = {
   board: (params) => request('/api/tickets/board', { params }),
   getTicket: (id) => request(`/api/tickets/${id}`),
   createTicket: (body) => request('/api/tickets', { method: 'POST', body }),
+  searchContacts: (q) => request('/api/tickets/contact-search', { params: { q } }),
   reply: (id, body) => request(`/api/tickets/${id}/reply`, { method: 'POST', body }),
   note: (id, body) => request(`/api/tickets/${id}/note`, { method: 'POST', body }),
   bulkDeleteTickets: (ids) => request('/api/tickets/bulk-delete', { method: 'POST', body: { ids } }),
