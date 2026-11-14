@@ -403,7 +403,18 @@ function TicketPanes({ id, isAdmin, notify, onChanged, rightOpen = true, toggleR
       <section className="inbox-thread-wrap">
         <header className="inbox-thread-head">
           <div className="inbox-thread-title">
-            <span className="ref">{ticket.ref}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span className="ref">{ticket.ref}</span>
+              {ticket.contactId && ghlContactUrl(ticket.locationId, ticket.contactId) && (
+                <a href={ghlContactUrl(ticket.locationId, ticket.contactId)} target="_blank" rel="noopener noreferrer"
+                  title="Open this contact's profile in a new tab"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12.5, fontWeight: 600, color: '#1d4ed8',
+                    background: '#eff4ff', border: '1px solid #c7d7fe', borderRadius: 999, padding: '2px 10px', textDecoration: 'none',
+                    fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                  {ticket.contactName || 'Contact'} · View contact →
+                </a>
+              )}
+            </div>
             <h2>{ticket.subject}</h2>
           </div>
           <div className="inbox-thread-actions">

@@ -112,6 +112,17 @@ export default function TicketDetail({ id, onBack, user, notify, onChange }) {
             <span style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--slate)' }}>{ticket.ref}</span>
             {ticket.subject}
           </h1>
+          <div style={{ marginTop: 6 }}>
+            {ticket.contactId && ghlContactUrl(ticket.locationId, ticket.contactId) && (
+              <a href={ghlContactUrl(ticket.locationId, ticket.contactId)} target="_blank" rel="noopener noreferrer"
+                title="Open this contact's profile in a new tab"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12.5, fontWeight: 600, color: '#1d4ed8',
+                  background: '#eff4ff', border: '1px solid #c7d7fe', borderRadius: 999, padding: '2px 10px', textDecoration: 'none',
+                  fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                {ticket.contactName || 'Contact'} · View contact →
+              </a>
+            )}
+          </div>
         </div>
       </div>
 
