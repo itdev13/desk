@@ -357,6 +357,7 @@ async function processSubmission(ws, form, req, res) {
       channel: 'portal',
       source: 'portal',
       formName: form?.name || `${ws.brand?.name || 'HelpDesk'} Portal`,
+      formId: form?._id ? String(form._id) : null,
       priority: chosenPriority || undefined, // undefined → createTicket applies the default/rules
       firstMessage: message + appendCustom,
       customFields: custom

@@ -16,15 +16,25 @@ const slaTargetSchema = new mongoose.Schema(
   { _id: false }
 );
 
-// A single auto-triage rule. Kept intentionally simple (not a full rules engine) —
-// match on channel or a keyword in the body, then apply a priority and/or assignee.
+// A single routing rule, edited by admins in Settings → Routing rules. Kept intentionally simple (not
+// a full rules engine): every SET condition must match (AND); unset conditions are ignored. Rules are
+// evaluated top-to-bottom and the first rule to set each action wins.
 const ruleSchema = new mongoose.Schema(
   {
     name: { type: String, default: 'Rule' },
     enabled: { type: Boolean, default: true },
-    // condition
+    // conditions
     matchChannel: { type: String, default: null }, // e.g. 'Email' — null = any
     matchKeyword: { type: String, default: null }, // case-insensitive substring of body
+    // Form condition: which form ('default' = built-in form, null = any), which question (its LABEL, as
+    // stored on ticket.customFields), and how to compare: 'is' → answer equals any of matchValues
+    // (dropdown/radio/checkbox questions); 'contains' → answer contains matchValue (text questions;
+    // comma-separated = any of these words).
+    matchFormId: { type: String, default: null },
+    matchField: { type: String, default: null },
+    matchOp: { type: String, enum: ['is', 'contains'], default: 'is' },
+    matchValues: { type: [String], default: [] },
+    matchValue: { type: String, default: null },
     // action
     setPriority: { type: String, enum: ['urgent', 'high', 'normal', 'low', null], default: null },
     assignAgentId: { type: String, default: null }

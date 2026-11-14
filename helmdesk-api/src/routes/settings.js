@@ -58,6 +58,38 @@ function sanitizePortalFields(fields) {
 }
 
 /**
+ * Sanitize routing rules from the Settings screen: bound sizes, drop rules with no condition or no
+ * action (a condition-less rule would match every ticket), normalize enums.
+ */
+const RULE_PRIORITIES = ['urgent', 'high', 'normal', 'low'];
+function sanitizeRules(rules) {
+  if (!Array.isArray(rules)) return undefined;
+  const clip = (v, n) => { const t = String(v == null ? '' : v).trim(); return t ? t.slice(0, n) : null; };
+  return rules.slice(0, 50).map((r, i) => {
+    const matchOp = r.matchOp === 'contains' ? 'contains' : 'is';
+    const matchValues = Array.isArray(r.matchValues)
+      ? r.matchValues.map((v) => clip(v, 120)).filter(Boolean).slice(0, 30) : [];
+    return {
+      name: clip(r.name, 80) || `Rule ${i + 1}`,
+      enabled: r.enabled !== false,
+      matchChannel: clip(r.matchChannel, 40),
+      matchKeyword: clip(r.matchKeyword, 120),
+      matchFormId: clip(r.matchFormId, 64),
+      matchField: clip(r.matchField, 120),
+      matchOp,
+      matchValues: matchOp === 'is' ? matchValues : [],
+      matchValue: matchOp === 'contains' ? clip(r.matchValue, 200) : (matchValues.length ? null : clip(r.matchValue, 120)),
+      setPriority: RULE_PRIORITIES.includes(r.setPriority) ? r.setPriority : null,
+      assignAgentId: clip(r.assignAgentId, 64)
+    };
+  }).filter((r) => {
+    const formCond = !!r.matchFormId || !!(r.matchField && (r.matchValues.length || r.matchValue));
+    const incompleteQuestion = r.matchField && !(r.matchValues.length || r.matchValue);
+    return !incompleteQuestion && (r.matchChannel || r.matchKeyword || formCond) && (r.setPriority || r.assignAgentId);
+  });
+}
+
+/**
  * Mint a public portal slug the first time intake is enabled. It's RANDOM (not derived from the
  * locationId — that's public, so a derived slug would be guessable). Minted once and stored, so it's
  * stable across re-saves. Called from BOTH the settings update and the wizard.
@@ -83,6 +115,7 @@ router.put('/', requireAdmin, async (req, res) => {
       if (req.body[key] !== undefined) update[key] = req.body[key];
     }
     if ('portalFields' in update) update.portalFields = sanitizePortalFields(update.portalFields);
+    if ('rules' in update) update.rules = sanitizeRules(update.rules);
 
     // Plan-gated features: check once, then guard each affected field.
     const touchesWhiteLabel = WHITE_LABEL_FIELDS.some((k) => k in update);
@@ -127,6 +160,7 @@ router.post('/complete-setup', requireAdmin, async (req, res) => {
     for (const key of ALLOWED) {
       if (req.body[key] !== undefined) update[key] = req.body[key];
     }
+    if ('rules' in update) update.rules = sanitizeRules(update.rules);
 
     // Plan gating for the wizard: rather than blocking onboarding with a 402, silently coerce
     // gated choices to the plan-allowed fallback. Round-robin (Team+) → unassigned; white-label

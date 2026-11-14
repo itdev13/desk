@@ -4,6 +4,7 @@ import { CHANNELS } from '../lib/format.js';
 import { Icon, Switch, Select, TagInput, SectionHeader, ColorField } from '../components/ui.jsx';
 import PortalFormBuilder from '../components/PortalFormBuilder.jsx';
 import FormsManager from '../components/FormsManager.jsx';
+import RoutingRules from '../components/RoutingRules.jsx';
 import { track } from '../lib/analytics.js';
 
 /** Controlled-input value for a numeric field: blank while empty, otherwise a clean integer (no
@@ -149,7 +150,8 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
         ticketNumberPrefix: ws.ticketNumberPrefix,
         brand: ws.brand,
         portalEnabled: ws.portalEnabled,
-        portalFields: ws.portalFields
+        portalFields: ws.portalFields,
+        rules: ws.rules || []
       });
       setWs(res.workspace);
       onSaved?.(res.workspace);
@@ -455,6 +457,10 @@ export default function Settings({ onSaved, notify, onNavPlan }) {
               { term: 'Only-create / Never-create keywords', desc: '“Only create” is a whitelist: when it has keywords, a message becomes a ticket ONLY if it contains one (empty = every message creates a ticket). “Never create” is a blacklist that blocks a ticket entirely. Never-create always wins.' }
             ]}
           />
+        )}
+        {tab === 'assignment' && (
+          <RoutingRules rules={ws.rules || []} onChange={(rules) => set({ rules })}
+            agents={agents} portalFields={ws.portalFields} />
         )}
         {tab === 'assignment' && ws.slaEnabled === true && <SlaPreview targets={ws.slaTargets} />}
         {tab === 'brand' && (

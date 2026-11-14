@@ -180,14 +180,66 @@ async function pickAssignee(workspace, priority = 'normal') {
  * Apply the workspace's auto-triage rules to a draft. Mutates and returns { priority, assigneeId, assigneeName }.
  * First matching rule wins per action; intentionally simple (channel/keyword → priority/assignee).
  */
-function applyRules(workspace, { channel, body }) {
+/** Normalize for case/space-insensitive comparison of form answers. */
+function norm(v) { return String(v == null ? '' : v).trim().replace(/\s+/g, ' ').toLowerCase(); }
+
+/** The submitted answer to a question (by label), or null if that question wasn't answered. */
+function answerFor(customFields, field) {
+  const f = (customFields || []).find((c) => c && norm(c.label) === norm(field));
+  return f ? String(f.value == null ? '' : f.value) : null;
+}
+
+/**
+ * Does a rule's form condition match this ticket?
+ *  - matchFormId: the form it came from ('default' = the workspace's built-in form; empty = any form).
+ *  - matchField + matchOp:
+ *      'is'       → the answer equals ANY of matchValues (multi-select answers are stored joined by
+ *                   ", ", so any one selected option counts);
+ *      'contains' → the answer contains matchValue (any of its comma-separated words/phrases).
+ * All comparisons ignore case and extra spaces.
+ */
+function formConditionMatches(rule, { source, formId, customFields }) {
+  if (rule.matchFormId) {
+    if (source !== 'portal') return false;
+    const want = rule.matchFormId === 'default' ? null : rule.matchFormId;
+    if ((formId || null) !== want) return false;
+  }
+  if (!rule.matchField) return true;
+  const answer = answerFor(customFields, rule.matchField);
+  if (answer == null || !answer.trim()) return false;
+  if (rule.matchOp === 'contains') {
+    const terms = String(rule.matchValue || '').split(',').map(norm).filter(Boolean);
+    return terms.length > 0 && terms.some((t) => norm(answer).includes(t));
+  }
+  const values = (rule.matchValues && rule.matchValues.length ? rule.matchValues : [rule.matchValue]).map(norm).filter(Boolean);
+  const parts = [norm(answer), ...answer.split(',').map(norm)];
+  return values.some((v) => parts.includes(v));
+}
+
+/** Does the rule have a usable form condition (a form, or a question with a value to compare)? */
+function hasFormCondition(rule) {
+  const hasValue = rule.matchOp === 'contains' ? !!rule.matchValue : !!((rule.matchValues && rule.matchValues.length) || rule.matchValue);
+  return !!rule.matchFormId || !!(rule.matchField && hasValue);
+}
+
+/**
+ * Apply the workspace's routing rules (top-to-bottom). Every condition a rule sets must match; a rule
+ * with NO conditions never matches (so a half-filled rule can't grab every ticket). The first matching
+ * rule to set a priority / an assignee wins for that action.
+ */
+function applyRules(workspace, { channel, body, customFields = [], source = null, formId = null }) {
   let priority = null;
   let assignAgentId = null;
   for (const rule of workspace.rules || []) {
     if (!rule.enabled) continue;
+    const formCond = hasFormCondition(rule);
+    if (!rule.matchChannel && !rule.matchKeyword && !formCond) continue;
+    // A question picked without a value to compare is incomplete → skip rather than match loosely.
+    if (rule.matchField && !formCond) continue;
     const channelOk = !rule.matchChannel || rule.matchChannel === channel;
     const keywordOk = !rule.matchKeyword || (body || '').toLowerCase().includes(rule.matchKeyword.toLowerCase());
-    if (channelOk && keywordOk) {
+    const formOk = !formCond || formConditionMatches(rule, { source, formId, customFields });
+    if (channelOk && keywordOk && formOk) {
       if (rule.setPriority && !priority) priority = rule.setPriority;
       if (rule.assignAgentId && !assignAgentId) assignAgentId = rule.assignAgentId;
     }
@@ -457,6 +509,7 @@ async function createTicket(workspace, opts) {
     conversationProviderId = null,
     source = 'manual',
     formName = null, // portal form name (source='portal')
+    formId = null,   // PortalForm _id (source='portal'); null = default form
     priority: requestedPriority = null, // explicit priority (e.g. customer-chosen on the portal form)
     firstMessage = null,
     ghlMessageId = null,
@@ -468,13 +521,17 @@ async function createTicket(workspace, opts) {
   // Priority precedence: an auto-triage RULE wins, then an explicitly requested priority (portal /
   // manual), then the default. Rules stay authoritative so an agency's routing can't be overridden by
   // a customer's self-selected priority.
-  const ruled = applyRules(workspace, { channel, body: firstMessage });
+  const ruled = applyRules(workspace, { channel, body: firstMessage, customFields, source, formId });
   const priority = ruled.priority || requestedPriority || 'normal';
 
   let assignee;
-  if (ruled.assignAgentId) {
-    const agent = await Agent.findOne({ locationId: workspace.locationId, ghlUserId: ruled.assignAgentId });
-    assignee = { assigneeId: ruled.assignAgentId, assigneeName: agent?.name || null };
+  // A rule's agent must still exist (not deleted in the CRM) — otherwise fall back to normal routing
+  // rather than assigning the ticket to someone who can't see it.
+  const ruleAgent = ruled.assignAgentId
+    ? await Agent.findOne({ locationId: workspace.locationId, ghlUserId: ruled.assignAgentId, deleted: { $ne: true } })
+    : null;
+  if (ruleAgent) {
+    assignee = { assigneeId: ruleAgent.ghlUserId, assigneeName: ruleAgent.name || null };
   } else {
     assignee = await pickAssignee(workspace, priority);
   }
@@ -500,6 +557,7 @@ async function createTicket(workspace, opts) {
     conversationProviderId,
     source,
     formName,
+    formId,
     assigneeId: assignee.assigneeId,
     assigneeName: assignee.assigneeName,
     ...sla,
@@ -515,7 +573,7 @@ async function createTicket(workspace, opts) {
     meta: { source, channel, ref }
   });
   if (assignee.assigneeId) {
-    await recordEvent(ticket, 'assigned', { meta: { to: assignee.assigneeId, via: ruled.assignAgentId ? 'rule' : workspace.assignmentMode } });
+    await recordEvent(ticket, 'assigned', { meta: { to: assignee.assigneeId, via: ruleAgent ? 'rule' : workspace.assignmentMode } });
     await bumpAgentLoad(workspace.locationId, assignee.assigneeId, +1);
   }
 
